@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Realm OS</title>
+<title>Genesis</title>
 <style>
 :root{
   --accent:215;
@@ -300,6 +300,7 @@ button{color:inherit}
 <script>
 if(sessionStorage.getItem("realmAuth")!=="1"){location.replace("index.html");}
 </script>
+  <link rel="icon" type="image/png" href="favicon.png">
 </head>
 <body>
 <div id="os">
@@ -607,7 +608,7 @@ function submitGameRequest(){
 
   grStatus(
     "Request Sent",
-    "Your game request was sent. You can stay right here in Realm OS.",
+    "Your game request was sent. You can stay right here in Genesis.",
     "✓"
   );
 
@@ -631,7 +632,7 @@ const apps = {
     <button class="os-btn" style="margin-top:10px" onclick="openRealmInAboutBlank()">Open in About Blank</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
   </div>`},
-  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Realm OS</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 7 Games</div></div>`},
+  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 7 Games</div></div>`},
   music:{title:"Music",content:()=>`<div class="music"><div><div class="music-art">♪</div><h2>OS Music</h2><div class="muted">Nothing playing</div></div></div>`},
   games:{title:"Games",content:gamesHTML},
   gameRequest:{title:"Game Request",content:gameRequestHTML}
@@ -883,7 +884,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Realm OS starts in <b>Inside OS</b> mode on GitHub Pages. Sites that allow iframe embedding stay inside this window. If a site blocks embedding, switch to <b>New Tab</b> mode.
+            Search or enter a website above. Genesis starts in <b>Inside OS</b> mode on GitHub Pages. Sites that allow iframe embedding stay inside this window. If a site blocks embedding, switch to <b>New Tab</b> mode.
           </p>
         </div>
       </div>
@@ -958,7 +959,7 @@ function initBrowser(win){
     const status=win.querySelector("#browserStatus");
     status.textContent=browserState.mode==="tab"
       ?"New Tab mode · works with normal websites"
-      :"Inside OS mode · trying websites inside Realm OS";
+      :"Inside OS mode · trying websites inside Genesis";
   };
 
   again.onclick=()=>{
@@ -1047,7 +1048,7 @@ function browserNavigate(raw,push,fromUser=false){
     frame.src="about:blank";
     frame.style.display="block";
     home.classList.remove("hidden");
-    status.textContent="Realm OS Home · New Tab mode works with normal websites";
+    status.textContent="Genesis Home · New Tab mode works with normal websites";
     updateBrowserButtons();
     return;
   }
@@ -1060,7 +1061,7 @@ function browserNavigate(raw,push,fromUser=false){
     home.classList.add("hidden");
     card.classList.remove("show");
     frame.style.display="block";
-    status.textContent="Loading inside Realm OS · "+url;
+    status.textContent="Loading inside Genesis · "+url;
     frame.onload=()=>{
       status.textContent=
         "Loaded frame · if the page is blank or refuses to connect, switch to New Tab mode";
@@ -1134,7 +1135,7 @@ function openRealmInAboutBlank(){
   const win = window.open("about:blank", "_blank");
 
   if(!win){
-    alert("Popup blocked. Allow popups for Realm OS and try again.");
+    alert("Popup blocked. Allow popups for Genesis and try again.");
     return;
   }
 
@@ -1145,7 +1146,7 @@ function openRealmInAboutBlank(){
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-      <title>Realm OS</title>
+      <title>Genesis</title>
       <style>
         html,body{
           width:100%;
