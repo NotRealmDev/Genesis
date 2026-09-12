@@ -296,14 +296,81 @@ button{color:inherit}
   background:rgba(255,255,255,.08);color:#fff;cursor:pointer
 }
 
+
+/* Genesis admin + global announcement system */
+.genesis-id-badge{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  z-index:190;padding:4px 8px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(5,8,15,.16);
+  color:rgba(255,255,255,.48);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  font-size:9px;font-weight:650;letter-spacing:.12em;pointer-events:none
+}
+.genesis-announcement{
+  position:absolute;top:36px;left:50%;z-index:100000;
+  width:min(760px,calc(100vw - 36px));transform:translate(-50%,-22px) scale(.985);
+  opacity:0;pointer-events:none;
+  padding:13px 18px;border-radius:17px;
+  border:1px solid rgba(255,255,255,.16);
+  background:rgba(12,16,27,.80);
+  backdrop-filter:blur(24px) saturate(160%);-webkit-backdrop-filter:blur(24px) saturate(160%);
+  box-shadow:0 18px 60px rgba(0,0,0,.35);
+  color:white;text-align:center;font-size:13px;line-height:1.5;
+  transition:opacity .5s ease,transform .55s cubic-bezier(.2,.8,.2,1)
+}
+.genesis-announcement.show{opacity:1;transform:translate(-50%,0) scale(1)}
+.admin-panel{padding:24px}
+.admin-panel textarea,.admin-panel input{
+  width:100%;border:1px solid rgba(255,255,255,.11);outline:0;
+  border-radius:16px;background:rgba(255,255,255,.055);color:white;
+  padding:13px 15px
+}
+.admin-panel textarea{min-height:150px;resize:vertical;line-height:1.55}
+.admin-panel input{height:46px}
+.admin-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
+.admin-status{min-height:21px;margin-top:10px;color:var(--muted);font-size:11px}
+.admin-list{margin-top:18px;display:grid;gap:8px}
+.admin-device{
+  display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;
+  padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.07);
+  background:rgba(255,255,255,.04)
+}
+.admin-device .device-id{font-weight:750}
+.status-active{color:#7dffac}.status-off{color:#ff8f9e}
+.admin-history{margin-top:22px}
+.admin-history-item{font-size:11px;color:var(--muted);padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.genesis-blocked{
+  position:fixed;inset:0;z-index:1000000;display:grid;place-items:center;
+  background:#060810;color:#fff;text-align:center;padding:30px
+}
+.genesis-blocked-card{
+  width:min(500px,92vw);padding:36px;border-radius:26px;
+  background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12)
+}
+
 </style>
 <script>
-if(sessionStorage.getItem("realmAuth")!=="1"){location.replace("index.html");}
+(function(){
+  try{
+    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
+    if(login && login.expires && Date.now() < login.expires){
+      sessionStorage.setItem("realmAuth","1");
+      sessionStorage.setItem("realmUser",login.user || "");
+      sessionStorage.setItem("genesisRole",login.role || "user");
+      return;
+    }
+  }catch(e){}
+  location.replace("index.html");
+})();
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
+<script src="supabase-config.js"></script>
 </head>
 <body>
 <div id="os">
+  <div id="genesisVisitorId" class="genesis-id-badge">ID ···</div>
+  <div id="genesisAnnouncement" class="genesis-announcement"></div>
   <div class="wallpaper-grid"></div>
   <div class="watermark">OS</div>
 
@@ -332,6 +399,14 @@ if(sessionStorage.getItem("realmAuth")!=="1"){location.replace("index.html");}
     <div class="desktop-icon" data-app="gameRequest" style="left:230px;top:145px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h4"/><path d="M15 14v5M12.5 16.5H17.5"/></svg></div><div class="app-name">Game Request</div>
     </div>
+
+    <div class="desktop-icon admin-only-icon" data-admin-only="1" data-app="announcement" style="left:330px;top:30px">
+      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M4 11v2a2 2 0 0 0 2 2h2l3 4V5L8 9H6a2 2 0 0 0-2 2z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></svg></div><div class="app-name">Annoucement</div>
+    </div>
+    <div class="desktop-icon admin-only-icon" data-admin-only="1" data-app="deactivateOS" style="left:330px;top:145px">
+      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M7.2 5.8a8 8 0 1 0 9.6 0"/><path d="M8 16l8-8"/></svg></div><div class="app-name">DeactivateOS</div>
+    </div>
+
   </main>
 
   <aside class="sidebar">
@@ -619,6 +694,44 @@ function submitGameRequest(){
 }
 
 
+
+function announcementHTML(){
+  return `<div class="admin-panel">
+    <div class="heading">Annoucement</div>
+    <div class="muted" style="font-size:12px;line-height:1.6;margin-bottom:16px">
+      Send a message to everyone currently using Genesis. Longer messages stay visible longer automatically.
+    </div>
+    <textarea id="announcementText" maxlength="2000" placeholder="Type your announcement..."></textarea>
+    <div class="admin-row" style="margin-top:12px">
+      <button class="os-btn" onclick="sendGenesisAnnouncement()">Send Announcement</button>
+      <span class="muted" style="font-size:10px">Maximum 2,000 characters</span>
+    </div>
+    <div id="announcementStatus" class="admin-status"></div>
+  </div>`;
+}
+
+function deactivateOSHTML(){
+  return `<div class="admin-panel">
+    <div class="heading">DeactivateOS</div>
+    <div class="muted" style="font-size:12px;line-height:1.6;margin-bottom:16px">
+      Enter a three-digit Genesis ID or use the device list below.
+    </div>
+    <div class="admin-row">
+      <input id="deactivateIdInput" inputmode="numeric" maxlength="3" placeholder="Example: 527" style="max-width:190px">
+      <button class="os-btn" onclick="setGenesisDeviceFromInput(false)">Deactivate</button>
+      <button class="os-btn" onclick="setGenesisDeviceFromInput(true)">Reactivate</button>
+    </div>
+    <div id="deactivateStatus" class="admin-status"></div>
+    <div class="heading" style="font-size:17px;margin-top:22px;margin-bottom:10px">Known IDs</div>
+    <div id="genesisDeviceList" class="admin-list"><div class="muted">Loading…</div></div>
+    <div class="admin-history">
+      <div class="heading" style="font-size:17px;margin-bottom:8px">Action History</div>
+      <div id="genesisActionHistory"><div class="muted">Loading…</div></div>
+    </div>
+  </div>`;
+}
+
+
 const apps = {
   browser:{title:"Browser",content:browserHTML},
   files:{title:"Files",content:()=>`<div class="section"><div class="heading">Files</div><div class="files-grid">
@@ -635,7 +748,9 @@ const apps = {
   about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 7 Games</div></div>`},
   music:{title:"Music",content:()=>`<div class="music"><div><div class="music-art">♪</div><h2>OS Music</h2><div class="muted">Nothing playing</div></div></div>`},
   games:{title:"Games",content:gamesHTML},
-  gameRequest:{title:"Game Request",content:gameRequestHTML}
+  gameRequest:{title:"Game Request",content:gameRequestHTML},
+  announcement:{title:"Annoucement",adminOnly:true,content:announcementHTML},
+  deactivateOS:{title:"DeactivateOS",adminOnly:true,content:deactivateOSHTML}
 };
 
 let highestZ = 300;
@@ -652,6 +767,7 @@ function openApp(appId){
   }
   const app = apps[appId];
   if(!app) return;
+  if(app.adminOnly && genesisRole() !== "admin") return;
   const win = document.createElement("section");
   win.className = "window";
   win.dataset.app = appId;
@@ -669,6 +785,8 @@ function openApp(appId){
   focusWindow(win);
   makeWindowDraggable(win);
   if(appId==="gameRequest") setTimeout(initGameRequest,0);
+  if(appId==="deactivateOS") setTimeout(refreshDeactivateOS,0);
+  if(appId==="announcement") setTimeout(()=>document.getElementById("announcementText")?.focus(),0);
 
   win.querySelector(".close").onclick = e => {e.stopPropagation(); closeWindow(appId,win)};
   win.querySelector(".minimize").onclick = e => {e.stopPropagation(); win.classList.add("minimized")};
@@ -1131,6 +1249,299 @@ if(navigator.getBattery){
 }
 function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
 
+
+/* =========================================================
+   GENESIS GLOBAL BACKEND / ADMIN
+========================================================= */
+
+function genesisRole(){
+  try{
+    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
+    return login && login.expires > Date.now() ? (login.role || "user") : "user";
+  }catch{return "user"}
+}
+
+function genesisBackendReady(){
+  const b = window.GENESIS_BACKEND || {};
+  return /^https:\/\/.+\.supabase\.co$/i.test(String(b.url || "")) &&
+         String(b.anonKey || "").length > 20;
+}
+
+function genesisDeviceToken(){
+  let token = localStorage.getItem("genesisDeviceToken");
+  if(!token){
+    token = crypto.randomUUID();
+    localStorage.setItem("genesisDeviceToken", token);
+  }
+  return token;
+}
+
+async function genesisRpc(name, body, bearer){
+  if(!genesisBackendReady()) throw new Error("Genesis backend is not configured");
+  const b = window.GENESIS_BACKEND;
+  const auth = bearer || b.anonKey;
+  const response = await fetch(`${b.url}/rest/v1/rpc/${name}`, {
+    method:"POST",
+    headers:{
+      "apikey":b.anonKey,
+      "Authorization":`Bearer ${auth}`,
+      "Content-Type":"application/json"
+    },
+    body:JSON.stringify(body || {})
+  });
+  if(!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+async function genesisPublicGet(path){
+  const b = window.GENESIS_BACKEND;
+  const response = await fetch(`${b.url}/rest/v1/${path}`, {
+    headers:{
+      "apikey":b.anonKey,
+      "Authorization":`Bearer ${b.anonKey}`
+    },
+    cache:"no-store"
+  });
+  if(!response.ok) throw new Error(await response.text());
+  return response.json();
+}
+
+async function genesisAdminSession(){
+  let s;
+  try{s = JSON.parse(localStorage.getItem("genesisAdminSession") || "null")}catch{}
+  if(!s || !s.refresh_token) throw new Error("Admin session missing. Sign in again.");
+
+  if(s.access_token && s.expires_at && Date.now() < s.expires_at - 60000){
+    return s.access_token;
+  }
+
+  const b = window.GENESIS_BACKEND;
+  const response = await fetch(`${b.url}/auth/v1/token?grant_type=refresh_token`, {
+    method:"POST",
+    headers:{"apikey":b.anonKey,"Content-Type":"application/json"},
+    body:JSON.stringify({refresh_token:s.refresh_token})
+  });
+  const data = await response.json();
+  if(!response.ok || !data.access_token) throw new Error("Admin session expired. Sign in again.");
+
+  s = {
+    access_token:data.access_token,
+    refresh_token:data.refresh_token || s.refresh_token,
+    expires_at:Date.now() + ((data.expires_in || 3600) * 1000)
+  };
+  localStorage.setItem("genesisAdminSession", JSON.stringify(s));
+  return s.access_token;
+}
+
+async function genesisAdminRequest(path, options={}){
+  const b = window.GENESIS_BACKEND;
+  const token = await genesisAdminSession();
+  const headers = Object.assign({
+    "apikey":b.anonKey,
+    "Authorization":`Bearer ${token}`,
+    "Content-Type":"application/json"
+  }, options.headers || {});
+  const response = await fetch(`${b.url}/rest/v1/${path}`, Object.assign({}, options, {headers}));
+  if(!response.ok) throw new Error(await response.text());
+  const text = await response.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function lockGenesis(displayId){
+  localStorage.removeItem("genesisLogin");
+  sessionStorage.clear();
+  document.body.innerHTML = `<div class="genesis-blocked">
+    <div class="genesis-blocked-card">
+      <h1 style="margin:0 0 10px">Genesis Access Deactivated</h1>
+      <div style="color:rgba(255,255,255,.58);line-height:1.6">
+        This browser ID has been deactivated by an administrator.
+      </div>
+      <div style="margin-top:16px;font-size:12px;opacity:.5">ID ${escapeHTML(displayId || "")}</div>
+    </div>
+  </div>`;
+}
+
+async function ensureGenesisDevice(){
+  if(!genesisBackendReady()) return;
+  const rows = await genesisRpc("genesis_register_device", {p_token:genesisDeviceToken()});
+  const d = Array.isArray(rows) ? rows[0] : rows;
+  if(!d) return;
+  localStorage.setItem("genesisDisplayId",String(d.display_id));
+  const badge = document.getElementById("genesisVisitorId");
+  if(badge) badge.textContent = `ID ${d.display_id}`;
+  if(d.active === false) lockGenesis(d.display_id);
+}
+
+async function checkGenesisDevice(){
+  if(!genesisBackendReady()) return;
+  try{
+    const rows = await genesisRpc("genesis_check_device", {p_token:genesisDeviceToken()});
+    const d = Array.isArray(rows) ? rows[0] : rows;
+    if(d && d.display_id){
+      localStorage.setItem("genesisDisplayId",String(d.display_id));
+      const badge=document.getElementById("genesisVisitorId");
+      if(badge) badge.textContent=`ID ${d.display_id}`;
+    }
+    if(d && d.active === false) lockGenesis(d.display_id);
+  }catch(error){}
+}
+
+let genesisAnnouncementTimer = null;
+let genesisLastAnnouncementId = null;
+
+function showGenesisAnnouncement(message, ms){
+  const banner = document.getElementById("genesisAnnouncement");
+  if(!banner) return;
+  clearTimeout(genesisAnnouncementTimer);
+  banner.textContent = message;
+  requestAnimationFrame(()=>banner.classList.add("show"));
+  genesisAnnouncementTimer = setTimeout(()=>{
+    banner.classList.remove("show");
+  }, Math.max(1200,ms || 6000));
+}
+
+async function pollGenesisAnnouncement(){
+  if(!genesisBackendReady()) return;
+  try{
+    const rows = await genesisPublicGet(
+      "genesis_announcements?select=id,message,duration_ms,created_at&order=created_at.desc&limit=1"
+    );
+    if(!rows || !rows.length) return;
+    const a = rows[0];
+    const created = new Date(a.created_at).getTime();
+    const expires = created + Number(a.duration_ms || 7000);
+    if(a.id !== genesisLastAnnouncementId){
+      genesisLastAnnouncementId = a.id;
+      if(Date.now() < expires){
+        showGenesisAnnouncement(a.message, expires - Date.now());
+      }
+    }
+  }catch(error){}
+}
+
+async function sendGenesisAnnouncement(){
+  if(genesisRole() !== "admin") return;
+  const input = document.getElementById("announcementText");
+  const status = document.getElementById("announcementStatus");
+  const message = (input?.value || "").trim();
+  if(!message){
+    if(status) status.textContent = "Type a message first.";
+    return;
+  }
+
+  const duration = Math.min(22000, Math.max(5000, 3500 + (message.length * 55)));
+
+  try{
+    await genesisAdminRequest("genesis_announcements", {
+      method:"POST",
+      headers:{"Prefer":"return=minimal"},
+      body:JSON.stringify({
+        message,
+        duration_ms:duration,
+        created_by:"Admin"
+      })
+    });
+    if(status) status.textContent = `Sent · visible for about ${Math.ceil(duration/1000)} seconds`;
+    input.value = "";
+    pollGenesisAnnouncement();
+  }catch(error){
+    if(status) status.textContent = "Could not send announcement: " + error.message;
+  }
+}
+
+async function setGenesisDevice(displayId, makeActive){
+  if(genesisRole() !== "admin") return;
+  const status = document.getElementById("deactivateStatus");
+  const id = Number(displayId);
+  if(!Number.isInteger(id) || id < 100 || id > 999){
+    if(status) status.textContent = "Enter a valid three-digit ID.";
+    return;
+  }
+
+  try{
+    const token = await genesisAdminSession();
+    await genesisRpc("genesis_set_device_status", {
+      p_display_id:id,
+      p_active:!!makeActive
+    }, token);
+    if(status) status.textContent = `ID ${id} ${makeActive ? "reactivated" : "deactivated"}.`;
+    refreshDeactivateOS();
+  }catch(error){
+    if(status) status.textContent = "Could not update ID: " + error.message;
+  }
+}
+
+function setGenesisDeviceFromInput(makeActive){
+  const input = document.getElementById("deactivateIdInput");
+  setGenesisDevice(input?.value, makeActive);
+}
+
+async function refreshDeactivateOS(){
+  if(genesisRole() !== "admin") return;
+  const list = document.getElementById("genesisDeviceList");
+  const history = document.getElementById("genesisActionHistory");
+  if(!list || !history) return;
+
+  try{
+    const devices = await genesisAdminRequest(
+      "genesis_devices?select=display_id,active,last_seen&order=display_id.asc"
+    );
+    const myId = Number(localStorage.getItem("genesisDisplayId"));
+
+    list.innerHTML = (devices || []).map(d=>{
+      const isMe = Number(d.display_id) === myId;
+      return `<div class="admin-device">
+        <div class="device-id">ID ${escapeHTML(d.display_id)}</div>
+        <div>
+          <div class="${d.active ? "status-active" : "status-off"}">${d.active ? "Active" : "Deactivated"}${isMe ? " · This device" : ""}</div>
+          <div class="muted" style="font-size:9px;margin-top:2px">Last seen ${escapeHTML(new Date(d.last_seen).toLocaleString())}</div>
+        </div>
+        <button class="os-btn" onclick="setGenesisDevice(${Number(d.display_id)},${d.active ? "false" : "true"})">
+          ${d.active ? "Deactivate" : "Reactivate"}
+        </button>
+      </div>`;
+    }).join("") || `<div class="muted">No IDs yet.</div>`;
+
+    const actions = await genesisAdminRequest(
+      "genesis_admin_actions?select=display_id,action,created_at&order=created_at.desc&limit=30"
+    );
+    history.innerHTML = (actions || []).map(a=>
+      `<div class="admin-history-item">
+        ID ${escapeHTML(a.display_id)} · ${escapeHTML(a.action)} · ${escapeHTML(new Date(a.created_at).toLocaleString())}
+      </div>`
+    ).join("") || `<div class="muted">No actions yet.</div>`;
+  }catch(error){
+    list.innerHTML = `<div class="muted">Could not load IDs: ${escapeHTML(error.message)}</div>`;
+  }
+}
+
+function setupGenesisAdminUI(){
+  const admin = genesisRole() === "admin";
+  document.querySelectorAll("[data-admin-only='1']").forEach(el=>{
+    el.style.display = admin ? "" : "none";
+  });
+}
+
+function validateGenesis12HourSession(){
+  try{
+    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
+    if(!login || !login.expires || Date.now() >= login.expires){
+      localStorage.removeItem("genesisLogin");
+      location.replace("index.html");
+    }
+  }catch{
+    location.replace("index.html");
+  }
+}
+
+setupGenesisAdminUI();
+ensureGenesisDevice();
+pollGenesisAnnouncement();
+setInterval(checkGenesisDevice,5000);
+setInterval(pollGenesisAnnouncement,3000);
+setInterval(validateGenesis12HourSession,60000);
+
+
 function openRealmInAboutBlank(){
   const win = window.open("about:blank", "_blank");
 
@@ -1165,7 +1576,7 @@ function openRealmInAboutBlank(){
     </head>
     <body>
       <iframe
-        src="https://notrealmdev.github.io/Genesis/os.html"
+        src="https://genesisos.lol/os.html"
         allow="fullscreen"
         allowfullscreen>
       </iframe>

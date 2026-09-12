@@ -249,9 +249,18 @@
   }
 </style>
 <script>
-if (sessionStorage.getItem("realmAuth") !== "1") {
-  location.replace("index.html");
-}
+(function(){
+  try{
+    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
+    if(login && login.expires && Date.now() < login.expires){
+      sessionStorage.setItem("realmAuth","1");
+      sessionStorage.setItem("realmUser",login.user || "");
+      sessionStorage.setItem("genesisRole",login.role || "user");
+      return;
+    }
+  }catch(e){}
+  if(sessionStorage.getItem("realmAuth") !== "1") location.replace("index.html");
+})();
 </script>
 
   <link rel="icon" type="image/png" href="favicon.png">
