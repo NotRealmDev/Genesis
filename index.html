@@ -3,121 +3,215 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Realm OS — Login</title>
+<title>Realm OS</title>
 <style>
 *{box-sizing:border-box}
-html,body{width:100%;height:100%;margin:0}
+html,body{width:100%;height:100%;margin:0;overflow:hidden}
 body{
-  overflow:hidden;
-  color:#fff;
   font-family:Poppins,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  color:#fff;
+  background:#071015;
+}
+.scene{
+  position:fixed;inset:0;overflow:hidden;
   background:
-    radial-gradient(circle at 18% 18%,rgba(124,69,255,.22),transparent 35%),
-    radial-gradient(circle at 84% 78%,rgba(0,171,255,.14),transparent 34%),
-    linear-gradient(145deg,#05070d,#0b1020 55%,#06080f);
+    radial-gradient(circle at 68% 31%,rgba(255,210,152,.90) 0 2.5%,rgba(255,175,123,.22) 9%,transparent 25%),
+    linear-gradient(180deg,#254a5b 0%,#54737a 31%,#d59670 69%,#efaa78 100%);
 }
-.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none}
-.orb{position:absolute;border-radius:999px;filter:blur(34px);opacity:.45;animation:float 10s ease-in-out infinite alternate}
-.orb.a{width:240px;height:240px;left:-60px;top:8%;background:rgba(147,73,255,.28)}
-.orb.b{width:280px;height:280px;right:-80px;bottom:4%;background:rgba(45,162,255,.19);animation-duration:13s}
-.grid{
-  position:absolute;inset:-40%;
-  background-image:
-    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
-    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
-  background-size:46px 46px;
-  transform:perspective(700px) rotateX(67deg) translateY(25%);
-  mask-image:linear-gradient(to bottom,transparent 15%,#000 70%);
-  opacity:.45;
+.haze{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(180deg,rgba(2,8,13,.08),transparent 42%,rgba(8,16,17,.25)),
+    radial-gradient(ellipse at 50% 105%,rgba(18,62,55,.58),transparent 54%);
 }
-@keyframes float{to{transform:translate(35px,-22px) scale(1.08)}}
-.wrap{
-  position:relative;z-index:2;width:100%;height:100%;
-  display:grid;place-items:center;padding:24px;
+.ocean{
+  position:absolute;left:0;right:0;bottom:0;height:31%;
+  background:linear-gradient(180deg,rgba(29,78,86,.62),rgba(10,44,50,.95));
+  clip-path:polygon(0 17%,16% 13%,33% 20%,48% 11%,65% 17%,81% 10%,100% 16%,100% 100%,0 100%);
+}
+.ocean::before{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(177deg,transparent 0 17px,rgba(255,255,255,.055) 18px 19px,transparent 20px 35px);
+  animation:waterShift 8s linear infinite;
+}
+@keyframes waterShift{to{transform:translateX(55px)}}
+
+.palm{
+  position:absolute;bottom:-3vh;width:260px;height:92vh;transform-origin:50% 100%;
+  filter:drop-shadow(0 18px 18px rgba(0,0,0,.35));
+}
+.palm.left{left:-38px;animation:palmSwayA 6.8s ease-in-out infinite alternate}
+.palm.right{right:-38px;transform:scaleX(-1);animation:palmSwayB 7.6s ease-in-out infinite alternate}
+.palm.mid{left:14%;width:165px;height:65vh;opacity:.63;filter:blur(.3px);animation:palmSwayA 8.2s ease-in-out infinite alternate}
+.palm.far{right:15%;width:130px;height:53vh;opacity:.45;transform:scaleX(-1);animation:palmSwayB 9.1s ease-in-out infinite alternate}
+@keyframes palmSwayA{from{rotate:-1.4deg}to{rotate:1.7deg}}
+@keyframes palmSwayB{from{rotate:1deg}to{rotate:-1.5deg}}
+.trunk{
+  position:absolute;left:49%;bottom:0;width:19%;height:76%;
+  border-radius:65% 45% 18% 22%/12% 14% 8% 8%;
+  background:linear-gradient(90deg,#111915,#293628 42%,#0b120e 100%);
+  transform:translateX(-50%) rotate(5deg);
+  transform-origin:50% 100%;
+}
+.trunk::after{
+  content:"";position:absolute;inset:0;
+  border-radius:inherit;opacity:.32;
+  background:repeating-linear-gradient(0deg,transparent 0 24px,rgba(218,188,122,.22) 25px 28px,transparent 29px 42px);
+}
+.crown{position:absolute;left:50%;top:13%;width:0;height:0}
+.leaf{
+  position:absolute;left:0;top:0;width:144px;height:38px;
+  transform-origin:4px 50%;
+  border-radius:100% 12% 90% 5%;
+  background:
+    repeating-linear-gradient(100deg,transparent 0 10px,rgba(4,9,7,.5) 11px 14px),
+    linear-gradient(180deg,#233d2c,#0a160e 75%);
+  clip-path:polygon(0 44%,8% 26%,17% 38%,26% 14%,35% 34%,45% 5%,53% 31%,64% 10%,72% 34%,84% 16%,100% 48%,82% 61%,68% 54%,54% 68%,40% 56%,26% 71%,13% 56%,0 55%);
+}
+.leaf:nth-child(1){transform:rotate(-7deg) scale(1.15)}
+.leaf:nth-child(2){transform:rotate(33deg) scale(1.04)}
+.leaf:nth-child(3){transform:rotate(70deg) scale(.94)}
+.leaf:nth-child(4){transform:rotate(111deg) scale(1.02)}
+.leaf:nth-child(5){transform:rotate(152deg) scale(1.13)}
+.leaf:nth-child(6){transform:rotate(194deg) scale(1.02)}
+.leaf:nth-child(7){transform:rotate(234deg) scale(.92)}
+.leaf:nth-child(8){transform:rotate(274deg) scale(1.02)}
+.leaf:nth-child(9){transform:rotate(315deg) scale(1.12)}
+.coconut{
+  position:absolute;width:18px;height:18px;border-radius:50%;background:#18251b;
+  box-shadow:13px 5px 0 #142017,-9px 9px 0 #1b291c;
+  left:-3px;top:7px;
+}
+
+.birds{position:absolute;inset:0;pointer-events:none}
+.bird{
+  --size:24px;
+  position:absolute;width:var(--size);height:12px;
+  animation:birdOrbit 15s linear infinite;
+}
+.bird.b2{--size:18px;animation-duration:19s;animation-delay:-5s}
+.bird.b3{--size:14px;animation-duration:13s;animation-delay:-9s}
+.bird::before,.bird::after{
+  content:"";position:absolute;top:4px;width:55%;height:7px;border-top:2px solid rgba(17,24,22,.85);
+  border-radius:100% 100% 0 0;transform-origin:100% 50%;
+  animation:flap .52s ease-in-out infinite alternate;
+}
+.bird::before{right:50%;transform:rotate(12deg)}
+.bird::after{left:50%;transform-origin:0 50%;animation-name:flap2}
+@keyframes flap{from{transform:rotate(2deg)}to{transform:rotate(30deg)}}
+@keyframes flap2{from{transform:rotate(-2deg)}to{transform:rotate(-30deg)}}
+@keyframes birdOrbit{
+  0%{left:13%;top:26%;transform:translate(-50%,-50%) scale(.7)}
+  25%{left:42%;top:16%;transform:translate(-50%,-50%) scale(1)}
+  50%{left:74%;top:25%;transform:translate(-50%,-50%) scale(.8)}
+  75%{left:53%;top:36%;transform:translate(-50%,-50%) scale(.65)}
+  100%{left:13%;top:26%;transform:translate(-50%,-50%) scale(.7)}
+}
+
+.vignette{position:absolute;inset:-10%;background:radial-gradient(circle,transparent 36%,rgba(0,0,0,.42) 95%);pointer-events:none}
+.grain{
+  position:absolute;inset:-20%;opacity:.06;pointer-events:none;
+  background-image:repeating-radial-gradient(circle at 30% 40%,rgba(255,255,255,.7) 0 1px,transparent 1px 4px);
+  animation:grain .22s steps(2,end) infinite;
+}
+@keyframes grain{to{transform:translate(1.5%,-1.1%)}}
+
+.login-layer{
+  position:relative;z-index:20;width:100%;height:100%;display:grid;place-items:center;padding:24px;
 }
 .card{
-  width:min(410px,94vw);
-  padding:30px;
-  border:1px solid rgba(255,255,255,.12);
-  border-radius:30px;
-  background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
-  box-shadow:0 32px 100px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.08);
-  backdrop-filter:blur(30px) saturate(145%);
-  transition:opacity .55s ease,transform .55s cubic-bezier(.22,.8,.2,1),filter .55s ease;
+  width:min(392px,92vw);padding:30px;border-radius:30px;
+  border:1px solid rgba(255,255,255,.18);
+  background:linear-gradient(145deg,rgba(8,17,20,.38),rgba(10,15,18,.20));
+  box-shadow:0 28px 90px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(23px) saturate(130%);
+  transition:opacity .55s ease,transform .55s cubic-bezier(.2,.8,.2,1),filter .55s ease;
 }
 .card.exit{opacity:0;transform:scale(.96);filter:blur(12px)}
 .logo{
-  width:68px;height:68px;margin:0 auto 20px;
-  border-radius:22px;display:grid;place-items:center;
-  background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.055));
-  border:1px solid rgba(255,255,255,.13);
-  box-shadow:0 18px 42px rgba(0,0,0,.28);
-  font-size:24px;font-weight:750;letter-spacing:-.06em;
+  width:66px;height:66px;margin:0 auto 18px;border-radius:22px;
+  display:grid;place-items:center;font-size:24px;font-weight:800;letter-spacing:-.07em;
+  border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.10);
+  box-shadow:0 16px 40px rgba(0,0,0,.25)
 }
-h1{text-align:center;font-size:27px;margin:0 0 6px;letter-spacing:-.04em}
-.sub{text-align:center;margin:0 0 26px;color:rgba(255,255,255,.48);font-size:12px}
-.field{margin-top:13px}
-label{display:block;margin:0 0 7px 4px;font-size:11px;color:rgba(255,255,255,.52)}
-.input-wrap{
-  display:flex;align-items:center;border-radius:17px;
-  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);
-  transition:border-color .2s,background .2s,box-shadow .2s;
+h1{margin:0;text-align:center;font-size:29px;letter-spacing:-.05em}
+.sub{margin:7px 0 23px;text-align:center;color:rgba(255,255,255,.56);font-size:12px}
+label{display:block;margin:12px 0 6px 4px;font-size:11px;color:rgba(255,255,255,.57)}
+.input{
+  display:flex;align-items:center;height:49px;border-radius:16px;
+  border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.075);
 }
-.input-wrap:focus-within{border-color:rgba(255,255,255,.23);background:rgba(255,255,255,.075);box-shadow:0 0 0 4px rgba(114,85,255,.08)}
-input{
-  width:100%;height:48px;border:0;outline:0;background:transparent;
-  padding:0 15px;color:#fff;font:500 14px/1 inherit;
+.input:focus-within{border-color:rgba(255,255,255,.34);background:rgba(255,255,255,.10)}
+input{width:100%;height:100%;padding:0 15px;border:0;outline:0;background:transparent;color:#fff;font:500 14px inherit}
+input::placeholder{color:rgba(255,255,255,.34)}
+.eye{width:44px;height:44px;border:0;background:transparent;color:rgba(255,255,255,.58);cursor:pointer}
+.submit{
+  width:100%;height:49px;margin-top:19px;border-radius:16px;border:1px solid rgba(255,255,255,.21);
+  color:#111;background:rgba(255,255,255,.93);font:750 14px inherit;cursor:pointer;
+  transition:transform .18s,filter .18s;
 }
-input::placeholder{color:rgba(255,255,255,.24)}
-.eye{width:44px;height:44px;border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;font-size:15px}
-button.submit{
-  width:100%;height:49px;margin-top:19px;border:1px solid rgba(255,255,255,.13);
-  border-radius:17px;color:#fff;font:650 14px/1 inherit;cursor:pointer;
-  background:linear-gradient(135deg,rgba(126,84,255,.82),rgba(76,123,255,.70));
-  box-shadow:0 15px 35px rgba(45,52,160,.22);
-  transition:transform .2s,filter .2s;
-}
-button.submit:hover{transform:translateY(-1px);filter:brightness(1.08)}
-button.submit:disabled{opacity:.55;cursor:default;transform:none}
-.msg{height:18px;margin-top:12px;text-align:center;font-size:11px;color:#ff9fa8}
-.msg.ok{color:#a8ffc8}
-.footer{text-align:center;margin-top:21px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28)}
-.shake{animation:shake .35s ease}
+.submit:hover{transform:translateY(-1px);filter:brightness(1.05)}
+.submit:disabled{opacity:.55;transform:none}
+.msg{height:18px;margin-top:12px;text-align:center;font-size:11px;color:#ffb0b9}
+.msg.ok{color:#baffd2}
+.credit{margin-top:18px;text-align:center;font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.36)}
+.shake{animation:shake .34s ease}
 @keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+
+@media(max-width:720px){
+  .palm.left{left:-95px} .palm.right{right:-105px}
+  .palm.mid,.palm.far{opacity:.25}
+}
 </style>
 </head>
 <body>
-<div class="bg"><div class="orb a"></div><div class="orb b"></div><div class="grid"></div></div>
-<div class="wrap">
+<div class="scene">
+  <div class="haze"></div>
+  <div class="ocean"></div>
+
+  <div class="palm mid"><div class="trunk"></div><div class="crown">
+    <i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="coconut"></i>
+  </div></div>
+  <div class="palm far"><div class="trunk"></div><div class="crown">
+    <i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="coconut"></i>
+  </div></div>
+  <div class="palm left"><div class="trunk"></div><div class="crown">
+    <i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="coconut"></i>
+  </div></div>
+  <div class="palm right"><div class="trunk"></div><div class="crown">
+    <i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="leaf"></i><i class="coconut"></i>
+  </div></div>
+
+  <div class="birds"><span class="bird b1"></span><span class="bird b2"></span><span class="bird b3"></span></div>
+  <div class="vignette"></div><div class="grain"></div>
+</div>
+
+<div class="login-layer">
   <main class="card" id="card">
     <div class="logo">OS</div>
     <h1>Realm OS</h1>
     <p class="sub">Sign in to continue</p>
 
     <form id="loginForm">
-      <div class="field">
-        <label for="username">Username</label>
-        <div class="input-wrap"><input id="username" autocomplete="username" placeholder="Enter username" required></div>
-      </div>
+      <label for="username">Username</label>
+      <div class="input"><input id="username" autocomplete="username" placeholder="Enter username" required></div>
 
-      <div class="field">
-        <label for="password">Password</label>
-        <div class="input-wrap">
-          <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
-          <button class="eye" id="eye" type="button" aria-label="Show password">◉</button>
-        </div>
+      <label for="password">Password</label>
+      <div class="input">
+        <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+        <button class="eye" id="eye" type="button" aria-label="Show password">◉</button>
       </div>
 
       <button class="submit" id="submit" type="submit">Sign In</button>
       <div class="msg" id="msg"></div>
     </form>
 
-    <div class="footer">Developed By Realm</div>
+    <div class="credit">Developed By Realm</div>
   </main>
 </div>
 
 <script>
-const ACCOUNTS = {
+const ACCOUNTS={
   "high skys":"3470425ed1eb0218e7dd1a1a931109903ba7694921c0001a6a988eebb5eaec4e",
   "blueberry":"cb2a0c785b8fb21c401f2354e9c06544f9f0c9e937349adab278896902143397"
 };
@@ -134,36 +228,25 @@ const msg=document.getElementById("msg");
 const submit=document.getElementById("submit");
 const password=document.getElementById("password");
 
-document.getElementById("eye").onclick=()=>{
-  password.type=password.type==="password"?"text":"password";
-};
+document.getElementById("eye").onclick=()=>{password.type=password.type==="password"?"text":"password"};
 
 form.addEventListener("submit",async e=>{
   e.preventDefault();
-  msg.className="msg";
-  msg.textContent="";
-  submit.disabled=true;
-  submit.textContent="Signing In…";
-
+  msg.className="msg";msg.textContent="";
+  submit.disabled=true;submit.textContent="Signing In…";
   const user=document.getElementById("username").value.trim().toLowerCase();
-  const pass=password.value;
-  const expected=ACCOUNTS[user];
-  const actual=await sha256(pass);
-
-  if(expected && actual===expected){
+  const actual=await sha256(password.value);
+  if(ACCOUNTS[user] && actual===ACCOUNTS[user]){
     sessionStorage.setItem("realmAuth","1");
     sessionStorage.setItem("realmUser",user);
-    msg.className="msg ok";
-    msg.textContent="Welcome to Realm OS";
+    msg.className="msg ok";msg.textContent="Welcome to Realm OS";
     card.classList.add("exit");
     setTimeout(()=>location.href="intro.html",560);
   }else{
-    submit.disabled=false;
-    submit.textContent="Sign In";
+    submit.disabled=false;submit.textContent="Sign In";
     msg.textContent="Incorrect username or password.";
-    card.classList.remove("shake");
-    void card.offsetWidth;
-    card.classList.add("shake");
+    password.value="";password.focus();
+    card.classList.remove("shake");void card.offsetWidth;card.classList.add("shake");
   }
 });
 </script>
