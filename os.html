@@ -390,6 +390,7 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase-config.js"></script>
+<script src="proxy-config.js"></script>
 <script src="genesis-announcements.js" defer></script>
 </head>
 <body>
@@ -484,6 +485,11 @@ function base64ToBytes(b64){
 async function unpackEmbeddedGame(gameId){
   if(embeddedGameUrls[gameId]) return embeddedGameUrls[gameId];
 
+  const game = gameLibrary.find(g => g.id === gameId);
+  if(game && game.src){
+    return game.src;
+  }
+
   const payload = embeddedGamePayloads[gameId];
   if(!payload) throw new Error("Missing embedded game: " + gameId);
 
@@ -507,7 +513,214 @@ async function unpackEmbeddedGame(gameId){
   return url;
 }
 
+
+function gameWebSearchThumb(name){
+  // Uses a real web image-search thumbnail for the game name; no generated art.
+  return "https://tse1.mm.bing.net/th?q="
+    + encodeURIComponent(name + " game cover official icon")
+    + "&w=640&h=400&c=7&rs=1&p=0&dpr=1&pid=1.7&mkt=en-US&adlt=moderate";
+}
+
 const gameLibrary = [
+  {id:"ugs-a-dance-of-fire-and-ice",name:"A Dance of Fire and Ice",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Dance of Fire and Ice"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clADOFAI.html"},
+  {id:"ugs-a-dark-room",name:"A Dark Room",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Dark Room"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clADarkRoom.html"},
+  {id:"ugs-a-date-with-death",name:"A Date With Death",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Date With Death"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/cladatewithdeath.html"},
+  {id:"ugs-a-day-in-the-office",name:"A Day In The Office",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Day In The Office"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/cladayintheoffice.html"},
+  {id:"ugs-advent-neon",name:"Advent Neon",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Advent Neon"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/cladventneon.html"},
+  {id:"ugs-adventure-capitalist",name:"Adventure Capitalist",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Adventure Capitalist"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/cladventurecapitalist.html"},
+  {id:"ugs-ahoy-survival",name:"Ahoy Survival",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Ahoy Survival"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clahoysurvival.html"},
+  {id:"ugs-airline-tycoon-idle",name:"Airline Tycoon Idle",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Airline Tycoon Idle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clairlinetycoonidle.html"},
+  {id:"ugs-agar-io-lite",name:"Agar.io Lite",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Agar.io Lite"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clagariolite.html"},
+  {id:"ugs-ages-of-conflict",name:"Ages of Conflict",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Ages of Conflict"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clagesofconflict.html"},
+  {id:"ugs-alien-sky-invasion",name:"Alien Sky Invasion",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Alien Sky Invasion"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clalienskyinvasion.html"},
+  {id:"ugs-allocation",name:"Allocation",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Allocation"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clallocation.html"},
+  {id:"ugs-amazing-strange-rope-police",name:"Amazing Strange Rope Police",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Amazing Strange Rope Police"),src:"https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/amazing-strange-rope-police-vice-spider/index.html"},
+  {id:"ugs-amidst-the-sky",name:"Amidst The Sky",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Amidst The Sky"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clamidstthesky.html"},
+  {id:"ugs-among-us",name:"Among Us",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Among Us"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clamongus.html"},
+  {id:"ugs-amorphous-plus",name:"Amorphous +",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Amorphous +"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clamorphous.html"},
+  {id:"ugs-ancient-sins",name:"Ancient Sins",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Ancient Sins"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clancientsins.html"},
+  {id:"ugs-angry-birds",name:"Angry Birds",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Angry Birds"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clangrybirds.html"},
+  {id:"ugs-angry-birds-2",name:"Angry Birds 2",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Angry Birds 2"),src:"https://naotomori1.github.io/AngryBirds2Port/"},
+  {id:"ugs-angry-birds-online",name:"Angry Birds Online",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Angry Birds Online"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clangrybirdsonline.html"},
+  {id:"ugs-angry-birds-showdown",name:"Angry Birds Showdown",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Angry Birds Showdown"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clangrybirdsshowdown.html"},
+  {id:"ugs-angry-birds-slingshot-frenzy",name:"Angry Birds Slingshot Frenzy",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Angry Birds Slingshot Frenzy"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clangrybirdsslingshotfrenzy.html"},
+  {id:"ugs-animal-crossing-game-cube-port",name:"Animal Crossing (GAME CUBE PORT)",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Animal Crossing (GAME CUBE PORT)"),src:"https://animalcrossingonline.com/"},
+  {id:"ugs-antimatter-dimensions",name:"Antimatter Dimensions",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Antimatter Dimensions"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clantimatterdimensions.html"},
+  {id:"ugs-ant-art-tycoon",name:"Ant Art Tycoon",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Ant Art Tycoon"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clantarttycoon.html"},
+  {id:"ugs-apes-vs-helium",name:"Apes vs. Helium",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Apes vs. Helium"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clapesvshelium.html"},
+  {id:"ugs-aquapark-io",name:"Aquapark.io",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Aquapark.io"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/claquaparkio.html"},
+  {id:"ugs-arcade-volley",name:"Arcade Volley",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Arcade Volley"),src:"https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/arcade-volley/index.html"},
+  {id:"ugs-archery-world-tour",name:"Archery World Tour",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Archery World Tour"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clarcheryworldtour.html"},
+  {id:"ugs-archesspelago",name:"Archesspelago",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Archesspelago"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clarchesspelago.html"},
+  {id:"ugs-arsonate",name:"Arsonate",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Arsonate"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clarsonate.html"},
+  {id:"ugs-are-we-there-yet",name:"Are We There Yet",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Are We There Yet"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clarewethereyet.html"},
+  {id:"ugs-arthur-s-nightmare",name:"Arthur’s Nightmare",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Arthur’s Nightmare"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clarthursnightmare.html"},
+  {id:"ugs-ascent",name:"Ascent",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Ascent"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clascent.html"},
+  {id:"ugs-assessment-examination",name:"Assessment Examination",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Assessment Examination"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/classessmentexamination.html"},
+  {id:"ugs-as-duty-demands",name:"As Duty Demands",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("As Duty Demands"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clasdutydemands.html"},
+  {id:"ugs-asteroids",name:"Asteroids",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Asteroids"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clasteroids.html"},
+  {id:"ugs-a-small-world-cup",name:"A Small World Cup",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Small World Cup"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clasmallworldcup.html"},
+  {id:"ugs-aviamasters",name:"Aviamasters",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("Aviamasters"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/claviamasters.html"},
+  {id:"ugs-babel-tower",name:"Babel Tower",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Babel Tower"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbabeltower.html"},
+  {id:"ugs-baby-chicco-adventure",name:"Baby Chicco Adventure",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baby Chicco Adventure"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbabychiccoadventure.html"},
+  {id:"ugs-baby-sniper-in-vietnam",name:"Baby Sniper In Vietnam",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baby Sniper In Vietnam"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbabysniperinvietnam.html"},
+  {id:"ugs-backrooms",name:"Backrooms",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Backrooms"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbackrooms.html"},
+  {id:"ugs-backrooms-2d",name:"Backrooms 2D",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Backrooms 2D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbackrooms2D.html"},
+  {id:"ugs-bacon-may-die",name:"Bacon May Die",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bacon May Die"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaconmaydie.html"},
+  {id:"ugs-bad-bodyguards",name:"Bad Bodyguards",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bad Bodyguards"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbadbodyguards.html"},
+  {id:"ugs-bad-monday-simulator",name:"Bad Monday Simulator",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bad Monday Simulator"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbadmondaysimulator.html"},
+  {id:"ugs-bad-parenting",name:"Bad Parenting",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bad Parenting"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbadparenting.html"},
+  {id:"ugs-bad-piggies-latest",name:"Bad Piggies (LATEST)",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bad Piggies (LATEST)"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbadpiggieslatest.html"},
+  {id:"ugs-bad-time-simulator",name:"Bad Time Simulator",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bad Time Simulator"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbadtimesimulator.html"},
+  {id:"ugs-baldi-s-basics",name:"Baldi’s Basics",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baldi’s Basics"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaldisbasics.html"},
+  {id:"ugs-baldi-s-basics-remastered",name:"Baldi’s Basics Remastered",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baldi’s Basics Remastered"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaldisbasicsremaster.html"},
+  {id:"ugs-baldi-s-basics-the-ultra-decompile",name:"Baldi's Basics The Ultra Decompile",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baldi's Basics The Ultra Decompile"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaldidecomp.html"},
+  {id:"ugs-baldi-s-fun-new-school-ultimate",name:"Baldi’s Fun New School Ultimate",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baldi’s Fun New School Ultimate"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaldisfunnewschoolultimate.html"},
+  {id:"ugs-ballistic",name:"Ballistic",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Ballistic"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clballistic.html"},
+  {id:"ugs-balls-and-bricks",name:"Balls And Bricks",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Balls And Bricks"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clballsandbricks.html"},
+  {id:"ugs-ball-blast",name:"Ball Blast",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Ball Blast"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clballblast.html"},
+  {id:"ugs-ballz",name:"BallZ",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("BallZ"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clballz.html"},
+  {id:"ugs-banana-simulator",name:"Banana Simulator",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Banana Simulator"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbananasimulator.html"},
+  {id:"ugs-bank-robbery-1",name:"Bank Robbery 1",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bank Robbery 1"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBank%20Robbery.html"},
+  {id:"ugs-bank-robbery-2",name:"Bank Robbery 2",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bank Robbery 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbankrobbery2.html"},
+  {id:"ugs-barry-has-a-secret",name:"Barry Has a Secret",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Barry Has a Secret"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbarryhasasecret.html"},
+  {id:"ugs-bart-blast",name:"Bart Blast",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bart Blast"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbartblast.html"},
+  {id:"ugs-bas",name:"BAS",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("BAS"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbas.html"},
+  {id:"ugs-baseball-bros",name:"Baseball Bros",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Baseball Bros"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaseballbros.html"},
+  {id:"ugs-basket-battle",name:"Basket Battle",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basket Battle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketbattle.html"},
+  {id:"ugs-basket-bros",name:"Basket Bros",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basket Bros"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketbros.html"},
+  {id:"ugs-basket-random",name:"Basket Random",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basket Random"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketrandom.html"},
+  {id:"ugs-basket-slam-dunk-2",name:"Basket Slam Dunk 2",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basket Slam Dunk 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketslamdunk2.html"},
+  {id:"ugs-basketball-frvr",name:"Basketball FRVR",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basketball FRVR"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketballfrvr.html"},
+  {id:"ugs-basketball-legends-2020",name:"Basketball Legends 2020",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basketball Legends 2020"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketballlegends.html"},
+  {id:"ugs-basketball-stars",name:"Basketball Stars",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basketball Stars"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketballstars.html"},
+  {id:"ugs-basketball-superstars",name:"Basketball Superstars",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Basketball Superstars"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbasketballsuperstars.html"},
+  {id:"ugs-batter-up",name:"Batter Up",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Batter Up"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbatterup.html"},
+  {id:"ugs-battles",name:"Battles",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Battles"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbattles.html"},
+  {id:"ugs-battle-karts",name:"Battle Karts",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Battle Karts"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbattlekarts.html"},
+  {id:"ugs-battle-simulator",name:"Battle Simulator",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Battle Simulator"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbattlesim.html"},
+  {id:"ugs-beach-boxing-simulator",name:"Beach Boxing Simulator",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Beach Boxing Simulator"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbeachboxingsim.html"},
+  {id:"ugs-bearsus",name:"Bearsus",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bearsus"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbearsus.html"},
+  {id:"ugs-bergentruck-201x",name:"BERGENTRUCK 201x",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("BERGENTRUCK 201x"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbergentruck201x.html"},
+  {id:"ugs-bfdia-5b",name:"BFDIA 5b",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("BFDIA 5b"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbfdia5b.html"},
+  {id:"ugs-bfdi-branches",name:"BFDI Branches",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("BFDI Branches"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBFDIBranches.html"},
+  {id:"ugs-big-flappy-tower-tiny-square",name:"Big Flappy Tower Tiny Square",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Big Flappy Tower Tiny Square"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbigflappytowertinysquare.html"},
+  {id:"ugs-big-ice-tower-tiny-square",name:"Big Ice Tower Tiny Square",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Big Ice Tower Tiny Square"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbigicetowertinysquare.html"},
+  {id:"ugs-big-neon-tower-tiny-square",name:"Big Neon Tower Tiny Square",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Big Neon Tower Tiny Square"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbigneontowertinysquare.html"},
+  {id:"ugs-big-shot-boxing",name:"Big Shot Boxing",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Big Shot Boxing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbigshotboxing2.html"},
+  {id:"ugs-big-tower-tiny-square",name:"Big Tower Tiny Square",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Big Tower Tiny Square"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbigtowertinysquare.html"},
+  {id:"ugs-big-tower-tiny-square-2",name:"Big Tower Tiny Square 2",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Big Tower Tiny Square 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbigtowertinysquare2.html"},
+  {id:"ugs-bio-evil-4",name:"Bio Evil 4",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bio Evil 4"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbioevil4.html"},
+  {id:"ugs-bit-burner",name:"Bit Burner",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bit Burner"),src:"https://bitburner-official.github.io/"},
+  {id:"ugs-bitlife",name:"Bitlife",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bitlife"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbitlife.html"},
+  {id:"ugs-bit-planes",name:"Bit Planes",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bit Planes"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbitplanes.html"},
+  {id:"ugs-blackjack",name:"Blackjack",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blackjack"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblackjack.html"},
+  {id:"ugs-blastronaut",name:"Blastronaut",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blastronaut"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblastronaut.html"},
+  {id:"ugs-blaze-drifter",name:"Blaze Drifter",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blaze Drifter"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblazedrifter.html"},
+  {id:"ugs-blightborne",name:"Blightborne",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blightborne"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblightborne.html"},
+  {id:"ugs-block-blast",name:"Block Blast",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Block Blast"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblockblast.html"},
+  {id:"ugs-block-blast-2",name:"Block Blast 2",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Block Blast 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblockblastv2.html"},
+  {id:"ugs-blockpost",name:"Blockpost",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blockpost"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblockpost.html"},
+  {id:"ugs-block-the-pig",name:"Block the Pig",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Block the Pig"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblockthepig.html"},
+  {id:"ugs-blocky-demolition-derby",name:"Blocky Demolition Derby",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blocky Demolition Derby"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblockydemolitionderby.html"},
+  {id:"ugs-blocky-snakes",name:"Blocky Snakes",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blocky Snakes"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblockysnakes.html"},
+  {id:"ugs-blood-tournament",name:"Blood Tournament",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blood Tournament"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbloodtournament.html"},
+  {id:"ugs-bloodmoney",name:"Bloodmoney",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bloodmoney"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbloodmoney.html"},
+  {id:"ugs-blumgi-racers",name:"Blumgi Racers",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blumgi Racers"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblumgiracers.html"},
+  {id:"ugs-blumgi-rocket",name:"Blumgi Rocket",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Blumgi Rocket"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clblumgirocket.html"},
+  {id:"ugs-bob-the-robber-2",name:"Bob the Robber 2",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bob the Robber 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbobtherobber2.html"},
+  {id:"ugs-bob-the-robber-5",name:"Bob the Robber 5",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bob the Robber 5"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbobtherobber5.html"},
+  {id:"ugs-boba-simulator",name:"Boba Simulator",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Boba Simulator"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbobasimulator.html"},
+  {id:"ugs-boom-slingers",name:"Boom Slingers",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Boom Slingers"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clboomslingers.html"},
+  {id:"ugs-bottle-cracks",name:"Bottle Cracks",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bottle Cracks"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbottlecracks.html"},
+  {id:"ugs-bottle-jump-3d",name:"Bottle Jump 3D",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bottle Jump 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbottleflip3d.html"},
+  {id:"ugs-bouncemasters",name:"Bouncemasters",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bouncemasters"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbouncemasters.html"},
+  {id:"ugs-bounce-back",name:"Bounce Back",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bounce Back"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbounceback.html"},
+  {id:"ugs-bouncy-basketball",name:"Bouncy Basketball",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bouncy Basketball"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbouncybasketball.html"},
+  {id:"ugs-bouncy-motors",name:"Bouncy Motors",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bouncy Motors"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbouncymotors.html"},
+  {id:"ugs-bounty-of-one",name:"Bounty of One",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bounty of One"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBountyOfOne.html"},
+  {id:"ugs-bowmasters",name:"Bowmasters",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bowmasters"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbowmaster.html"},
+  {id:"ugs-boxing-random",name:"Boxing Random",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Boxing Random"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clboxingrandom.html"},
+  {id:"ugs-brawl-simulator-3d",name:"Brawl Simulator 3D",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Brawl Simulator 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbrawlsimulator3d.html"},
+  {id:"ugs-brawl-stars-remake",name:"Brawl Stars (REMAKE)",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Brawl Stars (REMAKE)"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBrawlstars.html"},
+  {id:"ugs-breadskate-forever",name:"Breadskate Forever",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Breadskate Forever"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbreadskate.html"},
+  {id:"ugs-bridge-race",name:"Bridge Race",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bridge Race"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbridgerace.html"},
+  {id:"ugs-brotato",name:"Brotato",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Brotato"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbrotato.html"},
+  {id:"ugs-btd6-scratch",name:"BTD6 (scratch)",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("BTD6 (scratch)"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbloonsTD6scratch.html"},
+  {id:"ugs-buckshot-roulette",name:"Buckshot Roulette",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Buckshot Roulette"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbuckshotroulette.html"},
+  {id:"ugs-build-defend",name:"Build-Defend",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Build-Defend"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clbuilddefend.html"},
+  {id:"ugs-bunnyland",name:"Bunnyland",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Bunnyland"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbunnyland.html"},
+  {id:"ugs-burger-and-frights",name:"Burger and Frights",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Burger and Frights"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clburgerandfrights.html"},
+  {id:"ugs-burrito-bison-launcha-libre",name:"Burrito Bison Launcha Libre",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Burrito Bison Launcha Libre"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clburritobisonlaunchalibre.html"},
+  {id:"ugs-buster-jam",name:"Buster Jam",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Buster Jam"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBusterJam.html"},
+  {id:"ugs-cannon-balls-3d",name:"Cannon Balls 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cannon Balls 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcannonballs3d.html"},
+  {id:"ugs-candy-box-1",name:"Candy Box 1",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Candy Box 1"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcandybox1.html"},
+  {id:"ugs-capybara-clicker",name:"Capybara Clicker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Capybara Clicker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcapybaraclicker.html"},
+  {id:"ugs-call-of-battle",name:"Call of Battle",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Call of Battle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcallofbattle.html"},
+  {id:"ugs-captchaware",name:"CaptchaWare",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("CaptchaWare"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcaptchaware.html"},
+  {id:"ugs-car-crash-3",name:"Car Crash 3",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car Crash 3"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcarcrash3.html"},
+  {id:"ugs-car-drawing",name:"Car Drawing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car Drawing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcardrawing.html"},
+  {id:"ugs-car-king-arena",name:"Car King Arena",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car King Arena"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcarkingarena.html"},
+  {id:"ugs-car-ramp-vs-police-chase",name:"Car Ramp Vs Police Chase",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car Ramp Vs Police Chase"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcarrampvspolicechase.html"},
+  {id:"ugs-cartoon-network-table-tennis-ultimate-tournament",name:"Cartoon Network Table Tennis Ultimate Tournament",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cartoon Network Table Tennis Ultimate Tournament"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clCartoonNetworkTableTennisUltimateTournament.html"},
+  {id:"ugs-caseoh-s-basics-in-eating-and-fast-food",name:"CaseOh's Basics in Eating and Fast Food",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("CaseOh's Basics in Eating and Fast Food"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaldicaseoh.html"},
+  {id:"ugs-castle-wars-modern",name:"Castle Wars Modern",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Castle Wars Modern"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcastlewarsmodern.html"},
+  {id:"ugs-cat-mario",name:"Cat Mario",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cat Mario"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcatmario.html"},
+  {id:"ugs-cats-love-cake-2",name:"Cats Love Cake 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cats Love Cake 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcatslovecake2.html"},
+  {id:"ugs-cave-crawler",name:"Cave Crawler",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cave Crawler"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcavecrawler.html"},
+  {id:"ugs-cave-story",name:"Cave Story",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cave Story"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcavestory.html"},
+  {id:"ugs-celeste-pico",name:"Celeste Pico",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Celeste Pico"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clceleste.html"},
+  {id:"ugs-celeste-2",name:"Celeste 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Celeste 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clceleste2.html"},
+  {id:"ugs-cell-machine",name:"Cell Machine",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cell Machine"),src:"https://cdn.jsdelivr.net/gh/Sebastian-105/Assets-105.github.io@main/cell-machine/index.html"},
+  {id:"ugs-cell-to-singularity",name:"Cell to Singularity",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cell to Singularity"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clCellToSingularity.html"},
+  {id:"ugs-chaos-faction-2",name:"Chaos Faction 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chaos Faction 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchaosfaction2.html"},
+  {id:"ugs-cheese-chompers-3d",name:"Cheese Chompers 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheese Chompers 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheesechompers3d.html"},
+  {id:"ugs-cheese-is-the-reason",name:"Cheese Is The Reason",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheese Is The Reason"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheeseisthereason.html"},
+  {id:"ugs-cheese-rolling",name:"Cheese Rolling",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheese Rolling"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheeserolling.html"},
+  {id:"ugs-chickencs",name:"ChickenCS",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("ChickenCS"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clChickenCS.html"},
+  {id:"ugs-cheshire-in-a-chatroom",name:"Cheshire In a Chatroom",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheshire In a Chatroom"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheshireinachatroom.html"},
+  {id:"ugs-chess-classic",name:"Chess Classic",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chess Classic"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchessclassic.html"},
+  {id:"ugs-chicken-scream",name:"Chicken Scream",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chicken Scream"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchickenscream.html"},
+  {id:"ugs-chickenwar",name:"Chickenwar",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chickenwar"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchickenwar.html"},
+  {id:"ugs-choppy-orc",name:"Choppy Orc",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Choppy Orc"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchoppyorc.html"},
+  {id:"ugs-circloo-2",name:"CircloO 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("CircloO 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clCircloO2.html"},
+  {id:"ugs-civiballs",name:"Civiballs",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Civiballs"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clciviballs.html"},
+  {id:"ugs-civiballs-2",name:"Civiballs 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Civiballs 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clciviballs2.html"},
+  {id:"ugs-clash-of-vikings",name:"Clash Of Vikings",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Clash Of Vikings"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clclashofvikings.html"},
+  {id:"ugs-class-of-09",name:"Class of ‘09",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Class of ‘09"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clclassof09.html"},
+  {id:"ugs-cleanup-io",name:"Cleanup.io",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cleanup.io"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcleanupio.html"},
+  {id:"ugs-cluster-rush",name:"Cluster Rush",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cluster Rush"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clclusterrush.html"},
+  {id:"ugs-coal-llc",name:"Coal LLC",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Coal LLC"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoalllcdemo.html"},
+  {id:"ugs-cold-pines",name:"Cold Pines",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cold Pines"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoldpines.html"},
+  {id:"ugs-coffee-maker",name:"Coffee Maker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Coffee Maker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoffeemaker.html"},
+  {id:"ugs-colorbox-mustard",name:"Colorbox Mustard",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Colorbox Mustard"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcolorboxmustard.html"},
+  {id:"ugs-combo-pool",name:"Combo Pool",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Combo Pool"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcombopool.html"},
+  {id:"ugs-command-and-conquer-red-alert",name:"Command and Conquer Red Alert",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Command and Conquer Red Alert"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcommandandconquer.html"},
+  {id:"ugs-command-and-conquer-tiberian-dawn",name:"Command and Conquer Tiberian Dawn",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Command and Conquer Tiberian Dawn"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcommandandconquertiberiandawn.html"},
+  {id:"ugs-cookie-clicker",name:"Cookie Clicker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cookie Clicker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcookieclicker.html"},
+  {id:"ugs-cookie-clicker-mod-menu",name:"Cookie Clicker Mod Menu",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cookie Clicker Mod Menu"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcookieclickermodmenu.html"},
+  {id:"ugs-core-ball",name:"Core Ball",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Core Ball"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoreball.html"},
+  {id:"ugs-cold-front",name:"Cold Front",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cold Front"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcoldfront.html"},
+  {id:"ugs-count-masters-stickman-games",name:"Count Masters: Stickman Games",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Count Masters: Stickman Games"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcountmastersstickmangames.html"},
+  {id:"ugs-counter-snipe",name:"Counter Snipe",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Counter Snipe"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcountersnipe.html"},
+  {id:"ugs-crank-it",name:"Crank It!",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crank It!"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrankit%21.html"},
+  {id:"ugs-crazy-cars",name:"Crazy Cars",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Cars"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazycars.html"},
+  {id:"ugs-crazy-cattle-3d",name:"Crazy Cattle 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Cattle 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazycattle3d.html"},
+  {id:"ugs-crazy-chicken-3d",name:"Crazy Chicken 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Chicken 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazychicken3D.html"},
+  {id:"ugs-crazy-crash-landing",name:"Crazy Crash Landing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Crash Landing"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcrazycrashlanding.html"},
+  {id:"ugs-crazy-motorcycle",name:"Crazy Motorcycle",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Motorcycle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazymotorcycle.html"},
+  {id:"ugs-crazy-plane-landing",name:"Crazy Plane Landing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Plane Landing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazyplanelanding.html"},
+  {id:"ugs-creature-card-idle",name:"Creature Card Idle",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Creature Card Idle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcreaturecardidle.html"},
+  {id:"ugs-crossy-road",name:"Crossy Road",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crossy Road"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrossyroad.html"},
+  {id:"ugs-c-s-1-6",name:"C.S 1.6",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("C.S 1.6"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcs16.html"},
+  {id:"ugs-csgo-clicker",name:"Csgo Clicker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Csgo Clicker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcsgoclicker.html"},
+  {id:"ugs-customer-support",name:"Customer Support",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Customer Support"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcustomersupport.html"},
+  {id:"ugs-curse-of-the-lich-king",name:"Curse of the Lich King",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Curse of the Lich King"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcotlk.html"},
+  {id:"ugs-cut-the-rope",name:"Cut the Rope",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cut the Rope"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcuttherope.html"},
+  {id:"ugs-cut-the-rope-holiday",name:"Cut the Rope: Holiday",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cut the Rope: Holiday"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcuttheropeholiday.html"},
+  {id:"ugs-cut-the-rope-time-travel",name:"Cut the Rope: Time Travel",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cut the Rope: Time Travel"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcuttheropetimetravel.html"},
+  {id:"ugs-cyberbung-racing",name:"Cyberbung Racing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cyberbung Racing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcyberbungracing.html"},
+  {id:"ragdoll-archers",name:"Ragdoll Archers",developer:"Ericetto",thumb:"ragdoll-archers.png",src:"ragdoll-archers.html"},
   {id:"drive-mad",name:"Drive Mad",developer:"Fancade",thumb:"data:image/webp;base64,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"},
   {id:"retro-bowl",name:"Retro Bowl",developer:"New Star Games",thumb:"data:image/webp;base64,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"},
   {id:"fnaf-1",name:"FNAF",developer:"Five Nights at Freddy's",thumb:"data:image/webp;base64,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"},
@@ -770,7 +983,7 @@ const apps = {
     <button class="os-btn" style="margin-top:10px" onclick="openRealmInAboutBlank()">Open in About Blank</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
   </div>`},
-  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 7 Games</div></div>`},
+  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 206 Games</div></div>`},
   music:{title:"Music",content:()=>`<div class="music"><div><div class="music-art">♪</div><h2>OS Music</h2><div class="muted">Nothing playing</div></div></div>`},
   games:{title:"Games",content:gamesHTML},
   gameRequest:{title:"Game Request",content:gameRequestHTML},
@@ -902,8 +1115,8 @@ function gamesHTML(){
   </div>`;
 }
 function gameCardHTML(g){
-  return `<article class="game-card" data-game-id="${g.id}" data-search="${escapeHTML((g.name+" "+g.developer).toLowerCase())}" onclick="openGame('${g.id}')">
-    <img class="game-thumb" src="${g.thumb}" alt="${escapeHTML(g.name)}">
+  return `<article class="game-card" data-game-id="${g.id}" data-search="${escapeHTML((g.name+" "+g.developer+" "+(g.section||"")).toLowerCase())}" onclick="openGame('${g.id}')">
+    <img class="game-thumb" loading="lazy" decoding="async" src="${g.thumb}" alt="${escapeHTML(g.name)}" onerror="this.onerror=null;this.src='favicon.png'">
     <div class="game-info"><div><div class="game-name">${escapeHTML(g.name)}</div><div class="game-dev">${escapeHTML(g.developer)}</div></div><div class="play-pill">▶</div></div>
   </article>`;
 }
@@ -1008,11 +1221,11 @@ function browserHTML(){
         <input id="browserAddress" class="browser-address" value="os://home" spellcheck="false" autocomplete="off" placeholder="Search or enter a website">
         <button class="browser-go" id="browserGo" title="Go">→</button>
       </div>
-      <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Inside OS</button>
+      <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Proxy</button>
       <button class="nav-btn" id="browserExternal" title="Open current page in a new tab">↗</button>
     </div>
 
-    <div class="browser-status" id="browserStatus">Ready · Inside OS mode will try to embed websites</div>
+    <div class="browser-status" id="browserStatus">Ready · Proxy mode routes public websites through Genesis Proxy</div>
 
     <div class="browser-stage">
       <iframe
@@ -1027,7 +1240,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Genesis starts in <b>Inside OS</b> mode on GitHub Pages. Sites that allow iframe embedding stay inside this window. If a site blocks embedding, switch to <b>New Tab</b> mode.
+            Search or enter a website above. Genesis starts in <b>Proxy</b> mode. Public websites load through your Genesis Proxy Worker and stay inside this window. You can switch to <b>New Tab</b> mode whenever you want.
           </p>
         </div>
       </div>
@@ -1047,7 +1260,7 @@ function browserHTML(){
 const browserState={
   history:["os://home"],
   index:0,
-  mode:"embed",
+  mode:"proxy",
   currentExternal:""
 };
 
@@ -1095,14 +1308,14 @@ function initBrowser(win){
   };
 
   mode.onclick=()=>{
-    browserState.mode=browserState.mode==="tab"?"embed":"tab";
-    mode.textContent=browserState.mode==="tab"?"New Tab":"Inside OS";
-    mode.classList.toggle("embed",browserState.mode==="embed");
+    browserState.mode=browserState.mode==="tab"?"proxy":"tab";
+    mode.textContent=browserState.mode==="tab"?"New Tab":"Proxy";
+    mode.classList.toggle("embed",browserState.mode==="proxy");
 
     const status=win.querySelector("#browserStatus");
     status.textContent=browserState.mode==="tab"
-      ?"New Tab mode · works with normal websites"
-      :"Inside OS mode · trying websites inside Genesis";
+      ?"New Tab mode · opens the normal website directly"
+      :"Proxy mode · public websites route through Genesis Proxy";
   };
 
   again.onclick=()=>{
@@ -1129,6 +1342,36 @@ function normalizeURL(raw){
   }
 
   return "https://"+raw;
+}
+
+
+function genesisProxyEndpoint(){
+  const endpoint=String(window.GENESIS_PROXY?.endpoint||"").trim().replace(/\/+$/,"");
+  if(!endpoint || endpoint.includes("PASTE_YOUR_WORKER_URL_HERE")) return "";
+  return endpoint;
+}
+
+function genesisProxyURL(url){
+  const endpoint=genesisProxyEndpoint();
+  if(!endpoint) return "";
+  return endpoint+"/?url="+encodeURIComponent(url);
+}
+
+function showProxySetupNeeded(){
+  const win=openWindows.browser;if(!win)return;
+  const frame=win.querySelector("#browserFrame");
+  const home=win.querySelector("#browserHome");
+  const card=win.querySelector("#browserOpenCard");
+  const title=win.querySelector("#browserOpenTitle");
+  const text=win.querySelector("#browserOpenText");
+  const status=win.querySelector("#browserStatus");
+
+  frame.style.display="none";
+  home.classList.add("hidden");
+  card.classList.add("show");
+  title.textContent="Genesis Proxy needs setup";
+  text.textContent="Deploy genesis-proxy-worker.js, then paste its Worker URL into proxy-config.js.";
+  status.textContent="Proxy endpoint is not configured yet";
 }
 
 function openBrowserTab(url){
@@ -1191,25 +1434,29 @@ function browserNavigate(raw,push,fromUser=false){
     frame.src="about:blank";
     frame.style.display="block";
     home.classList.remove("hidden");
-    status.textContent="Genesis Home · New Tab mode works with normal websites";
+    status.textContent="Genesis Home · Proxy mode is ready";
     updateBrowserButtons();
     return;
   }
 
   if(browserState.mode==="tab"){
-    // This runs directly from the user's click/Enter whenever possible,
-    // which prevents normal popup blockers from interfering.
     openBrowserTab(url);
   }else{
+    const proxyURL=genesisProxyURL(url);
+    if(!proxyURL){
+      showProxySetupNeeded();
+      updateBrowserButtons();
+      return;
+    }
+
     home.classList.add("hidden");
     card.classList.remove("show");
     frame.style.display="block";
-    status.textContent="Loading inside Genesis · "+url;
+    status.textContent="Loading through Genesis Proxy · "+url;
     frame.onload=()=>{
-      status.textContent=
-        "Loaded frame · if the page is blank or refuses to connect, switch to New Tab mode";
+      status.textContent="Proxy loaded · "+url;
     };
-    frame.src=url;
+    frame.src=proxyURL;
   }
 
   updateBrowserButtons();
@@ -1228,9 +1475,16 @@ function browserReload(){
   }else{
     const frame=win.querySelector("#browserFrame");
     const status=win.querySelector("#browserStatus");
-    status.textContent="Reloading "+current;
+    const proxyURL=genesisProxyURL(current);
+
+    if(!proxyURL){
+      showProxySetupNeeded();
+      return;
+    }
+
+    status.textContent="Reloading through Genesis Proxy · "+current;
     frame.src="about:blank";
-    setTimeout(()=>frame.src=current,30);
+    setTimeout(()=>frame.src=proxyURL,30);
   }
 }
 
