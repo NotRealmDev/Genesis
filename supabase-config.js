@@ -1,10 +1,9 @@
 /*
- Genesis backend configuration.
- Supabase's ANON/PUBLISHABLE key is designed to be used in browser apps
- when Row Level Security is enabled. NEVER put a service_role key here.
+ Genesis Supabase configuration.
+ This uses the public/publishable Supabase key.
+ NEVER place a secret/service_role key in this file.
 */
 window.GENESIS_BACKEND = {
-  url: "PASTE_YOUR_SUPABASE_PROJECT_URL_HERE",
-  anonKey: "PASTE_YOUR_SUPABASE_ANON_KEY_HERE",
-  adminEmail: "admin@genesisos.lol"
+  url: "https://yubpnkcsjuxuczrafmmj.supabase.co",
+  anonKey: "sb_publishable_JNxkxsQxxy5gwawUduiFbw_wHYsaQ5V"
 };

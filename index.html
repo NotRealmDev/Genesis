@@ -541,18 +541,19 @@ body {
 <style>
 .genesis-id-badge{
   position:fixed;
-  top:10px;
-  right:12px;
-  z-index:9999;
-  padding:5px 8px;
-  border:1px solid rgba(255,255,255,.15);
+  top:12px;
+  right:14px;
+  z-index:99999;
+  padding:7px 11px;
+  border:1px solid rgba(255,255,255,.20);
   border-radius:999px;
-  background:rgba(15,18,30,.20);
-  color:rgba(255,255,255,.64);
-  backdrop-filter:blur(10px);
-  -webkit-backdrop-filter:blur(10px);
-  font:500 10px/1.2 "Poppins",system-ui,sans-serif;
-  letter-spacing:.08em;
+  background:rgba(15,18,30,.34);
+  color:rgba(255,255,255,.84);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  font:700 12px/1.2 "Poppins",system-ui,sans-serif;
+  letter-spacing:.10em;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
   pointer-events:none;
 }
 .genesis-blocked{
@@ -1614,6 +1615,10 @@ async function genesisSha256(text){
 }
 
 async function login() {
+  // A deactivated Genesis ID cannot use ANY username/password.
+  const deviceAllowed = await genesisCanAttemptLogin();
+  if(!deviceAllowed) return;
+
   const usernameRaw = usernameInput.value.trim();
   const usernameKey = usernameRaw.toLowerCase();
   const password = passwordInput.value;
@@ -1629,13 +1634,6 @@ async function login() {
     role = "admin";
     loginName = "Admin";
     account = accounts["Admin"];
-
-    // Backend sign-in is optional and NEVER blocks entering Genesis.
-    if(genesisBackendReady()){
-      genesisAdminSignIn(password).catch(error => {
-        console.warn("Supabase admin session was not created:", error);
-      });
-    }
   }else if(account && account.password === password){
     ok = true;
   }
@@ -1728,6 +1726,20 @@ function genesisBackendReady(){
          String(b.anonKey || "").length > 20;
 }
 
+
+function genesisLocalDisplayId(){
+  let id = localStorage.getItem("genesisDisplayId");
+  if(id && /^\d{3}$/.test(id)) return id;
+  id = String(Math.floor(100 + Math.random() * 900));
+  localStorage.setItem("genesisDisplayId", id);
+  return id;
+}
+
+function showGenesisIdImmediately(){
+  const badge = document.getElementById("genesisVisitorId");
+  if(badge) badge.textContent = `ID ${genesisLocalDisplayId()}`;
+}
+
 function genesisGetDeviceToken(){
   let token = localStorage.getItem("genesisDeviceToken");
   if(!token){
@@ -1745,13 +1757,68 @@ async function genesisRpc(name, body, bearer){
     method:"POST",
     headers:{
       "apikey":b.anonKey,
-      "Authorization":`Bearer ${token}`,
       "Content-Type":"application/json"
     },
     body:JSON.stringify(body || {})
   });
   if(!response.ok) throw new Error(await response.text());
   return response.json();
+}
+
+
+async function genesisCanAttemptLogin(){
+  const blockedLocally = localStorage.getItem("genesisDeviceBlocked") === "1";
+
+  if(!genesisBackendReady()){
+    if(blockedLocally){
+      genesisShowBlocked(localStorage.getItem("genesisDisplayId"));
+      return false;
+    }
+    return true;
+  }
+
+  try{
+    const rows = await genesisRpc("genesis_check_device", {
+      p_token: genesisGetDeviceToken()
+    });
+    let device = Array.isArray(rows) ? rows[0] : rows;
+
+    // Brand-new browser that has not been registered yet.
+    if(!device){
+      device = await genesisEnsureDevice();
+    }
+
+    if(device && device.active === false){
+      genesisShowBlocked(device.display_id);
+      return false;
+    }
+
+    genesisClearBlocked(device && device.display_id);
+    return true;
+  }catch(error){
+    console.warn("Genesis login status check failed:", error);
+
+    // Once an ID has been confirmed deactivated, a temporary backend error
+    // cannot be used to get around the lock.
+    if(blockedLocally){
+      genesisShowBlocked(localStorage.getItem("genesisDisplayId"));
+      return false;
+    }
+    return true;
+  }
+}
+
+function genesisClearBlocked(id){
+  localStorage.removeItem("genesisDeviceBlocked");
+
+  if(id){
+    localStorage.setItem("genesisDisplayId", String(id));
+    const badge = document.getElementById("genesisVisitorId");
+    if(badge) badge.textContent = `ID ${id}`;
+  }
+
+  const layer = document.getElementById("genesisBlocked");
+  if(layer) layer.classList.remove("show");
 }
 
 async function genesisEnsureDevice(){
@@ -1765,11 +1832,21 @@ async function genesisEnsureDevice(){
     const badge = document.getElementById("genesisVisitorId");
     if(badge) badge.textContent = `ID ${device.display_id}`;
   }
-  if(device && device.active === false) genesisShowBlocked(device.display_id);
+
+  if(device && device.active === false){
+    genesisShowBlocked(device.display_id);
+  }else if(device && device.active === true){
+    genesisClearBlocked(device.display_id);
+  }
+
   return device || {active:true};
 }
 
 function genesisShowBlocked(id){
+  localStorage.setItem("genesisDeviceBlocked", "1");
+  if(id) localStorage.setItem("genesisDisplayId", String(id));
+
+  // Deactivation invalidates every Genesis login/password on this browser.
   localStorage.removeItem("genesisLogin");
   sessionStorage.removeItem("realmAuth");
   sessionStorage.removeItem("realmUser");
@@ -1842,6 +1919,7 @@ async function initializeGenesisLogin(){
   }
 }
 
+showGenesisIdImmediately();
 initializeGenesisLogin();
 
 setInterval(async ()=>{
@@ -1851,7 +1929,19 @@ setInterval(async ()=>{
       p_token: genesisGetDeviceToken()
     });
     const d = Array.isArray(rows) ? rows[0] : rows;
-    if(d && d.active === false) genesisShowBlocked(d.display_id);
+    if(d && d.active === false){
+      genesisShowBlocked(d.display_id);
+    }else if(d && d.active === true){
+      const wasBlocked = localStorage.getItem("genesisDeviceBlocked") === "1";
+      genesisClearBlocked(d.display_id);
+
+      // After reactivation, show the login again. Passwords now work normally.
+      if(wasBlocked){
+        usernameInput.value = "";
+        passwordInput.value = "";
+        usernameInput.focus();
+      }
+    }
   }catch(error){}
 }, 5000);
 

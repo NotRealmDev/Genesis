@@ -299,13 +299,25 @@ button{color:inherit}
 
 /* Genesis admin + global announcement system */
 .genesis-id-badge{
-  position:absolute;top:8px;left:50%;transform:translateX(-50%);
-  z-index:190;padding:4px 8px;border-radius:999px;
-  border:1px solid rgba(255,255,255,.10);
-  background:rgba(5,8,15,.16);
-  color:rgba(255,255,255,.48);
-  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
-  font-size:9px;font-weight:650;letter-spacing:.12em;pointer-events:none
+  position:fixed;
+  top:12px;
+  right:14px;
+  left:auto;
+  transform:none;
+  z-index:1000000;
+  padding:7px 11px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,.20);
+  background:rgba(6,10,18,.42);
+  color:rgba(255,255,255,.84);
+  backdrop-filter:blur(12px);
+  -webkit-backdrop-filter:blur(12px);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:.10em;
+  box-shadow:0 8px 24px rgba(0,0,0,.18);
+  pointer-events:none;
+  user-select:none
 }
 .genesis-announcement{
   position:absolute;top:36px;left:50%;z-index:100000;
@@ -1267,6 +1279,24 @@ function genesisBackendReady(){
          String(b.anonKey || "").length > 20;
 }
 
+
+function genesisLocalDisplayId(){
+  let id = localStorage.getItem("genesisDisplayId");
+  if(id && /^\d{3}$/.test(id)) return id;
+
+  // Gives the visitor a visible ID immediately, even before the backend replies.
+  // When Supabase is configured, the registered shared ID replaces this value.
+  id = String(Math.floor(100 + Math.random() * 900));
+  localStorage.setItem("genesisDisplayId", id);
+  return id;
+}
+
+function showGenesisIdImmediately(){
+  const id = genesisLocalDisplayId();
+  const badge = document.getElementById("genesisVisitorId");
+  if(badge) badge.textContent = `ID ${id}`;
+}
+
 function genesisDeviceToken(){
   let token = localStorage.getItem("genesisDeviceToken");
   if(!token){
@@ -1284,7 +1314,6 @@ async function genesisRpc(name, body, bearer){
     method:"POST",
     headers:{
       "apikey":b.anonKey,
-      "Authorization":`Bearer ${auth}`,
       "Content-Type":"application/json"
     },
     body:JSON.stringify(body || {})
@@ -1338,7 +1367,6 @@ async function genesisAdminRequest(path, options={}){
   const token = await genesisAdminSession();
   const headers = Object.assign({
     "apikey":b.anonKey,
-    "Authorization":`Bearer ${token}`,
     "Content-Type":"application/json"
   }, options.headers || {});
   const response = await fetch(`${b.url}/rest/v1/${path}`, Object.assign({}, options, {headers}));
@@ -1348,6 +1376,11 @@ async function genesisAdminRequest(path, options={}){
 }
 
 function lockGenesis(displayId){
+  localStorage.setItem("genesisDeviceBlocked", "1");
+  if(displayId) localStorage.setItem("genesisDisplayId", String(displayId));
+
+  // Kill the 12-hour login immediately. No Genesis password can be used
+  // again on this browser until the ID is reactivated.
   localStorage.removeItem("genesisLogin");
   sessionStorage.clear();
   document.body.innerHTML = `<div class="genesis-blocked">
@@ -1369,7 +1402,11 @@ async function ensureGenesisDevice(){
   localStorage.setItem("genesisDisplayId",String(d.display_id));
   const badge = document.getElementById("genesisVisitorId");
   if(badge) badge.textContent = `ID ${d.display_id}`;
-  if(d.active === false) lockGenesis(d.display_id);
+  if(d.active === false){
+    lockGenesis(d.display_id);
+  }else{
+    localStorage.removeItem("genesisDeviceBlocked");
+  }
 }
 
 async function checkGenesisDevice(){
@@ -1382,7 +1419,16 @@ async function checkGenesisDevice(){
       const badge=document.getElementById("genesisVisitorId");
       if(badge) badge.textContent=`ID ${d.display_id}`;
     }
-    if(d && d.active === false) lockGenesis(d.display_id);
+    if(d && d.active === false){
+      lockGenesis(d.display_id);
+    }else if(d && d.active === true){
+      const wasBlocked = localStorage.getItem("genesisDeviceBlocked") === "1";
+      localStorage.removeItem("genesisDeviceBlocked");
+
+      if(wasBlocked){
+        location.replace("index.html");
+      }
+    }
   }catch(error){}
 }
 
@@ -1432,14 +1478,9 @@ async function sendGenesisAnnouncement(){
   const duration = Math.min(22000, Math.max(5000, 3500 + (message.length * 55)));
 
   try{
-    await genesisAdminRequest("genesis_announcements", {
-      method:"POST",
-      headers:{"Prefer":"return=minimal"},
-      body:JSON.stringify({
-        message,
-        duration_ms:duration,
-        created_by:"Admin"
-      })
+    await genesisRpc("genesis_send_announcement", {
+      p_message: message,
+      p_duration_ms: duration
     });
     if(status) status.textContent = `Sent · visible for about ${Math.ceil(duration/1000)} seconds`;
     input.value = "";
@@ -1459,11 +1500,10 @@ async function setGenesisDevice(displayId, makeActive){
   }
 
   try{
-    const token = await genesisAdminSession();
     await genesisRpc("genesis_set_device_status", {
       p_display_id:id,
       p_active:!!makeActive
-    }, token);
+    });
     if(status) status.textContent = `ID ${id} ${makeActive ? "reactivated" : "deactivated"}.`;
     refreshDeactivateOS();
   }catch(error){
@@ -1483,7 +1523,7 @@ async function refreshDeactivateOS(){
   if(!list || !history) return;
 
   try{
-    const devices = await genesisAdminRequest(
+    const devices = await genesisPublicGet(
       "genesis_devices?select=display_id,active,last_seen&order=display_id.asc"
     );
     const myId = Number(localStorage.getItem("genesisDisplayId"));
@@ -1502,7 +1542,7 @@ async function refreshDeactivateOS(){
       </div>`;
     }).join("") || `<div class="muted">No IDs yet.</div>`;
 
-    const actions = await genesisAdminRequest(
+    const actions = await genesisPublicGet(
       "genesis_admin_actions?select=display_id,action,created_at&order=created_at.desc&limit=30"
     );
     history.innerHTML = (actions || []).map(a=>
@@ -1534,6 +1574,7 @@ function validateGenesis12HourSession(){
   }
 }
 
+showGenesisIdImmediately();
 setupGenesisAdminUI();
 ensureGenesisDevice();
 pollGenesisAnnouncement();
