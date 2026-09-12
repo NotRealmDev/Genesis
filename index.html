@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Realm OS — Login</title>
+<style>
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0}
+body{
+  overflow:hidden;
+  color:#fff;
+  font-family:Poppins,Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(circle at 18% 18%,rgba(124,69,255,.22),transparent 35%),
+    radial-gradient(circle at 84% 78%,rgba(0,171,255,.14),transparent 34%),
+    linear-gradient(145deg,#05070d,#0b1020 55%,#06080f);
+}
+.bg{position:fixed;inset:0;overflow:hidden;pointer-events:none}
+.orb{position:absolute;border-radius:999px;filter:blur(34px);opacity:.45;animation:float 10s ease-in-out infinite alternate}
+.orb.a{width:240px;height:240px;left:-60px;top:8%;background:rgba(147,73,255,.28)}
+.orb.b{width:280px;height:280px;right:-80px;bottom:4%;background:rgba(45,162,255,.19);animation-duration:13s}
+.grid{
+  position:absolute;inset:-40%;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);
+  background-size:46px 46px;
+  transform:perspective(700px) rotateX(67deg) translateY(25%);
+  mask-image:linear-gradient(to bottom,transparent 15%,#000 70%);
+  opacity:.45;
+}
+@keyframes float{to{transform:translate(35px,-22px) scale(1.08)}}
+.wrap{
+  position:relative;z-index:2;width:100%;height:100%;
+  display:grid;place-items:center;padding:24px;
+}
+.card{
+  width:min(410px,94vw);
+  padding:30px;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:30px;
+  background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.04));
+  box-shadow:0 32px 100px rgba(0,0,0,.44),inset 0 1px 0 rgba(255,255,255,.08);
+  backdrop-filter:blur(30px) saturate(145%);
+  transition:opacity .55s ease,transform .55s cubic-bezier(.22,.8,.2,1),filter .55s ease;
+}
+.card.exit{opacity:0;transform:scale(.96);filter:blur(12px)}
+.logo{
+  width:68px;height:68px;margin:0 auto 20px;
+  border-radius:22px;display:grid;place-items:center;
+  background:linear-gradient(145deg,rgba(255,255,255,.16),rgba(255,255,255,.055));
+  border:1px solid rgba(255,255,255,.13);
+  box-shadow:0 18px 42px rgba(0,0,0,.28);
+  font-size:24px;font-weight:750;letter-spacing:-.06em;
+}
+h1{text-align:center;font-size:27px;margin:0 0 6px;letter-spacing:-.04em}
+.sub{text-align:center;margin:0 0 26px;color:rgba(255,255,255,.48);font-size:12px}
+.field{margin-top:13px}
+label{display:block;margin:0 0 7px 4px;font-size:11px;color:rgba(255,255,255,.52)}
+.input-wrap{
+  display:flex;align-items:center;border-radius:17px;
+  border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.055);
+  transition:border-color .2s,background .2s,box-shadow .2s;
+}
+.input-wrap:focus-within{border-color:rgba(255,255,255,.23);background:rgba(255,255,255,.075);box-shadow:0 0 0 4px rgba(114,85,255,.08)}
+input{
+  width:100%;height:48px;border:0;outline:0;background:transparent;
+  padding:0 15px;color:#fff;font:500 14px/1 inherit;
+}
+input::placeholder{color:rgba(255,255,255,.24)}
+.eye{width:44px;height:44px;border:0;background:transparent;color:rgba(255,255,255,.48);cursor:pointer;font-size:15px}
+button.submit{
+  width:100%;height:49px;margin-top:19px;border:1px solid rgba(255,255,255,.13);
+  border-radius:17px;color:#fff;font:650 14px/1 inherit;cursor:pointer;
+  background:linear-gradient(135deg,rgba(126,84,255,.82),rgba(76,123,255,.70));
+  box-shadow:0 15px 35px rgba(45,52,160,.22);
+  transition:transform .2s,filter .2s;
+}
+button.submit:hover{transform:translateY(-1px);filter:brightness(1.08)}
+button.submit:disabled{opacity:.55;cursor:default;transform:none}
+.msg{height:18px;margin-top:12px;text-align:center;font-size:11px;color:#ff9fa8}
+.msg.ok{color:#a8ffc8}
+.footer{text-align:center;margin-top:21px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28)}
+.shake{animation:shake .35s ease}
+@keyframes shake{25%{transform:translateX(-7px)}50%{transform:translateX(7px)}75%{transform:translateX(-4px)}}
+</style>
+</head>
+<body>
+<div class="bg"><div class="orb a"></div><div class="orb b"></div><div class="grid"></div></div>
+<div class="wrap">
+  <main class="card" id="card">
+    <div class="logo">OS</div>
+    <h1>Realm OS</h1>
+    <p class="sub">Sign in to continue</p>
+
+    <form id="loginForm">
+      <div class="field">
+        <label for="username">Username</label>
+        <div class="input-wrap"><input id="username" autocomplete="username" placeholder="Enter username" required></div>
+      </div>
+
+      <div class="field">
+        <label for="password">Password</label>
+        <div class="input-wrap">
+          <input id="password" type="password" autocomplete="current-password" placeholder="Enter password" required>
+          <button class="eye" id="eye" type="button" aria-label="Show password">◉</button>
+        </div>
+      </div>
+
+      <button class="submit" id="submit" type="submit">Sign In</button>
+      <div class="msg" id="msg"></div>
+    </form>
+
+    <div class="footer">Developed By Realm</div>
+  </main>
+</div>
+
+<script>
+const ACCOUNTS = {
+  "high skys":"3470425ed1eb0218e7dd1a1a931109903ba7694921c0001a6a988eebb5eaec4e",
+  "blueberry":"cb2a0c785b8fb21c401f2354e9c06544f9f0c9e937349adab278896902143397"
+};
+
+async function sha256(text){
+  const data=new TextEncoder().encode(text);
+  const hash=await crypto.subtle.digest("SHA-256",data);
+  return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+const form=document.getElementById("loginForm");
+const card=document.getElementById("card");
+const msg=document.getElementById("msg");
+const submit=document.getElementById("submit");
+const password=document.getElementById("password");
+
+document.getElementById("eye").onclick=()=>{
+  password.type=password.type==="password"?"text":"password";
+};
+
+form.addEventListener("submit",async e=>{
+  e.preventDefault();
+  msg.className="msg";
+  msg.textContent="";
+  submit.disabled=true;
+  submit.textContent="Signing In…";
+
+  const user=document.getElementById("username").value.trim().toLowerCase();
+  const pass=password.value;
+  const expected=ACCOUNTS[user];
+  const actual=await sha256(pass);
+
+  if(expected && actual===expected){
+    sessionStorage.setItem("realmAuth","1");
+    sessionStorage.setItem("realmUser",user);
+    msg.className="msg ok";
+    msg.textContent="Welcome to Realm OS";
+    card.classList.add("exit");
+    setTimeout(()=>location.href="intro.html",560);
+  }else{
+    submit.disabled=false;
+    submit.textContent="Sign In";
+    msg.textContent="Incorrect username or password.";
+    card.classList.remove("shake");
+    void card.offsetWidth;
+    card.classList.add("shake");
+  }
+});
+</script>
+</body>
+</html>
