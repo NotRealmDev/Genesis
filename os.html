@@ -298,8 +298,11 @@ button{color:inherit}
 
 </style>
 <script>
-if(sessionStorage.getItem("realmAuth")!=="1"){location.replace("index.html");}
+if (sessionStorage.getItem("realmAuth") !== "1") {
+  location.replace("index.html");
+}
 </script>
+
 </head>
 <body>
 <div id="os">
@@ -629,7 +632,6 @@ const apps = {
     <div class="setting"><label>Glass Blur</label><input type="range" min="6" max="60" value="${getStoredBlur()}" oninput="changeBlur(this.value)"></div>
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
     <button class="os-btn" style="margin-top:10px" onclick="window.open(location.href,'_blank','noopener')">Open Realm OS in New Tab</button>
-    <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
   </div>`},
   about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Realm OS</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 7 Games</div></div>`},
   music:{title:"Music",content:()=>`<div class="music"><div><div class="music-art">♪</div><h2>OS Music</h2><div class="muted">Nothing playing</div></div></div>`},
@@ -864,11 +866,11 @@ function browserHTML(){
         <input id="browserAddress" class="browser-address" value="os://home" spellcheck="false" autocomplete="off" placeholder="Search or enter a website">
         <button class="browser-go" id="browserGo" title="Go">→</button>
       </div>
-      <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Inside OS</button>
+      <button class="browser-mode" id="browserMode" title="Switch browsing mode">New Tab</button>
       <button class="nav-btn" id="browserExternal" title="Open current page in a new tab">↗</button>
     </div>
 
-    <div class="browser-status" id="browserStatus">Ready · Inside OS mode will try to embed websites</div>
+    <div class="browser-status" id="browserStatus">Ready · New Tab mode works with normal websites</div>
 
     <div class="browser-stage">
       <iframe
@@ -883,7 +885,9 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Realm OS starts in <b>Inside OS</b> mode on GitHub Pages. Sites that allow iframe embedding stay inside this window. If a site blocks embedding, switch to <b>New Tab</b> mode.
+            Search or enter a website above. <b>New Tab</b> mode is the reliable mode
+            because many websites do not allow themselves to be displayed inside another website.
+            Switch to <b>Inside OS</b> when you want to try an embeddable page.
           </p>
         </div>
       </div>
@@ -903,7 +907,7 @@ function browserHTML(){
 const browserState={
   history:["os://home"],
   index:0,
-  mode:"embed",
+  mode:"tab",
   currentExternal:""
 };
 
@@ -958,7 +962,7 @@ function initBrowser(win){
     const status=win.querySelector("#browserStatus");
     status.textContent=browserState.mode==="tab"
       ?"New Tab mode · works with normal websites"
-      :"Inside OS mode · trying websites inside Realm OS";
+      :"Inside OS mode · only websites that allow iframe embedding will load";
   };
 
   again.onclick=()=>{

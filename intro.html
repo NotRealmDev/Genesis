@@ -249,8 +249,11 @@
   }
 </style>
 <script>
-if(sessionStorage.getItem("realmAuth")!=="1"){location.replace("index.html");}
+if (sessionStorage.getItem("realmAuth") !== "1") {
+  location.replace("index.html");
+}
 </script>
+
 </head>
 <body>
   <div class="stage">
@@ -266,7 +269,10 @@ if(sessionStorage.getItem("realmAuth")!=="1"){location.replace("index.html");}
     <div class="black-fade"></div>
   </div>
 <script>
-setTimeout(()=>location.replace("os.html"),9600);
+setTimeout(function () {
+  location.replace("os.html");
+}, 9600);
 </script>
+
 </body>
 </html>
