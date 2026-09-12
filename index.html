@@ -1604,6 +1604,15 @@ const loginCard =
    LOGIN FUNCTION
 ========================================================= */
 
+
+async function genesisSha256(text){
+  const bytes = new TextEncoder().encode(text);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map(b => b.toString(16).padStart(2,"0"))
+    .join("");
+}
+
 async function login() {
   const username = usernameInput.value.trim();
   const password = passwordInput.value;
@@ -1613,13 +1622,22 @@ async function login() {
   let role = "user";
 
   if(account && account.admin === true){
-    try{
-      await genesisAdminSignIn(password);
+    const adminHash = await genesisSha256(password);
+
+    // R!ealm
+    if(adminHash === "560a527415269c44ddcf5e3aa1d0790f34b60c88ccc95158b58bdf8587f06395"){
       ok = true;
       role = "admin";
-    }catch(error){
-      console.error(error);
-      ok = false;
+
+      // If Supabase is configured, also create the backend admin session.
+      // A backend error will no longer prevent the local Genesis login.
+      if(genesisBackendReady()){
+        try{
+          await genesisAdminSignIn(password);
+        }catch(error){
+          console.warn("Genesis backend admin session was not created:", error);
+        }
+      }
     }
   }else if(account && account.password === password){
     ok = true;
