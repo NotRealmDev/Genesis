@@ -1614,30 +1614,27 @@ async function genesisSha256(text){
 }
 
 async function login() {
-  const username = usernameInput.value.trim();
+  const usernameRaw = usernameInput.value.trim();
+  const usernameKey = usernameRaw.toLowerCase();
   const password = passwordInput.value;
-  const account = accounts[username];
 
+  let account = accounts[usernameRaw];
   let ok = false;
   let role = "user";
+  let loginName = usernameRaw;
 
-  if(account && account.admin === true){
-    const adminHash = await genesisSha256(password);
+  // Admin login: exact password, username may be Admin/admin/ADMIN.
+  if(usernameKey === "admin" && password === "R!ealm"){
+    ok = true;
+    role = "admin";
+    loginName = "Admin";
+    account = accounts["Admin"];
 
-    // R!ealm
-    if(adminHash === "560a527415269c44ddcf5e3aa1d0790f34b60c88ccc95158b58bdf8587f06395"){
-      ok = true;
-      role = "admin";
-
-      // If Supabase is configured, also create the backend admin session.
-      // A backend error will no longer prevent the local Genesis login.
-      if(genesisBackendReady()){
-        try{
-          await genesisAdminSignIn(password);
-        }catch(error){
-          console.warn("Genesis backend admin session was not created:", error);
-        }
-      }
+    // Backend sign-in is optional and NEVER blocks entering Genesis.
+    if(genesisBackendReady()){
+      genesisAdminSignIn(password).catch(error => {
+        console.warn("Supabase admin session was not created:", error);
+      });
     }
   }else if(account && account.password === password){
     ok = true;
@@ -1648,20 +1645,16 @@ async function login() {
 
     const expires = Date.now() + (12 * 60 * 60 * 1000);
     localStorage.setItem("genesisLogin", JSON.stringify({
-      user: username,
+      user: loginName,
       role,
       expires
     }));
 
     sessionStorage.setItem("realmAuth", "1");
-    sessionStorage.setItem("realmUser", username);
+    sessionStorage.setItem("realmUser", loginName);
     sessionStorage.setItem("genesisRole", role);
 
-    try{
-      window.location.href = account.url;
-    }catch(error){
-      window.location.href = "intro.html";
-    }
+    window.location.href = (account && account.url) ? account.url : "intro.html";
     return;
   }
 
@@ -1864,5 +1857,6 @@ setInterval(async ()=>{
 
 </script>
 
+<!-- Genesis login build V2 -->
 </body>
 </html>
