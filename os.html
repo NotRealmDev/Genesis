@@ -628,6 +628,7 @@ const apps = {
     <div class="setting"><label>Accent Color</label><input type="range" min="0" max="360" value="${getStoredHue()}" oninput="changeHue(this.value)"></div>
     <div class="setting"><label>Glass Blur</label><input type="range" min="6" max="60" value="${getStoredBlur()}" oninput="changeBlur(this.value)"></div>
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
+    <button class="os-btn" style="margin-top:10px" onclick="openRealmInAboutBlank()">Open in about:blank</button>
     <button class="os-btn" style="margin-top:10px" onclick="window.open(location.href,'_blank','noopener')">Open Realm OS in New Tab</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('aboutMe')">About Me</button>
@@ -1131,6 +1132,39 @@ if(navigator.getBattery){
   }).catch(()=>{});
 }
 function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]))}
+
+function openRealmInAboutBlank(){
+  const win = window.open("about:blank", "_blank");
+  if(!win){
+    alert("Popup blocked. Allow popups for Realm OS and try again.");
+    return;
+  }
+
+  const target = new URL("os.html", window.location.href).href;
+
+  try{
+    win.document.open();
+    win.document.write(`<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Realm OS</title>
+<style>
+html,body{width:100%;height:100%;margin:0;background:#02050b;overflow:hidden}
+iframe{display:block;width:100%;height:100%;border:0}
+</style>
+</head>
+<body>
+<iframe src="${target}" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen></iframe>
+</body>
+</html>`);
+    win.document.close();
+  }catch(err){
+    win.location.href = target;
+  }
+}
+
 </script>
 </body>
 </html>
