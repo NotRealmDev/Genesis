@@ -482,11 +482,71 @@ function base64ToBytes(b64){
   return bytes;
 }
 
+function shouldConvertGameSourceToHTML(url){
+  try{
+    const u = new URL(url, location.href);
+    return (
+      u.hostname === "cdn.jsdelivr.net" &&
+      (
+        u.pathname.includes("/npm/ugs-singlefiles") ||
+        u.pathname.includes("/gh/bubbls/ugs-singlefile")
+      )
+    );
+  }catch{
+    return false;
+  }
+}
+
+function addGameBaseTag(htmlText, sourceUrl){
+  const baseHref = new URL(".", sourceUrl).href;
+  const baseTag = `<base href="${baseHref.replace(/"/g,"&quot;")}">`;
+
+  if(/<head[\s>]/i.test(htmlText)){
+    return htmlText.replace(/<head([^>]*)>/i, `<head$1>${baseTag}`);
+  }
+
+  if(/<html[\s>]/i.test(htmlText)){
+    return htmlText.replace(/<html([^>]*)>/i, `<html$1><head>${baseTag}</head>`);
+  }
+
+  return `<!doctype html><html><head>${baseTag}</head><body>${htmlText}</body></html>`;
+}
+
+async function fetchGameHTMLAsBlob(sourceUrl){
+  const response = await fetch(sourceUrl, {
+    method:"GET",
+    mode:"cors",
+    cache:"force-cache"
+  });
+
+  if(!response.ok){
+    throw new Error(`Game source returned HTTP ${response.status}`);
+  }
+
+  let htmlText = await response.text();
+
+  // jsDelivr sometimes serves these .html files as text/plain.
+  // Re-wrapping the response in a text/html Blob makes the iframe execute
+  // the document instead of displaying its source code.
+  htmlText = addGameBaseTag(htmlText, sourceUrl);
+
+  const blob = new Blob([htmlText], {type:"text/html;charset=utf-8"});
+  return URL.createObjectURL(blob);
+}
+
 async function unpackEmbeddedGame(gameId){
   if(embeddedGameUrls[gameId]) return embeddedGameUrls[gameId];
 
   const game = gameLibrary.find(g => g.id === gameId);
+
   if(game && game.src){
+    if(shouldConvertGameSourceToHTML(game.src)){
+      const blobUrl = await fetchGameHTMLAsBlob(game.src);
+      embeddedGameUrls[gameId] = blobUrl;
+      return blobUrl;
+    }
+
+    // Local pages and special public ports can load normally.
     return game.src;
   }
 
@@ -507,7 +567,7 @@ async function unpackEmbeddedGame(gameId){
     );
   }
 
-  const blob = new Blob([htmlText], {type:"text/html"});
+  const blob = new Blob([htmlText], {type:"text/html;charset=utf-8"});
   const url = URL.createObjectURL(blob);
   embeddedGameUrls[gameId] = url;
   return url;
@@ -1174,7 +1234,7 @@ async function openGame(gameId){
   const loadText=document.getElementById("gameLoadText");
 
   try{
-    if(loadText) loadText.textContent="Unpacking "+g.name+"...";
+    if(loadText) loadText.textContent="Preparing "+g.name+"...";
     const gameUrl=await unpackEmbeddedGame(gameId);
 
     frame.addEventListener("load",()=>{
