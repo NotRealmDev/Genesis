@@ -390,6 +390,7 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase-config.js"></script>
+<script src="genesis-announcements.js" defer></script>
 </head>
 <body>
 <div id="os">
@@ -1447,33 +1448,49 @@ let genesisAnnouncementTimer = null;
 let genesisLastAnnouncementId = null;
 
 function showGenesisAnnouncement(message, ms){
-  const banner = document.getElementById("genesisAnnouncement");
-  if(!banner) return;
-  clearTimeout(genesisAnnouncementTimer);
+  if(window.GenesisAnnouncements && typeof window.GenesisAnnouncements.show === "function"){
+    window.GenesisAnnouncements.show(message, ms);
+    return;
+  }
+
+  // Fallback if the shared script has not initialized yet.
+  let banner = document.getElementById("genesisGlobalAnnouncement");
+  if(!banner){
+    banner = document.createElement("div");
+    banner.id = "genesisGlobalAnnouncement";
+    banner.style.cssText = "position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:2147483647;padding:14px 20px;border-radius:18px;background:rgba(8,12,22,.94);color:white;font:600 14px Poppins,system-ui,sans-serif;";
+    document.body.appendChild(banner);
+  }
   banner.textContent = message;
-  requestAnimationFrame(()=>banner.classList.add("show"));
-  genesisAnnouncementTimer = setTimeout(()=>{
-    banner.classList.remove("show");
-  }, Math.max(1200,ms || 6000));
+  banner.style.display = "block";
+  setTimeout(()=>{ banner.style.display = "none"; }, Math.max(2000, Number(ms)||7000));
 }
 
 async function pollGenesisAnnouncement(){
   if(!genesisBackendReady()) return;
   try{
-    const rows = await genesisPublicGet(
-      "genesis_announcements?select=id,message,duration_ms,created_at&order=created_at.desc&limit=1"
-    );
-    if(!rows || !rows.length) return;
-    const a = rows[0];
+    if(window.GenesisAnnouncements && typeof window.GenesisAnnouncements.poll === "function"){
+      await window.GenesisAnnouncements.poll();
+      return;
+    }
+
+    const rows = await genesisRpc("genesis_get_latest_announcement", {});
+    const a = Array.isArray(rows) ? rows[0] : rows;
+    if(!a || !a.id) return;
+
     const created = new Date(a.created_at).getTime();
-    const expires = created + Number(a.duration_ms || 7000);
-    if(a.id !== genesisLastAnnouncementId){
+    const duration = Number(a.duration_ms || 7000);
+    const expires = created + duration;
+
+    if(String(a.id) !== String(genesisLastAnnouncementId)){
       genesisLastAnnouncementId = a.id;
       if(Date.now() < expires){
         showGenesisAnnouncement(a.message, expires - Date.now());
       }
     }
-  }catch(error){}
+  }catch(error){
+    console.warn("Genesis announcement check failed:", error);
+  }
 }
 
 async function sendGenesisAnnouncement(){
@@ -1495,8 +1512,12 @@ async function sendGenesisAnnouncement(){
     });
     if(status) status.textContent = `Sent · visible for about ${Math.ceil(duration/1000)} seconds`;
     input.value = "";
+
+    // Always show it on the sender's screen immediately.
     showGenesisAnnouncement(message, duration);
-    pollGenesisAnnouncement();
+
+    // Then tell the shared poller to pick up the database copy for everybody else.
+    setTimeout(pollGenesisAnnouncement, 250);
   }catch(error){
     if(status) status.textContent = "Could not send announcement: " + error.message;
   }
