@@ -1474,19 +1474,13 @@ async function pollGenesisAnnouncement(){
       return;
     }
 
-    const rows = await genesisRpc("genesis_get_latest_announcement", {});
+    const rows = await genesisRpc("genesis_get_active_announcement", {});
     const a = Array.isArray(rows) ? rows[0] : rows;
-    if(!a || !a.id) return;
-
-    const created = new Date(a.created_at).getTime();
-    const duration = Number(a.duration_ms || 7000);
-    const expires = created + duration;
+    if(!a || !a.id || Number(a.remaining_ms) <= 0) return;
 
     if(String(a.id) !== String(genesisLastAnnouncementId)){
       genesisLastAnnouncementId = a.id;
-      if(Date.now() < expires){
-        showGenesisAnnouncement(a.message, expires - Date.now());
-      }
+      showGenesisAnnouncement(a.message, Number(a.remaining_ms));
     }
   }catch(error){
     console.warn("Genesis announcement check failed:", error);
