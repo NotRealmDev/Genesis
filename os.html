@@ -509,7 +509,10 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase-config.js"></script>
-<script src="proxy-config.js?v=proxy2"></script>
+<script src="prism/prism.js"></script>
+<script src="prism/prism.api.js"></script>
+<script src="prism/libby.js"></script>
+<script src="genesis-prism.js"></script>
 <script src="genesis-announcements.js" defer></script>
 </head>
 <body>
@@ -1593,7 +1596,7 @@ function browserHTML(){
       <button class="nav-btn" id="browserExternal" title="Open current page in a new tab">↗</button>
     </div>
 
-    <div class="browser-status" id="browserStatus">Ready · Proxy mode routes public websites through Genesis Proxy</div>
+    <div class="browser-status" id="browserStatus">Starting Genesis Prism proxy…</div>
 
     <div class="browser-stage">
       <iframe
@@ -1608,7 +1611,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Genesis starts in <b>Proxy</b> mode. Searches use <b>Bing</b> because Google commonly blocks shared proxy traffic with CAPTCHA challenges. You can switch to <b>New Tab</b> mode whenever you want.
+            Search or enter a website above. Genesis now uses the <b>Prism + Libcurl</b> proxy engine in this window. You can switch to <b>New Tab</b> mode whenever you want.
           </p>
         </div>
       </div>
@@ -1629,8 +1632,30 @@ const browserState={
   history:["os://home"],
   index:0,
   mode:"proxy",
-  currentExternal:""
+  currentExternal:"",
+  prismFrame:null,
+  prismError:""
 };
+
+async function ensureGenesisPrism(win){
+  if(browserState.prismFrame) return browserState.prismFrame;
+  const status=win?.querySelector("#browserStatus");
+  const frame=win?.querySelector("#browserFrame");
+  if(!frame) throw new Error("Browser frame is missing.");
+  try{
+    if(status) status.textContent="Starting Prism + Libcurl proxy…";
+    const prismFrame=await window.GenesisPrism.createFrame(frame);
+    browserState.prismFrame=prismFrame;
+    browserState.prismError="";
+    if(status) status.textContent="Ready · Prism proxy connected";
+    return prismFrame;
+  }catch(err){
+    console.error("Genesis Prism failed to start",err);
+    browserState.prismError=err?.message||String(err);
+    if(status) status.textContent="Prism proxy unavailable · "+browserState.prismError;
+    throw err;
+  }
+}
 
 function initBrowser(win){
   const address=win.querySelector("#browserAddress");
@@ -1642,6 +1667,8 @@ function initBrowser(win){
   const external=win.querySelector("#browserExternal");
   const mode=win.querySelector("#browserMode");
   const again=win.querySelector("#browserOpenAgain");
+  const frame=win.querySelector("#browserFrame");
+  const status=win.querySelector("#browserStatus");
 
   go.onclick=()=>browserNavigate(address.value,true,true);
   address.addEventListener("keydown",e=>{
@@ -1670,20 +1697,16 @@ function initBrowser(win){
 
   external.onclick=()=>{
     const current=browserState.history[browserState.index];
-    if(current && current!=="os://home"){
-      openBrowserTab(current);
-    }
+    if(current && current!=="os://home") openBrowserTab(current);
   };
 
   mode.onclick=()=>{
     browserState.mode=browserState.mode==="tab"?"proxy":"tab";
     mode.textContent=browserState.mode==="tab"?"New Tab":"Proxy";
     mode.classList.toggle("embed",browserState.mode==="proxy");
-
-    const status=win.querySelector("#browserStatus");
     status.textContent=browserState.mode==="tab"
       ?"New Tab mode · opens the normal website directly"
-      :"Proxy mode · public websites route through Genesis Proxy";
+      :(browserState.prismError?"Prism proxy unavailable · "+browserState.prismError:"Proxy mode · Prism + Libcurl");
   };
 
   again.onclick=()=>{
@@ -1691,16 +1714,22 @@ function initBrowser(win){
     if(current && current!=="os://home")openBrowserTab(current);
   };
 
+  frame.addEventListener("load",()=>{
+    const current=browserState.history[browserState.index];
+    if(browserState.mode==="proxy" && current && current!=="os://home"){
+      status.textContent="Proxy loaded · "+current;
+    }
+  });
+
   updateBrowserButtons();
+  ensureGenesisPrism(win).catch(()=>{});
 }
 
 function normalizeURL(raw){
   raw=String(raw||"").trim();
   if(!raw||raw==="os://home")return"os://home";
-
   if(/^https?:\/\//i.test(raw))return raw;
 
-  // Treat text with spaces, or text without a normal domain, as a web search.
   const looksLikeSearch =
     /\s/.test(raw) ||
     (!raw.includes(".") && !/^localhost(?::\d+)?(?:\/|$)/i.test(raw));
@@ -1708,73 +1737,17 @@ function normalizeURL(raw){
   if(looksLikeSearch){
     return "https://www.bing.com/search?q="+encodeURIComponent(raw);
   }
-
   return "https://"+raw;
-}
-
-
-
-function rewriteProxySearchURL(url){
-  try{
-    const u=new URL(url);
-
-    const host=u.hostname.toLowerCase().replace(/^www\./,"");
-    const isGoogleSearch =
-      (host==="google.com" || host.endsWith(".google.com")) &&
-      u.pathname==="/search";
-
-    if(isGoogleSearch){
-      const q=u.searchParams.get("q") || "";
-      return "https://www.bing.com/search?q="+encodeURIComponent(q);
-    }
-  }catch{}
-
-  return url;
-}
-
-function genesisProxyEndpoint(){
-  const fallback="https://genesis-proxy.bernye-eugene7.workers.dev";
-  const configured=String(window.GENESIS_PROXY?.endpoint||"").trim().replace(/\/+$/,"");
-  const endpoint=(!configured || configured.includes("PASTE_YOUR_WORKER_URL_HERE"))
-    ? fallback
-    : configured;
-  return endpoint;
-}
-
-function genesisProxyURL(url){
-  const endpoint=genesisProxyEndpoint();
-  if(!endpoint) return "";
-  return endpoint+"/?url="+encodeURIComponent(url);
-}
-
-function showProxySetupNeeded(){
-  const win=openWindows.browser;if(!win)return;
-  const frame=win.querySelector("#browserFrame");
-  const home=win.querySelector("#browserHome");
-  const card=win.querySelector("#browserOpenCard");
-  const title=win.querySelector("#browserOpenTitle");
-  const text=win.querySelector("#browserOpenText");
-  const status=win.querySelector("#browserStatus");
-
-  frame.style.display="none";
-  home.classList.add("hidden");
-  card.classList.add("show");
-  title.textContent="Genesis Proxy needs setup";
-  text.textContent="Deploy genesis-proxy-worker.js, then paste its Worker URL into proxy-config.js.";
-  status.textContent="Proxy endpoint is not configured yet";
 }
 
 function openBrowserTab(url){
   const win=openWindows.browser;
   const status=win?.querySelector("#browserStatus");
-
-  // A named target reuses the same Realm browser tab instead of making
-  // a new tab every single time.
-  const opened=window.open(url,"realm_os_web_browser");
+  const opened=window.open(url,"genesis_os_web_browser");
 
   if(opened){
     browserState.currentExternal=url;
-    if(status)status.textContent="Opened "+url+" in Realm Browser tab";
+    if(status)status.textContent="Opened "+url+" in browser tab";
     showBrowserOpenCard(url);
   }else{
     if(status)status.textContent="Popup blocked · use the ↗ button to open the page";
@@ -1793,14 +1766,30 @@ function showBrowserOpenCard(url,blocked=false){
   frame.style.display="none";
   home.classList.add("hidden");
   card.classList.add("show");
-
   title.textContent=blocked?"Browser blocked the new tab":"Opened in browser tab";
   text.textContent=blocked
     ?"Your browser blocked the automatic tab. Click Open Again to open "+url+"."
-    :url+" is open as a normal webpage, so it is not limited by iframe embedding rules.";
+    :url+" is open as a normal webpage.";
 }
 
-function browserNavigate(raw,push,fromUser=false){
+function showPrismError(message){
+  const win=openWindows.browser;if(!win)return;
+  const frame=win.querySelector("#browserFrame");
+  const home=win.querySelector("#browserHome");
+  const card=win.querySelector("#browserOpenCard");
+  const title=win.querySelector("#browserOpenTitle");
+  const text=win.querySelector("#browserOpenText");
+  const status=win.querySelector("#browserStatus");
+
+  frame.style.display="none";
+  home.classList.add("hidden");
+  card.classList.add("show");
+  title.textContent="Prism proxy could not start";
+  text.textContent=message+" You can switch to New Tab mode while the proxy is unavailable.";
+  status.textContent="Prism proxy unavailable";
+}
+
+async function browserNavigate(raw,push,fromUser=false){
   const win=openWindows.browser;if(!win)return;
   const url=normalizeURL(raw);
 
@@ -1820,42 +1809,35 @@ function browserNavigate(raw,push,fromUser=false){
   card.classList.remove("show");
 
   if(url==="os://home"){
-    frame.removeAttribute("src");
-    frame.src="about:blank";
-    frame.style.display="block";
+    frame.style.display="none";
     home.classList.remove("hidden");
-    status.textContent="Genesis Home · Proxy mode is ready";
+    status.textContent=browserState.prismError
+      ?"Genesis Home · Prism proxy unavailable"
+      :"Genesis Home · Prism proxy ready";
     updateBrowserButtons();
     return;
   }
 
   if(browserState.mode==="tab"){
     openBrowserTab(url);
-  }else{
-    url=rewriteProxySearchURL(url);
-    address.value=url;
+    updateBrowserButtons();
+    return;
+  }
 
-    const proxyURL=genesisProxyURL(url);
-    if(!proxyURL){
-      showProxySetupNeeded();
-      updateBrowserButtons();
-      return;
-    }
-
+  try{
+    const prismFrame=await ensureGenesisPrism(win);
     home.classList.add("hidden");
     card.classList.remove("show");
     frame.style.display="block";
-    status.textContent="Loading through Genesis Proxy · "+url;
-    frame.onload=()=>{
-      status.textContent="Proxy loaded · "+url;
-    };
-    frame.src=proxyURL;
+    status.textContent="Loading through Prism · "+url;
+    prismFrame.go(url);
+  }catch(err){
+    showPrismError(err?.message||String(err));
   }
-
   updateBrowserButtons();
 }
 
-function browserReload(){
+async function browserReload(){
   const win=openWindows.browser;if(!win)return;
   const current=browserState.history[browserState.index];
   if(current==="os://home"){
@@ -1865,20 +1847,16 @@ function browserReload(){
 
   if(browserState.mode==="tab"){
     openBrowserTab(current);
-  }else{
-    const frame=win.querySelector("#browserFrame");
-    const status=win.querySelector("#browserStatus");
-    const safeCurrent=rewriteProxySearchURL(current);
-    const proxyURL=genesisProxyURL(safeCurrent);
+    return;
+  }
 
-    if(!proxyURL){
-      showProxySetupNeeded();
-      return;
-    }
-
-    status.textContent="Reloading through Genesis Proxy · "+current;
-    frame.src="about:blank";
-    setTimeout(()=>frame.src=proxyURL,30);
+  const status=win.querySelector("#browserStatus");
+  try{
+    const prismFrame=await ensureGenesisPrism(win);
+    status.textContent="Reloading through Prism · "+current;
+    prismFrame.reload();
+  }catch(err){
+    showPrismError(err?.message||String(err));
   }
 }
 
