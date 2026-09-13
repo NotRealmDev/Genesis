@@ -1,12 +1,17 @@
 (function(){
   const WISP_URL = "wss://formative.icu/lively/";
-  const BUILD_ID = "2026-09-13-brave-reliability-r4";
+  const BUILD_ID = "2026-09-13-brave-recovery-r5";
   const KEY = "b75f9583b6d8fdc8b1e918a938878cb8d86e2f59817590301085b885cb0b89f8";
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
   const assetPath = (name) => new URL(name, BASE_URL).pathname;
   const delay = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
+  const TRANSPORT_PROFILES = [
+    [32,24,6],
+    [20,16,4],
+    [12,10,3]
+  ];
 
   const codec = {
     encode(value){
@@ -58,8 +63,6 @@
   }
 
   async function selectUsableWorker(registration){
-    // Prefer the newest worker, but never discard a healthy active worker just
-    // because GitHub Pages is still finishing an update.
     const newest = registration.installing || registration.waiting;
     if(newest){
       try{ await waitForActivated(newest); }catch(err){
@@ -91,14 +94,54 @@
     throw new Error("Genesis could not find an active service worker. Refresh once and try again.");
   }
 
+  async function disposeTransport(transport){
+    if(!transport) return;
+    for(const method of ["close","destroy","dispose","shutdown"]){
+      if(typeof transport[method] !== "function") continue;
+      try{ await Promise.resolve(transport[method]()); }catch{}
+      break;
+    }
+  }
+
+  async function createTransport(){
+    const Transport=window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
+    let lastError=null;
+
+    for(let i=0;i<TRANSPORT_PROFILES.length;i++){
+      const connections=TRANSPORT_PROFILES[i];
+      const transport=new Transport({
+        websocket:WISP_URL,
+        transport:"wisp",
+        connections
+      });
+      try{
+        await withTimeout(
+          transport.init(),
+          18000,
+          "The Genesis transport could not start."
+        );
+        return {transport,connections};
+      }catch(err){
+        lastError=err;
+        await disposeTransport(transport);
+        if(i<TRANSPORT_PROFILES.length-1) await delay(250*(i+1));
+      }
+    }
+
+    throw lastError || new Error("The Genesis transport could not start.");
+  }
+
   const GenesisPrism = {
     build:BUILD_ID,
     controller:null,
     transport:null,
+    transportProfile:null,
     serviceWorker:null,
     registration:null,
     readyPromise:null,
+    recoveryPromise:null,
     controllerChangeHandler:null,
+    lastRecoveryReason:"",
     codec,
     wisp:WISP_URL,
 
@@ -109,9 +152,6 @@
         if(!next || !this.controller || next===this.serviceWorker) return;
 
         this.serviceWorker=next;
-        // Scramjet keeps the worker used for its message channel. Rebind that
-        // channel when an updated worker claims the page so requests do not get
-        // stranded between the old and new worker.
         try{
           this.controller.serviceWorkerController=next;
           if(typeof this.controller.setupMessagePort === "function"){
@@ -148,14 +188,9 @@
         this.serviceWorker=sw;
         this.bindControllerRecovery();
 
-        const Transport=window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
-        const transport=new Transport({
-          websocket:WISP_URL,
-          transport:"wisp",
-          connections:[32,24,6]
-        });
-        await withTimeout(transport.init(),20000,"The Genesis transport could not start.");
-        this.transport=transport;
+        const transportResult=await createTransport();
+        this.transport=transportResult.transport;
+        this.transportProfile=transportResult.connections;
 
         const api=window.$scramjetController;
         api.config.prefix=assetPath("prism/");
@@ -165,12 +200,10 @@
         api.config.codec.encode=codec.encode;
         api.config.codec.decode=codec.decode;
 
-        const controller=new api.Controller({serviceworker:sw,transport});
+        const controller=new api.Controller({serviceworker:sw,transport:this.transport});
         await withTimeout(controller.wait(),25000,"The Genesis browser controller did not respond.");
         this.controller=controller;
 
-        // An update may have claimed the page while the controller was loading.
-        // Attach the finished controller to that worker immediately.
         const current=navigator.serviceWorker.controller;
         if(current && current!==this.serviceWorker){
           this.serviceWorker=current;
@@ -180,30 +213,85 @@
         }
 
         return controller;
-      })().catch(err=>{
+      })().catch(async err=>{
+        const failedTransport=this.transport;
+        this.controller=null;
+        this.transport=null;
+        this.transportProfile=null;
         this.readyPromise=null;
+        await disposeTransport(failedTransport);
         throw err;
       });
 
       return this.readyPromise;
     },
 
-    async createFrame(element){
+    async recover(reason="manual recovery"){
+      if(this.recoveryPromise) return this.recoveryPromise;
+
+      this.recoveryPromise=(async()=>{
+        this.lastRecoveryReason=String(reason||"manual recovery");
+        const oldTransport=this.transport;
+
+        this.controller=null;
+        this.transport=null;
+        this.transportProfile=null;
+        this.readyPromise=null;
+
+        try{
+          if(this.registration) await withTimeout(this.registration.update(),7000,"Service worker update check timed out.");
+        }catch(err){
+          console.warn("Genesis recovery continued after the service worker update check failed.",err);
+        }
+
+        await disposeTransport(oldTransport);
+        await delay(120);
+        return this.init();
+      })().finally(()=>{
+        this.recoveryPromise=null;
+      });
+
+      return this.recoveryPromise;
+    },
+
+    async createFrame(element,options={}){
       const controller=await this.init();
+      if(options.fresh) element.__genesisPrismFrame=null;
       if(element.__genesisPrismFrame) return element.__genesisPrismFrame;
       const frame=controller.createFrame(element);
       element.__genesisPrismFrame=frame;
       return frame;
     },
 
+    async recoverFrame(element,reason="frame recovery"){
+      await this.recover(reason);
+      element.__genesisPrismFrame=null;
+      return this.createFrame(element,{fresh:true});
+    },
+
+    healthy(){
+      return !!(
+        window.isSecureContext &&
+        navigator.serviceWorker?.controller &&
+        this.serviceWorker?.state === "activated" &&
+        this.transport &&
+        this.controller
+      );
+    },
+
     diagnostics(){
       return {
         build:BUILD_ID,
         secure:window.isSecureContext,
+        online:navigator.onLine,
         worker:this.serviceWorker?.state || "none",
         controlled:!!navigator.serviceWorker?.controller,
         transport:!!this.transport,
-        controller:!!this.controller
+        transportProfile:this.transportProfile ? [...this.transportProfile] : null,
+        controller:!!this.controller,
+        recovering:!!this.recoveryPromise,
+        healthy:this.healthy(),
+        lastRecoveryReason:this.lastRecoveryReason
       };
     }
   };
