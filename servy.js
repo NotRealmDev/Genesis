@@ -14,6 +14,7 @@ var $scramjetController;
           if (r === 'response') {
             const cb=this.promiseCallbacks.get(t.$token); if(!cb) return;
             this.promiseCallbacks.delete(t.$token);
+            if(cb.timer)clearTimeout(cb.timer);
             t.$error !== undefined ? cb.reject(Error(t.$error)) : cb.resolve(t.$data);
           } else if (r === 'request') {
             Promise.resolve(this.methods[t.$method](t.$args)).then((e)=>{
@@ -24,12 +25,30 @@ var $scramjetController;
             });
           }
         }
-        call(e,t,r=[]) {
+        call(e,t,r=[],timeoutMs=45000) {
           const o=this.counter++;
           return new Promise((s,i)=>{
-            this.promiseCallbacks.set(o,{resolve:s,reject:i});
-            this.sendRaw({[this.id]:{$type:'request',$method:e,$args:t,$token:o}},r);
+            const timer=timeoutMs>0?setTimeout(()=>{
+              if(!this.promiseCallbacks.has(o))return;
+              this.promiseCallbacks.delete(o);
+              i(new Error('Genesis RPC timed out: '+e));
+            },timeoutMs):null;
+            this.promiseCallbacks.set(o,{resolve:s,reject:i,timer});
+            try{
+              this.sendRaw({[this.id]:{$type:'request',$method:e,$args:t,$token:o}},r);
+            }catch(err){
+              if(timer)clearTimeout(timer);
+              this.promiseCallbacks.delete(o);
+              i(err);
+            }
           });
+        }
+        rejectAll(reason='Genesis RPC channel closed'){
+          for(const [token,cb] of this.promiseCallbacks){
+            if(cb.timer)clearTimeout(cb.timer);
+            cb.reject(new Error(reason));
+            this.promiseCallbacks.delete(token);
+          }
         }
       }
     }
@@ -53,7 +72,7 @@ var $scramjetController;
         const {port,prefix}=data.$sw$initRemoteTransport;
         const controller=controllers.find(c=>new URL(prefix).pathname.startsWith(c.prefix));
         if(!controller)return console.error('No relevant controller found for transport init');
-        controller.rpc.call('initRemoteTransport',port,[port]);
+        controller.rpc.call('initRemoteTransport',port,[port],20000).catch(err=>console.error('Remote transport init failed:',err));
       }
     });
     class ControllerHandle {
@@ -77,8 +96,11 @@ var $scramjetController;
           }
         },'tabchannel-'+id,(msg,transfer)=>port.postMessage(msg,transfer));
         port.onmessage=(event)=>this.rpc.recieve(event.data);
-        port.onmessageerror=console.error;
-        this.rpc.call('ready',void 0);
+        port.onmessageerror=(event)=>{
+          console.error('Genesis controller message error:',event);
+          this.rpc.rejectAll('Genesis controller message channel failed');
+        };
+        this.rpc.call('ready',void 0,[],15000).catch(err=>console.error('Genesis controller ready check failed:',err));
       }
     }
     const controllers=[];
@@ -106,27 +128,32 @@ var $scramjetController;
         const transfer=event.request.body instanceof ReadableStream || event.request.body instanceof ArrayBuffer ? [event.request.body] : void 0;
         let response;
         try{
-          response=await controller.rpc.call('request',payload,transfer);
+          response=await controller.rpc.call('request',payload,transfer,35000);
         }catch(firstErr){
           const method=(event.request.method||'GET').toUpperCase();
           if(method!=='GET' && method!=='HEAD') throw firstErr;
-          // A heavy page can briefly lose one multiplexed request. Retrying
-          // only idempotent requests once is enough to recover missing JS/CSS
-          // or images without replaying form submissions.
           await new Promise(resolve=>setTimeout(resolve,120));
-          response=await controller.rpc.call('request',payload);
+          response=await controller.rpc.call('request',payload,[],20000);
         }
+        if(!response||typeof response.status!=='number')throw new Error('Genesis received an invalid upstream response.');
         return new Response(response.body,{status:response.status,statusText:response.statusText,headers:response.headers});
       }catch(err){
         console.error('Service Worker error:',err);
-        return new Response('Internal Service Worker Error: '+err.message,{status:500});
+        return new Response('Genesis upstream request failed: '+(err?.message||String(err)),{
+          status:502,
+          headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}
+        });
       }
     }
     addEventListener('message',(event)=>{
       const data=event.data;
       if(!data||typeof data!=='object'||!data.$controller$init||typeof data.$controller$init!=='object')return;
       const init=data.$controller$init;
-      const idx=controllers.findIndex(c=>c.id===init.id); if(idx!==-1)controllers.splice(idx,1);
+      const idx=controllers.findIndex(c=>c.id===init.id);
+      if(idx!==-1){
+        controllers[idx].rpc.rejectAll('Genesis controller was replaced');
+        controllers.splice(idx,1);
+      }
       controllers.push(new ControllerHandle(init.prefix,init.id,event.ports[0]));
     });
     addEventListener('install',(event)=>{
