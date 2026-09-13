@@ -129,9 +129,16 @@ var $scramjetController;
       const idx=controllers.findIndex(c=>c.id===init.id); if(idx!==-1)controllers.splice(idx,1);
       controllers.push(new ControllerHandle(init.prefix,init.id,event.ports[0]));
     });
-    addEventListener('install',()=>self.skipWaiting());
-    addEventListener('activate',(event)=>event.waitUntil(self.clients.claim()));
-    setTimeout(async()=>{for(const client of await self.clients.matchAll())client.postMessage({$controller$swrevive:{}});},100);
+    addEventListener('install',(event)=>{
+      event.waitUntil(self.skipWaiting());
+    });
+    addEventListener('activate',(event)=>{
+      event.waitUntil((async()=>{
+        await self.clients.claim();
+        const clients=await self.clients.matchAll({type:'window',includeUncontrolled:true});
+        for(const client of clients) client.postMessage({$controller$swrevive:{}});
+      })());
+    });
   })();
   $scramjetController=o;
 })();
