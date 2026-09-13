@@ -509,10 +509,16 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase-config.js"></script>
-<script src="prism.js"></script>
-<script src="prism.api.js"></script>
-<script src="libby.js"></script>
-<script src="genesis-prism.js"></script>
+<link rel="dns-prefetch" href="//formative.icu">
+<link rel="preconnect" href="https://formative.icu" crossorigin>
+<link rel="preload" href="prism/prism.js" as="script">
+<link rel="preload" href="prism/prism.api.js" as="script">
+<link rel="preload" href="prism/libby.js" as="script">
+<link rel="preload" href="prism/prism.wasm" as="fetch" type="application/wasm" crossorigin>
+<script src="prism/prism.js" defer></script>
+<script src="prism/prism.api.js" defer></script>
+<script src="prism/libby.js" defer></script>
+<script src="genesis-prism.js" defer></script>
 <script src="genesis-announcements.js" defer></script>
 </head>
 <body>
@@ -1637,6 +1643,143 @@ const browserState={
   prismError:""
 };
 
+
+function upgradeProxyDocument(frame){
+  let doc,fw;
+  try{
+    fw=frame.contentWindow;
+    doc=frame.contentDocument;
+    if(!fw||!doc||!doc.documentElement)return;
+  }catch(_){return;}
+
+  // Reapply after every document navigation, but only once per document.
+  if(doc.documentElement.dataset.genesisProxyUpgraded==="1")return;
+  doc.documentElement.dataset.genesisProxyUpgraded="1";
+
+  // Sites often request a new browsing context with target=_blank. In an embedded
+  // proxy that can create an unmanaged white tab. Keep those navigations inside
+  // the managed Prism frame instead.
+  const forceSameFrame=(root=doc)=>{
+    try{
+      root.querySelectorAll?.('a[target="_blank"], area[target="_blank"], form[target="_blank"]').forEach(el=>{
+        try{el.setAttribute("target","_self");}catch(_){ }
+      });
+    }catch(_){ }
+  };
+  forceSameFrame();
+
+  doc.addEventListener("click",event=>{
+    try{
+      const link=event.target?.closest?.("a[href],area[href]");
+      if(link && String(link.getAttribute("target")||"").toLowerCase()==="_blank"){
+        link.setAttribute("target","_self");
+      }
+    }catch(_){ }
+  },true);
+
+  doc.addEventListener("submit",event=>{
+    try{
+      const form=event.target;
+      if(form && String(form.getAttribute?.("target")||"").toLowerCase()==="_blank"){
+        form.setAttribute("target","_self");
+      }
+    }catch(_){ }
+  },true);
+
+  // Script-created popups are another common cause of white tabs. Preserve
+  // about:blank popups used internally, but route URL popups into this frame.
+  try{
+    const prismOpen=fw.open?.bind(fw);
+    if(prismOpen && !fw.__genesisOriginalOpen){
+      fw.__genesisOriginalOpen=prismOpen;
+      Object.defineProperty(fw,"open",{
+        configurable:true,
+        writable:true,
+        value:function(url,target,features){
+          const targetName=String(target||"_blank").toLowerCase();
+          if(url && (targetName==="_blank" || targetName==="")){
+            try{return prismOpen(url,"_self",features);}catch(_){ }
+          }
+          return prismOpen(url,target,features);
+        }
+      });
+    }
+  }catch(_){ }
+
+  // Some sites lazy-load images with data-* attributes. Promote the common ones
+  // when the real src is missing, then use proxied fetch as a fallback for images
+  // that still error. This keeps the repair traffic inside the Prism transport.
+  const lazyAttrs=["data-src","data-original","data-lazy-src","data-url","data-image-src"];
+  const promoteLazy=(img)=>{
+    try{
+      const current=img.getAttribute("src");
+      if(current && current!=="#" && !current.startsWith("data:image/gif;base64,R0lGODlhAQABA"))return;
+      for(const attr of lazyAttrs){
+        const candidate=img.getAttribute(attr);
+        if(candidate){img.setAttribute("src",candidate);return;}
+      }
+    }catch(_){ }
+  };
+
+  const repairImage=async(img)=>{
+    if(!img || img.dataset?.genesisRepairing==="1" || img.dataset?.genesisRepaired==="1")return;
+    promoteLazy(img);
+    if(img.naturalWidth>0)return;
+    let src="";
+    try{src=img.currentSrc||img.src||"";}catch(_){return;}
+    if(!src || /^(?:data:|blob:|about:)/i.test(src))return;
+    try{
+      img.dataset.genesisRepairing="1";
+      const response=await fw.fetch(src,{credentials:"include",cache:"force-cache"});
+      if(!response.ok)throw new Error("image "+response.status);
+      const blob=await response.blob();
+      if(!blob.size)throw new Error("empty image");
+      const objectURL=fw.URL.createObjectURL(blob);
+      try{img.removeAttribute("srcset");}catch(_){ }
+      img.addEventListener("load",()=>{
+        img.dataset.genesisRepaired="1";
+        delete img.dataset.genesisRepairing;
+      },{once:true});
+      img.src=objectURL;
+    }catch(_){
+      delete img.dataset.genesisRepairing;
+      img.dataset.genesisRepairFailed="1";
+    }
+  };
+
+  doc.addEventListener("error",event=>{
+    const node=event.target;
+    if(node?.tagName==="IMG")repairImage(node);
+  },true);
+
+  const scanImages=()=>{
+    try{
+      doc.querySelectorAll("img").forEach(img=>{
+        promoteLazy(img);
+        if(img.complete && img.naturalWidth===0)repairImage(img);
+      });
+    }catch(_){ }
+  };
+
+  scanImages();
+  setTimeout(scanImages,350);
+  setTimeout(scanImages,1200);
+
+  try{
+    const observer=new fw.MutationObserver(records=>{
+      for(const record of records){
+        for(const node of record.addedNodes||[]){
+          if(node?.nodeType!==1)continue;
+          if(node.tagName==="IMG")promoteLazy(node);
+          forceSameFrame(node);
+          try{node.querySelectorAll?.("img").forEach(promoteLazy);}catch(_){ }
+        }
+      }
+    });
+    observer.observe(doc.documentElement,{childList:true,subtree:true});
+  }catch(_){ }
+}
+
 async function ensureGenesisPrism(win){
   if(browserState.prismFrame) return browserState.prismFrame;
   const status=win?.querySelector("#browserStatus");
@@ -1647,7 +1790,7 @@ async function ensureGenesisPrism(win){
     const prismFrame=await window.GenesisPrism.createFrame(frame);
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
-    if(status) status.textContent="Ready · Prism proxy connected";
+    if(status) status.textContent="Ready · Prism proxy connected · optimized";
     return prismFrame;
   }catch(err){
     console.error("Genesis Prism failed to start",err);
@@ -1717,7 +1860,8 @@ function initBrowser(win){
   frame.addEventListener("load",()=>{
     const current=browserState.history[browserState.index];
     if(browserState.mode==="proxy" && current && current!=="os://home"){
-      status.textContent="Proxy loaded · "+current;
+      status.textContent="Proxy loaded · optimized · "+current;
+      upgradeProxyDocument(frame);
     }
   });
 
