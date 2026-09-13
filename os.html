@@ -385,6 +385,19 @@ button{color:inherit}
 }
 .browser-mode:hover{background:rgba(255,255,255,.11)}
 .browser-mode.embed{background:hsla(var(--accent),70%,55%,.16)}
+.browser-profile{
+  height:38px;
+  min-width:92px;
+  padding:0 28px 0 11px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:12px;
+  background:rgba(255,255,255,.055);
+  color:#fff;
+  font:600 11px/1 Inter,Poppins,system-ui,sans-serif;
+  outline:0;
+  cursor:pointer;
+}
+.browser-profile option{background:#0d111a;color:#fff}
 .browser-open-card{
   position:absolute;
   inset:0;
@@ -509,15 +522,9 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase-config.js"></script>
-<link rel="dns-prefetch" href="//formative.icu">
-<link rel="preconnect" href="https://formative.icu" crossorigin>
-<link rel="preload" href="prism/prism.js" as="script">
-<link rel="preload" href="prism/prism.api.js" as="script">
-<link rel="preload" href="prism/libby.js" as="script">
-<link rel="preload" href="prism/prism.wasm" as="fetch" type="application/wasm" crossorigin>
-<script src="prism/prism.js" defer></script>
-<script src="prism/prism.api.js" defer></script>
-<script src="prism/libby.js" defer></script>
+<script src="prism.js" defer></script>
+<script src="prism.api.js" defer></script>
+<script src="libby.js" defer></script>
 <script src="genesis-prism.js" defer></script>
 <script src="genesis-announcements.js" defer></script>
 </head>
@@ -1356,7 +1363,6 @@ const apps = {
     <div class="setting"><label>Accent Color</label><input type="range" min="0" max="360" value="${getStoredHue()}" oninput="changeHue(this.value)"></div>
     <div class="setting"><label>Glass Blur</label><input type="range" min="6" max="60" value="${getStoredBlur()}" oninput="changeBlur(this.value)"></div>
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
-    <button class="os-btn" style="margin-top:10px" onclick="openRealmInAboutBlank()">Open in About Blank</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
   </div>`},
   about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 206 Games</div></div>`},
@@ -1598,11 +1604,16 @@ function browserHTML(){
         <input id="browserAddress" class="browser-address" value="os://home" spellcheck="false" autocomplete="off" placeholder="Search or enter a website">
         <button class="browser-go" id="browserGo" title="Go">→</button>
       </div>
-      <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Proxy</button>
-      <button class="nav-btn" id="browserExternal" title="Open current page in a new tab">↗</button>
+      <select class="browser-profile" id="browserProfile" title="Browser profile / search provider">
+        <option value="brave">Brave</option>
+        <option value="google" selected>Google</option>
+        <option value="edge">Edge</option>
+      </select>
+      <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Inside OS</button>
+      <button class="nav-btn" id="browserExternal" title="Open current page in a normal tab">↗</button>
     </div>
 
-    <div class="browser-status" id="browserStatus">Starting Genesis Prism proxy…</div>
+    <div class="browser-status" id="browserStatus">Starting browser…</div>
 
     <div class="browser-stage">
       <iframe
@@ -1617,7 +1628,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Genesis now uses the <b>Prism + Libcurl</b> proxy engine in this window. You can switch to <b>New Tab</b> mode whenever you want.
+            Search or enter a website above. Use <b>Brave</b>, <b>Google</b>, or <b>Edge</b> as your search profile. Links are kept inside the OS whenever the embedded page allows it.
           </p>
         </div>
       </div>
@@ -1638,147 +1649,12 @@ const browserState={
   history:["os://home"],
   index:0,
   mode:"proxy",
+  profile:localStorage.getItem("genesisBrowserProfile")||"google",
   currentExternal:"",
   prismFrame:null,
-  prismError:""
+  prismError:"",
+  loadTimer:null
 };
-
-
-function upgradeProxyDocument(frame){
-  let doc,fw;
-  try{
-    fw=frame.contentWindow;
-    doc=frame.contentDocument;
-    if(!fw||!doc||!doc.documentElement)return;
-  }catch(_){return;}
-
-  // Reapply after every document navigation, but only once per document.
-  if(doc.documentElement.dataset.genesisProxyUpgraded==="1")return;
-  doc.documentElement.dataset.genesisProxyUpgraded="1";
-
-  // Sites often request a new browsing context with target=_blank. In an embedded
-  // proxy that can create an unmanaged white tab. Keep those navigations inside
-  // the managed Prism frame instead.
-  const forceSameFrame=(root=doc)=>{
-    try{
-      root.querySelectorAll?.('a[target="_blank"], area[target="_blank"], form[target="_blank"]').forEach(el=>{
-        try{el.setAttribute("target","_self");}catch(_){ }
-      });
-    }catch(_){ }
-  };
-  forceSameFrame();
-
-  doc.addEventListener("click",event=>{
-    try{
-      const link=event.target?.closest?.("a[href],area[href]");
-      if(link && String(link.getAttribute("target")||"").toLowerCase()==="_blank"){
-        link.setAttribute("target","_self");
-      }
-    }catch(_){ }
-  },true);
-
-  doc.addEventListener("submit",event=>{
-    try{
-      const form=event.target;
-      if(form && String(form.getAttribute?.("target")||"").toLowerCase()==="_blank"){
-        form.setAttribute("target","_self");
-      }
-    }catch(_){ }
-  },true);
-
-  // Script-created popups are another common cause of white tabs. Preserve
-  // about:blank popups used internally, but route URL popups into this frame.
-  try{
-    const prismOpen=fw.open?.bind(fw);
-    if(prismOpen && !fw.__genesisOriginalOpen){
-      fw.__genesisOriginalOpen=prismOpen;
-      Object.defineProperty(fw,"open",{
-        configurable:true,
-        writable:true,
-        value:function(url,target,features){
-          const targetName=String(target||"_blank").toLowerCase();
-          if(url && (targetName==="_blank" || targetName==="")){
-            try{return prismOpen(url,"_self",features);}catch(_){ }
-          }
-          return prismOpen(url,target,features);
-        }
-      });
-    }
-  }catch(_){ }
-
-  // Some sites lazy-load images with data-* attributes. Promote the common ones
-  // when the real src is missing, then use proxied fetch as a fallback for images
-  // that still error. This keeps the repair traffic inside the Prism transport.
-  const lazyAttrs=["data-src","data-original","data-lazy-src","data-url","data-image-src"];
-  const promoteLazy=(img)=>{
-    try{
-      const current=img.getAttribute("src");
-      if(current && current!=="#" && !current.startsWith("data:image/gif;base64,R0lGODlhAQABA"))return;
-      for(const attr of lazyAttrs){
-        const candidate=img.getAttribute(attr);
-        if(candidate){img.setAttribute("src",candidate);return;}
-      }
-    }catch(_){ }
-  };
-
-  const repairImage=async(img)=>{
-    if(!img || img.dataset?.genesisRepairing==="1" || img.dataset?.genesisRepaired==="1")return;
-    promoteLazy(img);
-    if(img.naturalWidth>0)return;
-    let src="";
-    try{src=img.currentSrc||img.src||"";}catch(_){return;}
-    if(!src || /^(?:data:|blob:|about:)/i.test(src))return;
-    try{
-      img.dataset.genesisRepairing="1";
-      const response=await fw.fetch(src,{credentials:"include",cache:"force-cache"});
-      if(!response.ok)throw new Error("image "+response.status);
-      const blob=await response.blob();
-      if(!blob.size)throw new Error("empty image");
-      const objectURL=fw.URL.createObjectURL(blob);
-      try{img.removeAttribute("srcset");}catch(_){ }
-      img.addEventListener("load",()=>{
-        img.dataset.genesisRepaired="1";
-        delete img.dataset.genesisRepairing;
-      },{once:true});
-      img.src=objectURL;
-    }catch(_){
-      delete img.dataset.genesisRepairing;
-      img.dataset.genesisRepairFailed="1";
-    }
-  };
-
-  doc.addEventListener("error",event=>{
-    const node=event.target;
-    if(node?.tagName==="IMG")repairImage(node);
-  },true);
-
-  const scanImages=()=>{
-    try{
-      doc.querySelectorAll("img").forEach(img=>{
-        promoteLazy(img);
-        if(img.complete && img.naturalWidth===0)repairImage(img);
-      });
-    }catch(_){ }
-  };
-
-  scanImages();
-  setTimeout(scanImages,350);
-  setTimeout(scanImages,1200);
-
-  try{
-    const observer=new fw.MutationObserver(records=>{
-      for(const record of records){
-        for(const node of record.addedNodes||[]){
-          if(node?.nodeType!==1)continue;
-          if(node.tagName==="IMG")promoteLazy(node);
-          forceSameFrame(node);
-          try{node.querySelectorAll?.("img").forEach(promoteLazy);}catch(_){ }
-        }
-      }
-    });
-    observer.observe(doc.documentElement,{childList:true,subtree:true});
-  }catch(_){ }
-}
 
 async function ensureGenesisPrism(win){
   if(browserState.prismFrame) return browserState.prismFrame;
@@ -1790,7 +1666,7 @@ async function ensureGenesisPrism(win){
     const prismFrame=await window.GenesisPrism.createFrame(frame);
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
-    if(status) status.textContent="Ready · Prism proxy connected · optimized";
+    if(status) status.textContent="Ready · Prism proxy connected";
     return prismFrame;
   }catch(err){
     console.error("Genesis Prism failed to start",err);
@@ -1809,9 +1685,19 @@ function initBrowser(win){
   const home=win.querySelector("#browserHomeBtn");
   const external=win.querySelector("#browserExternal");
   const mode=win.querySelector("#browserMode");
+  const profile=win.querySelector("#browserProfile");
   const again=win.querySelector("#browserOpenAgain");
   const frame=win.querySelector("#browserFrame");
   const status=win.querySelector("#browserStatus");
+
+  if(profile){
+    profile.value=browserState.profile;
+    profile.onchange=()=>{
+      browserState.profile=profile.value;
+      localStorage.setItem("genesisBrowserProfile",browserState.profile);
+      status.textContent=`${profile.options[profile.selectedIndex].text} profile selected`;
+    };
+  }
 
   go.onclick=()=>browserNavigate(address.value,true,true);
   address.addEventListener("keydown",e=>{
@@ -1845,11 +1731,11 @@ function initBrowser(win){
 
   mode.onclick=()=>{
     browserState.mode=browserState.mode==="tab"?"proxy":"tab";
-    mode.textContent=browserState.mode==="tab"?"New Tab":"Proxy";
+    mode.textContent=browserState.mode==="tab"?"External":"Inside OS";
     mode.classList.toggle("embed",browserState.mode==="proxy");
     status.textContent=browserState.mode==="tab"
-      ?"New Tab mode · opens the normal website directly"
-      :(browserState.prismError?"Prism proxy unavailable · "+browserState.prismError:"Proxy mode · Prism + Libcurl");
+      ?"External mode · the ↗ button opens a normal browser tab"
+      :(browserState.prismError?"Embedded browser unavailable · "+browserState.prismError:"Inside OS mode · ready");
   };
 
   again.onclick=()=>{
@@ -1858,15 +1744,23 @@ function initBrowser(win){
   };
 
   frame.addEventListener("load",()=>{
+    if(browserState.loadTimer){clearTimeout(browserState.loadTimer);browserState.loadTimer=null;}
     const current=browserState.history[browserState.index];
     if(browserState.mode==="proxy" && current && current!=="os://home"){
-      status.textContent="Proxy loaded · optimized · "+current;
-      upgradeProxyDocument(frame);
+      status.textContent="Loaded · "+current;
+      repairEmbeddedPage(win);
     }
   });
 
   updateBrowserButtons();
   ensureGenesisPrism(win).catch(()=>{});
+}
+
+function browserSearchURL(query){
+  const q=encodeURIComponent(query);
+  if(browserState.profile==="brave") return "https://search.brave.com/search?q="+q;
+  if(browserState.profile==="edge") return "https://www.bing.com/search?q="+q;
+  return "https://www.google.com/search?q="+q;
 }
 
 function normalizeURL(raw){
@@ -1878,20 +1772,18 @@ function normalizeURL(raw){
     /\s/.test(raw) ||
     (!raw.includes(".") && !/^localhost(?::\d+)?(?:\/|$)/i.test(raw));
 
-  if(looksLikeSearch){
-    return "https://www.bing.com/search?q="+encodeURIComponent(raw);
-  }
+  if(looksLikeSearch) return browserSearchURL(raw);
   return "https://"+raw;
 }
 
 function openBrowserTab(url){
   const win=openWindows.browser;
   const status=win?.querySelector("#browserStatus");
-  const opened=window.open(url,"genesis_os_web_browser");
+  const opened=window.open(url,"_blank","noopener,noreferrer");
 
   if(opened){
     browserState.currentExternal=url;
-    if(status)status.textContent="Opened "+url+" in browser tab";
+    if(status)status.textContent="Opened "+url+" in a normal browser tab";
     showBrowserOpenCard(url);
   }else{
     if(status)status.textContent="Popup blocked · use the ↗ button to open the page";
@@ -1916,6 +1808,79 @@ function showBrowserOpenCard(url,blocked=false){
     :url+" is open as a normal webpage.";
 }
 
+function repairEmbeddedPage(win){
+  const frame=win?.querySelector("#browserFrame");
+  if(!frame) return;
+
+  let doc, pageWin;
+  try{
+    doc=frame.contentDocument;
+    pageWin=frame.contentWindow;
+    if(!doc || !pageWin) return;
+  }catch{
+    return;
+  }
+
+  const repairNode=(root)=>{
+    if(!root?.querySelectorAll) return;
+
+    const links=[];
+    if(root.matches?.("a")) links.push(root);
+    links.push(...root.querySelectorAll("a[target],area[target]"));
+    links.forEach(a=>{
+      const target=(a.getAttribute("target")||"").toLowerCase();
+      if(target==="_blank" || target==="_new") a.setAttribute("target","_self");
+    });
+
+    const forms=[];
+    if(root.matches?.("form")) forms.push(root);
+    forms.push(...root.querySelectorAll("form[target]"));
+    forms.forEach(form=>{
+      const target=(form.getAttribute("target")||"").toLowerCase();
+      if(target==="_blank" || target==="_new") form.setAttribute("target","_self");
+    });
+
+    const images=[];
+    if(root.matches?.("img")) images.push(root);
+    images.push(...root.querySelectorAll("img"));
+    images.forEach(img=>{
+      img.loading="eager";
+      img.decoding="async";
+      const src=(img.getAttribute("src")||"").trim();
+      const lazy=img.getAttribute("data-src")||img.getAttribute("data-lazy-src")||img.getAttribute("data-original");
+      const lazySet=img.getAttribute("data-srcset")||img.getAttribute("data-lazy-srcset");
+      if((!src || src==="about:blank" || /^data:image\/(?:gif|png);base64,R0lGOD/i.test(src)) && lazy){
+        img.setAttribute("src",lazy);
+      }
+      if(!img.getAttribute("srcset") && lazySet) img.setAttribute("srcset",lazySet);
+    });
+  };
+
+  repairNode(doc.documentElement);
+
+  if(!doc.__genesisRepairObserver){
+    try{
+      const observer=new pageWin.MutationObserver(records=>{
+        for(const record of records){
+          for(const node of record.addedNodes){
+            if(node?.nodeType===1) repairNode(node);
+          }
+        }
+      });
+      observer.observe(doc.documentElement,{childList:true,subtree:true});
+      doc.__genesisRepairObserver=observer;
+    }catch{}
+  }
+
+  if(!doc.__genesisSameTabHandler){
+    doc.addEventListener("click",event=>{
+      const a=event.target?.closest?.("a[target='_blank'],a[target='_new'],area[target='_blank'],area[target='_new']");
+      if(a) a.setAttribute("target","_self");
+    },true);
+    doc.__genesisSameTabHandler=true;
+  }
+}
+
 function showPrismError(message){
   const win=openWindows.browser;if(!win)return;
   const frame=win.querySelector("#browserFrame");
@@ -1928,9 +1893,9 @@ function showPrismError(message){
   frame.style.display="none";
   home.classList.add("hidden");
   card.classList.add("show");
-  title.textContent="Prism proxy could not start";
-  text.textContent=message+" You can switch to New Tab mode while the proxy is unavailable.";
-  status.textContent="Prism proxy unavailable";
+  title.textContent="Embedded browser could not start";
+  text.textContent=message+" You can use External mode for sites that do not load inside the OS.";
+  status.textContent="Embedded browser unavailable";
 }
 
 async function browserNavigate(raw,push,fromUser=false){
@@ -1973,7 +1938,11 @@ async function browserNavigate(raw,push,fromUser=false){
     home.classList.add("hidden");
     card.classList.remove("show");
     frame.style.display="block";
-    status.textContent="Loading through Prism · "+url;
+    status.textContent="Loading · "+url;
+    if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
+    browserState.loadTimer=setTimeout(()=>{
+      if(status) status.textContent="Still loading · this site may block embedded browsing or use unsupported page features";
+    },12000);
     prismFrame.go(url);
   }catch(err){
     showPrismError(err?.message||String(err));
@@ -1997,7 +1966,7 @@ async function browserReload(){
   const status=win.querySelector("#browserStatus");
   try{
     const prismFrame=await ensureGenesisPrism(win);
-    status.textContent="Reloading through Prism · "+current;
+    status.textContent="Reloading · "+current;
     prismFrame.reload();
   }catch(err){
     showPrismError(err?.message||String(err));
@@ -2379,50 +2348,6 @@ setInterval(checkGenesisDevice,5000);
 setInterval(pollGenesisAnnouncement,3000);
 setInterval(validateGenesis12HourSession,60000);
 
-
-function openRealmInAboutBlank(){
-  const win = window.open("about:blank", "_blank");
-
-  if(!win){
-    alert("Popup blocked. Allow popups for Genesis and try again.");
-    return;
-  }
-
-  win.document.open();
-  win.document.write(`
-    <!doctype html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-      <title>Genesis</title>
-      <style>
-        html,body{
-          width:100%;
-          height:100%;
-          margin:0;
-          overflow:hidden;
-          background:#02050b;
-        }
-        iframe{
-          display:block;
-          width:100vw;
-          height:100vh;
-          border:0;
-        }
-      </style>
-    </head>
-    <body>
-      <iframe
-        src="https://genesisos.lol/os.html"
-        allow="fullscreen"
-        allowfullscreen>
-      </iframe>
-    </body>
-    </html>
-  `);
-  win.document.close();
-}
 
 </script>
 </body>
