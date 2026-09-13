@@ -1,6 +1,6 @@
 (function(){
   const WISP_URL = "wss://formative.icu/lively/";
-  const BUILD_ID = "2026-09-13-brave-full-load-r2";
+  const BUILD_ID = "2026-09-13-brave-full-load-r3";
   const KEY = "b75f9583b6d8fdc8b1e918a938878cb8d86e2f59817590301085b885cb0b89f8";
 
   const currentScript = document.currentScript;
@@ -28,41 +28,36 @@
     }
   };
 
-  function waitForWorkerActivated(worker, timeoutMs=20000){
-    if(!worker) return Promise.reject(new Error("Genesis service worker did not install."));
-    if(worker.state === "activated") return Promise.resolve(worker);
-    return new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>{
-        worker.removeEventListener("statechange",onState);
-        reject(new Error("Genesis service worker activation timed out."));
-      },timeoutMs);
-      const onState=()=>{
-        if(worker.state === "activated"){
-          clearTimeout(timer);
-          worker.removeEventListener("statechange",onState);
-          resolve(worker);
-        }else if(worker.state === "redundant"){
-          clearTimeout(timer);
-          worker.removeEventListener("statechange",onState);
-          reject(new Error("Genesis service worker became redundant."));
-        }
-      };
-      worker.addEventListener("statechange",onState);
-    });
+  async function getUsableWorker(registration){
+    // Prefer an already-active worker. A freshly deployed service worker may be
+    // installing/waiting while an older, compatible worker is still active.
+    // Blocking on the new worker is what caused the "activation timed out"
+    // screen on GitHub Pages.
+    if(registration.active && registration.active.state === "activated"){
+      return registration.active;
+    }
+
+    // navigator.serviceWorker.ready resolves once this origin has an active SW.
+    // It is much more reliable than waiting on a snapshot of registration.installing.
+    let readyReg = null;
+    try{
+      readyReg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("Genesis service worker activation timed out.")),15000))
+      ]);
+    }catch(err){
+      // One last check in case activation completed on the same tick as timeout.
+      if(registration.active && registration.active.state === "activated") return registration.active;
+      throw err;
+    }
+
+    const worker = readyReg?.active || registration.active;
+    if(worker && worker.state === "activated") return worker;
+    throw new Error("Genesis service worker did not become active.");
   }
 
-  async function waitForLatestActive(registration){
-    // An older active worker can still exist while a freshly uploaded build is
-    // installing. Waiting for the newest worker avoids mixing two controller
-    // versions during a heavy page load.
-    const newer = registration.installing || registration.waiting;
-    if(newer) await waitForWorkerActivated(newer);
-    if(registration.active) return registration.active;
-    return waitForWorkerActivated(registration.installing || registration.waiting);
-  }
-
-  function waitForPageController(timeoutMs=12000){
-    if(navigator.serviceWorker.controller) return Promise.resolve(navigator.serviceWorker.controller);
+  async function waitForControllerBriefly(timeoutMs=2500){
+    if(navigator.serviceWorker.controller) return navigator.serviceWorker.controller;
     return new Promise((resolve)=>{
       const timer=setTimeout(()=>{
         navigator.serviceWorker.removeEventListener("controllerchange",onChange);
@@ -73,7 +68,7 @@
         navigator.serviceWorker.removeEventListener("controllerchange",onChange);
         resolve(navigator.serviceWorker.controller || null);
       };
-      navigator.serviceWorker.addEventListener("controllerchange",onChange,{once:true});
+      navigator.serviceWorker.addEventListener("controllerchange",onChange);
     });
   }
 
@@ -96,18 +91,37 @@
         if(!window.$scramjetController?.Controller) throw new Error("prism.api.js did not load.");
         if(!window.LibcurlTransport) throw new Error("libby.js did not load.");
 
+        // Keep a stable service-worker URL. updateViaCache:"none" already tells
+        // the browser/GitHub Pages to re-check the script, and a changing query
+        // string can create awkward update races with an older controlled tab.
         const swUrl = new URL("servy.js", BASE_URL);
-        swUrl.searchParams.set("build",BUILD_ID);
-        const registration = await navigator.serviceWorker.register(swUrl.href,{
+        const swOptions = {
           scope: BASE_URL.pathname,
           type:"classic",
           updateViaCache:"none"
-        });
-        try{ await registration.update(); }catch{}
-        const sw = await waitForLatestActive(registration);
-        await navigator.serviceWorker.ready;
-        await waitForPageController();
+        };
+
+        let registration = await navigator.serviceWorker.register(swUrl.href,swOptions);
+        let sw;
+        try{
+          sw = await getUsableWorker(registration);
+        }catch(firstErr){
+          // Auto-repair a stale/broken GitHub Pages registration. Only do this
+          // when there is NO usable active worker, so a working session is never
+          // torn down just because an update is pending.
+          if(registration.active && registration.active.state === "activated") throw firstErr;
+          try{ await registration.unregister(); }catch{}
+          await new Promise(resolve=>setTimeout(resolve,180));
+          registration = await navigator.serviceWorker.register(swUrl.href,swOptions);
+          sw = await getUsableWorker(registration);
+        }
+
+        await waitForControllerBriefly();
         this.serviceWorker = sw;
+
+        // Once startup is healthy, quietly check for a newer deployed worker.
+        // Do not wait for it: the active worker is already enough to browse.
+        setTimeout(()=>{ try{ registration.update().catch(()=>{}); }catch{} },250);
 
         const Transport = window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
         const transport = new Transport({
