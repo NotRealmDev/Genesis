@@ -105,6 +105,32 @@ var $scramjetController;
     }
     const controllers=[];
     function n(event){const url=new URL(event.request.url);return controllers.some(c=>url.pathname.startsWith(c.prefix));}
+
+    async function notifyClient(clientId,message,url){
+      if(!clientId)return;
+      try{
+        const client=await self.clients.get(clientId);
+        if(client)client.postMessage({$genesisProxyError:{message,url}});
+      }catch{}
+    }
+
+    function escapeHtml(value){
+      return String(value||'').replace(/[&<>"']/g,(char)=>({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+      })[char]);
+    }
+
+    function proxyErrorResponse(message,url){
+      const safeMessage=escapeHtml(message);
+      const safeUrl=escapeHtml(url);
+      const payload=JSON.stringify({message:String(message||''),url:String(url||'')}).replace(/</g,'\\u003c');
+      const body='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Genesis connection error</title><style>html,body{margin:0;height:100%;background:#17171d;color:#fff;font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}.wrap{padding:18px;white-space:pre-wrap;word-break:break-word}.muted{opacity:.6;font-size:12px;margin-bottom:8px}</style></head><body><div class="wrap"><div class="muted">Genesis transport error</div>'+safeMessage+(safeUrl?'<div class="muted" style="margin-top:12px">'+safeUrl+'</div>':'')+'</div><script>try{parent.postMessage({$genesisProxyError:'+payload+'},location.origin)}catch(e){}<\/script></body></html>';
+      return new Response(body,{
+        status:502,
+        headers:{'content-type':'text/html; charset=utf-8','cache-control':'no-store'}
+      });
+    }
+
     async function a(event){
       try{
         const url=new URL(event.request.url);
@@ -139,7 +165,13 @@ var $scramjetController;
         return new Response(response.body,{status:response.status,statusText:response.statusText,headers:response.headers});
       }catch(err){
         console.error('Service Worker error:',err);
-        return new Response('Genesis upstream request failed: '+(err?.message||String(err)),{
+        const message=err?.message||String(err);
+        const clientId=event.clientId||event.resultingClientId;
+        notifyClient(clientId,message,event.request.url).catch(()=>{});
+        if(event.request.destination==='document'||event.request.destination==='iframe'){
+          return proxyErrorResponse(message,event.request.url);
+        }
+        return new Response('Genesis upstream request failed: '+message,{
           status:502,
           headers:{'content-type':'text/plain; charset=utf-8','cache-control':'no-store'}
         });

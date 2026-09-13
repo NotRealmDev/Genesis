@@ -1,6 +1,9 @@
 (function(){
-  const WISP_URL = "wss://formative.icu/lively/";
-  const BUILD_ID = "2026-09-13-brave-recovery-r5";
+  const DEFAULT_WISP_URLS = [
+    "wss://formative.icu/lively/",
+    "wss://wisp.mercurywork.shop/"
+  ];
+  const BUILD_ID = "2026-09-13-wisp-failover-r6";
   const KEY = "b75f9583b6d8fdc8b1e918a938878cb8d86e2f59817590301085b885cb0b89f8";
 
   const currentScript = document.currentScript;
@@ -12,6 +15,7 @@
     [20,16,4],
     [12,10,3]
   ];
+  const PROXY_ERROR_PATTERN = /Genesis upstream request failed|Internal Service Worker Error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
 
   const codec = {
     encode(value){
@@ -39,6 +43,28 @@
       promise,
       new Promise((_,reject)=>{ timer=setTimeout(()=>reject(new Error(message)),timeoutMs); })
     ]).finally(()=>clearTimeout(timer));
+  }
+
+  function normalizeWispUrl(value){
+    try{
+      const parsed=new URL(String(value||"").trim());
+      if(parsed.protocol!=="wss:" && parsed.protocol!=="ws:") return "";
+      if(!parsed.pathname.endsWith("/")) parsed.pathname += "/";
+      return parsed.href;
+    }catch{return "";}
+  }
+
+  function getWispUrls(){
+    const urls=[];
+    try{
+      const custom=normalizeWispUrl(localStorage.getItem("genesisWispUrl"));
+      if(custom) urls.push(custom);
+    }catch{}
+    for(const value of DEFAULT_WISP_URLS){
+      const normalized=normalizeWispUrl(value);
+      if(normalized && !urls.includes(normalized)) urls.push(normalized);
+    }
+    return urls;
   }
 
   function waitForActivated(worker,timeoutMs=7000){
@@ -103,28 +129,34 @@
     }
   }
 
-  async function createTransport(){
+  async function createTransport(wispUrls,startIndex=0){
     const Transport=window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
     let lastError=null;
+    if(!wispUrls.length) throw new Error("Genesis has no valid Wisp transport endpoints configured.");
 
-    for(let i=0;i<TRANSPORT_PROFILES.length;i++){
-      const connections=TRANSPORT_PROFILES[i];
-      const transport=new Transport({
-        websocket:WISP_URL,
-        transport:"wisp",
-        connections
-      });
-      try{
-        await withTimeout(
-          transport.init(),
-          18000,
-          "The Genesis transport could not start."
-        );
-        return {transport,connections};
-      }catch(err){
-        lastError=err;
-        await disposeTransport(transport);
-        if(i<TRANSPORT_PROFILES.length-1) await delay(250*(i+1));
+    for(let offset=0;offset<wispUrls.length;offset++){
+      const wispIndex=(startIndex+offset)%wispUrls.length;
+      const websocket=wispUrls[wispIndex];
+
+      for(let profileIndex=0;profileIndex<TRANSPORT_PROFILES.length;profileIndex++){
+        const connections=TRANSPORT_PROFILES[profileIndex];
+        const transport=new Transport({
+          websocket,
+          transport:"wisp",
+          connections
+        });
+        try{
+          await withTimeout(
+            transport.init(),
+            18000,
+            "The Genesis transport could not start at "+websocket
+          );
+          return {transport,connections,websocket,wispIndex};
+        }catch(err){
+          lastError=err;
+          await disposeTransport(transport);
+          if(profileIndex<TRANSPORT_PROFILES.length-1) await delay(180*(profileIndex+1));
+        }
       }
     }
 
@@ -141,9 +173,35 @@
     readyPromise:null,
     recoveryPromise:null,
     controllerChangeHandler:null,
+    proxyErrorMessageHandler:null,
     lastRecoveryReason:"",
+    wispUrls:getWispUrls(),
+    wispIndex:0,
+    activeWisp:"",
+    frameRecoveryState:new WeakMap(),
     codec,
-    wisp:WISP_URL,
+
+    get wisp(){
+      return this.activeWisp || this.wispUrls[this.wispIndex] || "";
+    },
+
+    refreshWispUrls(){
+      const previous=this.activeWisp;
+      this.wispUrls=getWispUrls();
+      if(previous){
+        const index=this.wispUrls.indexOf(previous);
+        if(index>=0) this.wispIndex=index;
+      }
+      if(this.wispIndex>=this.wispUrls.length) this.wispIndex=0;
+      return this.wispUrls;
+    },
+
+    rotateWisp(){
+      this.refreshWispUrls();
+      if(this.wispUrls.length>1) this.wispIndex=(this.wispIndex+1)%this.wispUrls.length;
+      this.activeWisp=this.wispUrls[this.wispIndex]||"";
+      return this.activeWisp;
+    },
 
     bindControllerRecovery(){
       if(this.controllerChangeHandler) return;
@@ -162,6 +220,94 @@
         }
       };
       navigator.serviceWorker.addEventListener("controllerchange",this.controllerChangeHandler);
+    },
+
+    readFrameProxyFailure(element){
+      try{
+        const text=(element?.contentDocument?.body?.innerText||"").trim();
+        if(text && PROXY_ERROR_PATTERN.test(text)) return text.slice(0,700);
+      }catch{}
+      return "";
+    },
+
+    findFrameForSource(source){
+      if(!source) return null;
+      for(const frame of document.querySelectorAll("iframe")){
+        try{ if(frame.contentWindow===source) return frame; }catch{}
+      }
+      return null;
+    },
+
+    async autoRecoverFrame(element,message){
+      if(!element || /(?:^|\/)browser-tab\.html$/i.test(location.pathname)) return;
+      if(element.id!=="browserFrame") return;
+
+      let state=this.frameRecoveryState.get(element);
+      if(!state){
+        state={attempts:0,recovering:false};
+        this.frameRecoveryState.set(element,state);
+      }
+      if(state.recovering) return;
+      if(state.attempts>=Math.max(2,this.wispUrls.length)){
+        const status=document.getElementById("browserStatus");
+        if(status) status.textContent="Proxy transport could not reach this page after failover";
+        return;
+      }
+
+      const target=(document.getElementById("browserAddress")?.value||"").trim();
+      if(!target || target==="os://home") return;
+
+      state.recovering=true;
+      state.attempts++;
+      const status=document.getElementById("browserStatus");
+      if(status) status.textContent="Connection failed · switching Genesis transport…";
+
+      try{
+        const freshFrame=await this.recoverFrame(element,"upstream connection failure: "+message,{rotateWisp:true});
+        if(status) status.textContent="Transport switched · retrying page…";
+        if(typeof window.browserNavigate === "function"){
+          await Promise.resolve(window.browserNavigate(target,false,false,{forceProxy:true}));
+        }else if(freshFrame?.go){
+          freshFrame.go(target);
+        }
+      }catch(err){
+        console.error("Genesis automatic transport failover failed:",err);
+        if(status) status.textContent="Genesis transport repair failed · "+(err?.message||String(err));
+      }finally{
+        state.recovering=false;
+      }
+    },
+
+    bindFrameRecovery(element){
+      if(!element || element.__genesisRecoveryBound) return;
+      element.__genesisRecoveryBound=true;
+      const state={attempts:0,recovering:false};
+      this.frameRecoveryState.set(element,state);
+
+      element.addEventListener("load",()=>{
+        if(/(?:^|\/)browser-tab\.html$/i.test(location.pathname)) return;
+        const failure=this.readFrameProxyFailure(element);
+        const current=this.frameRecoveryState.get(element)||state;
+        if(failure){
+          this.autoRecoverFrame(element,failure).catch(err=>console.error("Genesis frame recovery error:",err));
+          return;
+        }
+        if(!current.recovering && String(element.src||"").includes(assetPath("prism/"))) current.attempts=0;
+      });
+    },
+
+    bindProxyErrorMessages(){
+      if(this.proxyErrorMessageHandler) return;
+      this.proxyErrorMessageHandler=(event)=>{
+        if(event.origin!==location.origin) return;
+        const payload=event.data?.$genesisProxyError;
+        if(!payload || typeof payload!=="object") return;
+        if(/(?:^|\/)browser-tab\.html$/i.test(location.pathname)) return;
+        const frame=this.findFrameForSource(event.source);
+        if(!frame) return;
+        this.autoRecoverFrame(frame,payload.message||"Genesis upstream connection failed").catch(err=>console.error("Genesis proxy error recovery failed:",err));
+      };
+      window.addEventListener("message",this.proxyErrorMessageHandler);
     },
 
     async init(){
@@ -187,10 +333,14 @@
         const sw=await selectUsableWorker(registration);
         this.serviceWorker=sw;
         this.bindControllerRecovery();
+        this.bindProxyErrorMessages();
+        this.refreshWispUrls();
 
-        const transportResult=await createTransport();
+        const transportResult=await createTransport(this.wispUrls,this.wispIndex);
         this.transport=transportResult.transport;
         this.transportProfile=transportResult.connections;
+        this.wispIndex=transportResult.wispIndex;
+        this.activeWisp=transportResult.websocket;
 
         const api=window.$scramjetController;
         api.config.prefix=assetPath("prism/");
@@ -226,12 +376,14 @@
       return this.readyPromise;
     },
 
-    async recover(reason="manual recovery"){
+    async recover(reason="manual recovery",options={}){
       if(this.recoveryPromise) return this.recoveryPromise;
 
       this.recoveryPromise=(async()=>{
         this.lastRecoveryReason=String(reason||"manual recovery");
         const oldTransport=this.transport;
+
+        if(options.rotateWisp) this.rotateWisp();
 
         this.controller=null;
         this.transport=null;
@@ -256,6 +408,7 @@
 
     async createFrame(element,options={}){
       const controller=await this.init();
+      this.bindFrameRecovery(element);
       if(options.fresh) element.__genesisPrismFrame=null;
       if(element.__genesisPrismFrame) return element.__genesisPrismFrame;
       const frame=controller.createFrame(element);
@@ -263,8 +416,8 @@
       return frame;
     },
 
-    async recoverFrame(element,reason="frame recovery"){
-      await this.recover(reason);
+    async recoverFrame(element,reason="frame recovery",options={}){
+      await this.recover(reason,options);
       element.__genesisPrismFrame=null;
       return this.createFrame(element,{fresh:true});
     },
@@ -288,6 +441,9 @@
         controlled:!!navigator.serviceWorker?.controller,
         transport:!!this.transport,
         transportProfile:this.transportProfile ? [...this.transportProfile] : null,
+        wisp:this.wisp,
+        wispIndex:this.wispIndex,
+        wispCount:this.wispUrls.length,
         controller:!!this.controller,
         recovering:!!this.recoveryPromise,
         healthy:this.healthy(),
