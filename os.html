@@ -398,6 +398,15 @@ button{color:inherit}
   cursor:pointer;
 }
 .browser-profile option{background:#0d111a;color:#fff}
+.browser-profile-fixed{
+  padding:0 13px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  min-width:72px;
+  cursor:default;
+  user-select:none;
+}
 .browser-open-card{
   position:absolute;
   inset:0;
@@ -1604,11 +1613,7 @@ function browserHTML(){
         <input id="browserAddress" class="browser-address" value="os://home" spellcheck="false" autocomplete="off" placeholder="Search or enter a website">
         <button class="browser-go" id="browserGo" title="Go">→</button>
       </div>
-      <select class="browser-profile" id="browserProfile" title="Browser profile / search provider">
-        <option value="brave">Brave</option>
-        <option value="google" selected>Google</option>
-        <option value="edge">Edge</option>
-      </select>
+      <div class="browser-profile browser-profile-fixed" id="browserProfile" title="Brave Search">Brave</div>
       <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Inside OS</button>
       <button class="nav-btn" id="browserExternal" title="Open current page in a normal tab">↗</button>
     </div>
@@ -1628,7 +1633,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Use <b>Brave</b>, <b>Google</b>, or <b>Edge</b> as your search profile. Links are kept inside the OS whenever the embedded page allows it.
+            Search or enter a website above. Genesis now uses <b>Brave Search</b> only. Links stay inside the OS whenever the embedded page supports it.
           </p>
         </div>
       </div>
@@ -1649,11 +1654,14 @@ const browserState={
   history:["os://home"],
   index:0,
   mode:"proxy",
-  profile:localStorage.getItem("genesisBrowserProfile")||"google",
+  profile:"brave",
   currentExternal:"",
   prismFrame:null,
   prismError:"",
-  loadTimer:null
+  loadTimer:null,
+  settleTimer:null,
+  recoveryTimer:null,
+  recoveredUrls:new Set()
 };
 
 async function ensureGenesisPrism(win){
@@ -1690,14 +1698,7 @@ function initBrowser(win){
   const frame=win.querySelector("#browserFrame");
   const status=win.querySelector("#browserStatus");
 
-  if(profile){
-    profile.value=browserState.profile;
-    profile.onchange=()=>{
-      browserState.profile=profile.value;
-      localStorage.setItem("genesisBrowserProfile",browserState.profile);
-      status.textContent=`${profile.options[profile.selectedIndex].text} profile selected`;
-    };
-  }
+  if(profile) profile.textContent="Brave";
 
   go.onclick=()=>browserNavigate(address.value,true,true);
   address.addEventListener("keydown",e=>{
@@ -1745,10 +1746,17 @@ function initBrowser(win){
 
   frame.addEventListener("load",()=>{
     if(browserState.loadTimer){clearTimeout(browserState.loadTimer);browserState.loadTimer=null;}
+    if(browserState.settleTimer){clearTimeout(browserState.settleTimer);browserState.settleTimer=null;}
+    if(browserState.recoveryTimer){clearTimeout(browserState.recoveryTimer);browserState.recoveryTimer=null;}
     const current=browserState.history[browserState.index];
     if(browserState.mode==="proxy" && current && current!=="os://home"){
-      status.textContent="Loaded · "+current;
+      status.textContent="Page connected · finishing scripts and images…";
       repairEmbeddedPage(win);
+      browserState.settleTimer=setTimeout(()=>{
+        if(browserState.history[browserState.index]===current)
+          status.textContent="Loaded · "+current;
+      },2200);
+      scheduleCompatibilityRecovery(win,current);
     }
   });
 
@@ -1757,10 +1765,7 @@ function initBrowser(win){
 }
 
 function browserSearchURL(query){
-  const q=encodeURIComponent(query);
-  if(browserState.profile==="brave") return "https://search.brave.com/search?q="+q;
-  if(browserState.profile==="edge") return "https://www.bing.com/search?q="+q;
-  return "https://www.google.com/search?q="+q;
+  return "https://search.brave.com/search?q="+encodeURIComponent(query);
 }
 
 function normalizeURL(raw){
@@ -1812,73 +1817,73 @@ function repairEmbeddedPage(win){
   const frame=win?.querySelector("#browserFrame");
   if(!frame) return;
 
-  let doc, pageWin;
+  let doc;
+  try{ doc=frame.contentDocument; if(!doc) return; }catch{ return; }
+
+  // Do NOT walk/mutate every image or observe the entire DOM. Large SPAs
+  // (especially YouTube) continuously rebuild their page and the old repair
+  // observer could keep the main thread busy enough to leave skeleton cards.
+  // We only normalize existing new-tab targets once, then fix future clicks
+  // at event time with constant work.
   try{
-    doc=frame.contentDocument;
-    pageWin=frame.contentWindow;
-    if(!doc || !pageWin) return;
-  }catch{
-    return;
-  }
-
-  const repairNode=(root)=>{
-    if(!root?.querySelectorAll) return;
-
-    const links=[];
-    if(root.matches?.("a")) links.push(root);
-    links.push(...root.querySelectorAll("a[target],area[target]"));
-    links.forEach(a=>{
-      const target=(a.getAttribute("target")||"").toLowerCase();
-      if(target==="_blank" || target==="_new") a.setAttribute("target","_self");
-    });
-
-    const forms=[];
-    if(root.matches?.("form")) forms.push(root);
-    forms.push(...root.querySelectorAll("form[target]"));
-    forms.forEach(form=>{
-      const target=(form.getAttribute("target")||"").toLowerCase();
-      if(target==="_blank" || target==="_new") form.setAttribute("target","_self");
-    });
-
-    const images=[];
-    if(root.matches?.("img")) images.push(root);
-    images.push(...root.querySelectorAll("img"));
-    images.forEach(img=>{
-      img.loading="eager";
-      img.decoding="async";
-      const src=(img.getAttribute("src")||"").trim();
-      const lazy=img.getAttribute("data-src")||img.getAttribute("data-lazy-src")||img.getAttribute("data-original");
-      const lazySet=img.getAttribute("data-srcset")||img.getAttribute("data-lazy-srcset");
-      if((!src || src==="about:blank" || /^data:image\/(?:gif|png);base64,R0lGOD/i.test(src)) && lazy){
-        img.setAttribute("src",lazy);
-      }
-      if(!img.getAttribute("srcset") && lazySet) img.setAttribute("srcset",lazySet);
-    });
-  };
-
-  repairNode(doc.documentElement);
-
-  if(!doc.__genesisRepairObserver){
-    try{
-      const observer=new pageWin.MutationObserver(records=>{
-        for(const record of records){
-          for(const node of record.addedNodes){
-            if(node?.nodeType===1) repairNode(node);
-          }
-        }
-      });
-      observer.observe(doc.documentElement,{childList:true,subtree:true});
-      doc.__genesisRepairObserver=observer;
-    }catch{}
-  }
+    doc.querySelectorAll("a[target='_blank'],a[target='_new'],area[target='_blank'],area[target='_new']")
+      .forEach(a=>a.setAttribute("target","_self"));
+    doc.querySelectorAll("form[target='_blank'],form[target='_new']")
+      .forEach(f=>f.setAttribute("target","_self"));
+  }catch{}
 
   if(!doc.__genesisSameTabHandler){
     doc.addEventListener("click",event=>{
-      const a=event.target?.closest?.("a[target='_blank'],a[target='_new'],area[target='_blank'],area[target='_new']");
-      if(a) a.setAttribute("target","_self");
+      const a=event.target?.closest?.("a,area");
+      if(!a) return;
+      const target=(a.getAttribute("target")||"").toLowerCase();
+      if(target==="_blank" || target==="_new") a.setAttribute("target","_self");
+    },true);
+    doc.addEventListener("submit",event=>{
+      const form=event.target;
+      if(!form?.getAttribute) return;
+      const target=(form.getAttribute("target")||"").toLowerCase();
+      if(target==="_blank" || target==="_new") form.setAttribute("target","_self");
     },true);
     doc.__genesisSameTabHandler=true;
   }
+}
+
+function scheduleCompatibilityRecovery(win,url){
+  if(browserState.recoveryTimer) clearTimeout(browserState.recoveryTimer);
+  browserState.recoveryTimer=setTimeout(()=>{
+    if(browserState.history[browserState.index]!==url || browserState.mode!=="proxy") return;
+    const frame=win?.querySelector("#browserFrame");
+    const status=win?.querySelector("#browserStatus");
+    if(!frame) return;
+
+    let doc;
+    try{ doc=frame.contentDocument; }catch{return;}
+    if(!doc) return;
+
+    let host="";
+    try{host=new URL(url).hostname.toLowerCase();}catch{}
+
+    // YouTube is a very heavy SPA. If its shell loaded but the actual feed
+    // still has no videos after a generous wait, do one clean retry. Never
+    // loop forever; one retry is enough to recover transient Wisp/curl misses.
+    if(host==="youtube.com" || host.endsWith(".youtube.com")){
+      const hasVideoContent=!!doc.querySelector(
+        "ytd-rich-item-renderer a#thumbnail, ytd-video-renderer a#thumbnail, #movie_player video, ytd-watch-flexy #movie_player"
+      );
+      if(!hasVideoContent && !browserState.recoveredUrls.has(url)){
+        browserState.recoveredUrls.add(url);
+        if(status) status.textContent="YouTube shell loaded but assets stalled · retrying once…";
+        setTimeout(async()=>{
+          if(browserState.history[browserState.index]!==url) return;
+          try{
+            const prismFrame=await ensureGenesisPrism(win);
+            prismFrame.reload();
+          }catch{}
+        },350);
+      }
+    }
+  },12000);
 }
 
 function showPrismError(message){
@@ -1916,6 +1921,8 @@ async function browserNavigate(raw,push,fromUser=false){
 
   addr.value=url;
   card.classList.remove("show");
+  if(browserState.settleTimer){clearTimeout(browserState.settleTimer);browserState.settleTimer=null;}
+  if(browserState.recoveryTimer){clearTimeout(browserState.recoveryTimer);browserState.recoveryTimer=null;}
 
   if(url==="os://home"){
     frame.style.display="none";
@@ -1941,8 +1948,8 @@ async function browserNavigate(raw,push,fromUser=false){
     status.textContent="Loading · "+url;
     if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
     browserState.loadTimer=setTimeout(()=>{
-      if(status) status.textContent="Still loading · this site may block embedded browsing or use unsupported page features";
-    },12000);
+      if(status) status.textContent="Still loading assets · waiting for the site to finish…";
+    },18000);
     prismFrame.go(url);
   }catch(err){
     showPrismError(err?.message||String(err));

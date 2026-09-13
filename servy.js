@@ -89,7 +89,7 @@ var $scramjetController;
         const controller=controllers.find(c=>url.pathname.startsWith(c.prefix));
         if(!controller)return fetch(event.request);
         const client=await self.clients.get(event.clientId);
-        const response=await controller.rpc.call('request',{
+        const payload={
           rawUrl:event.request.url,
           rawReferrer:event.request.referrer,
           destination:event.request.destination,
@@ -102,7 +102,20 @@ var $scramjetController;
           initialHeaders:[...event.request.headers],
           rawClientUrl:client?client.url:void 0,
           clientId:event.clientId||event.resultingClientId
-        }, event.request.body instanceof ReadableStream || event.request.body instanceof ArrayBuffer ? [event.request.body] : void 0);
+        };
+        const transfer=event.request.body instanceof ReadableStream || event.request.body instanceof ArrayBuffer ? [event.request.body] : void 0;
+        let response;
+        try{
+          response=await controller.rpc.call('request',payload,transfer);
+        }catch(firstErr){
+          const method=(event.request.method||'GET').toUpperCase();
+          if(method!=='GET' && method!=='HEAD') throw firstErr;
+          // A heavy page can briefly lose one multiplexed request. Retrying
+          // only idempotent requests once is enough to recover missing JS/CSS
+          // or images without replaying form submissions.
+          await new Promise(resolve=>setTimeout(resolve,120));
+          response=await controller.rpc.call('request',payload);
+        }
         return new Response(response.body,{status:response.status,statusText:response.statusText,headers:response.headers});
       }catch(err){
         console.error('Service Worker error:',err);

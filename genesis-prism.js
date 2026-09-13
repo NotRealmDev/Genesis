@@ -1,5 +1,6 @@
 (function(){
   const WISP_URL = "wss://formative.icu/lively/";
+  const BUILD_ID = "2026-09-13-brave-full-load-r2";
   const KEY = "b75f9583b6d8fdc8b1e918a938878cb8d86e2f59817590301085b885cb0b89f8";
 
   const currentScript = document.currentScript;
@@ -27,13 +28,14 @@
     }
   };
 
-  function waitForActive(registration){
-    if(registration.active) return Promise.resolve(registration.active);
-    const worker = registration.installing || registration.waiting;
+  function waitForWorkerActivated(worker, timeoutMs=20000){
     if(!worker) return Promise.reject(new Error("Genesis service worker did not install."));
     if(worker.state === "activated") return Promise.resolve(worker);
     return new Promise((resolve,reject)=>{
-      const timer=setTimeout(()=>reject(new Error("Genesis service worker activation timed out.")),15000);
+      const timer=setTimeout(()=>{
+        worker.removeEventListener("statechange",onState);
+        reject(new Error("Genesis service worker activation timed out."));
+      },timeoutMs);
       const onState=()=>{
         if(worker.state === "activated"){
           clearTimeout(timer);
@@ -46,6 +48,32 @@
         }
       };
       worker.addEventListener("statechange",onState);
+    });
+  }
+
+  async function waitForLatestActive(registration){
+    // An older active worker can still exist while a freshly uploaded build is
+    // installing. Waiting for the newest worker avoids mixing two controller
+    // versions during a heavy page load.
+    const newer = registration.installing || registration.waiting;
+    if(newer) await waitForWorkerActivated(newer);
+    if(registration.active) return registration.active;
+    return waitForWorkerActivated(registration.installing || registration.waiting);
+  }
+
+  function waitForPageController(timeoutMs=12000){
+    if(navigator.serviceWorker.controller) return Promise.resolve(navigator.serviceWorker.controller);
+    return new Promise((resolve)=>{
+      const timer=setTimeout(()=>{
+        navigator.serviceWorker.removeEventListener("controllerchange",onChange);
+        resolve(navigator.serviceWorker.controller || null);
+      },timeoutMs);
+      const onChange=()=>{
+        clearTimeout(timer);
+        navigator.serviceWorker.removeEventListener("controllerchange",onChange);
+        resolve(navigator.serviceWorker.controller || null);
+      };
+      navigator.serviceWorker.addEventListener("controllerchange",onChange,{once:true});
     });
   }
 
@@ -68,16 +96,27 @@
         if(!window.$scramjetController?.Controller) throw new Error("prism.api.js did not load.");
         if(!window.LibcurlTransport) throw new Error("libby.js did not load.");
 
-        const registration = await navigator.serviceWorker.register(assetUrl("servy.js"),{
+        const swUrl = new URL("servy.js", BASE_URL);
+        swUrl.searchParams.set("build",BUILD_ID);
+        const registration = await navigator.serviceWorker.register(swUrl.href,{
           scope: BASE_URL.pathname,
           type:"classic",
           updateViaCache:"none"
         });
-        const sw = await waitForActive(registration);
+        try{ await registration.update(); }catch{}
+        const sw = await waitForLatestActive(registration);
+        await navigator.serviceWorker.ready;
+        await waitForPageController();
         this.serviceWorker = sw;
 
         const Transport = window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
-        const transport = new Transport({wisp:WISP_URL});
+        const transport = new Transport({
+          websocket:WISP_URL,
+          transport:"wisp",
+          // Heavy SPAs open many assets at once. A little more per-host
+          // headroom keeps images/scripts from sitting in the curl queue.
+          connections:[64,56,10]
+        });
         await transport.init();
         this.transport = transport;
 
