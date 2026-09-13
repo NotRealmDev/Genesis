@@ -1,8 +1,11 @@
 (function(){
   const WISP_URL = "wss://formative.icu/lively/";
-  const SITE_BASE = new URL("./", location.href);
-  const sitePath = (name) => new URL(name, SITE_BASE).pathname;
   const KEY = "b75f9583b6d8fdc8b1e918a938878cb8d86e2f59817590301085b885cb0b89f8";
+
+  const currentScript = document.currentScript;
+  const BASE_URL = new URL("./", currentScript?.src || location.href);
+  const assetUrl = (name) => new URL(name, BASE_URL).href;
+  const assetPath = (name) => new URL(name, BASE_URL).pathname;
 
   const codec = {
     encode(value){
@@ -61,11 +64,12 @@
       this.readyPromise = (async()=>{
         if(!window.isSecureContext) throw new Error("Prism requires HTTPS (or localhost).");
         if(!("serviceWorker" in navigator)) throw new Error("Service workers are not supported in this browser.");
-        if(!window.$scramjet) throw new Error(window.__genesisPrismScriptError || "prism.js did not load or your browser rejected its JavaScript syntax.");
-        if(!window.$scramjetController?.Controller) throw new Error(window.__genesisPrismScriptError || "prism.api.js did not load.");
-        if(!window.LibcurlTransport) throw new Error(window.__genesisPrismScriptError || "libby.js did not load.");
+        if(!window.$scramjet) throw new Error("prism.js did not load.");
+        if(!window.$scramjetController?.Controller) throw new Error("prism.api.js did not load.");
+        if(!window.LibcurlTransport) throw new Error("libby.js did not load.");
 
-        const registration = await navigator.serviceWorker.register(sitePath("servy.js"),{
+        const registration = await navigator.serviceWorker.register(assetUrl("servy.js"),{
+          scope: BASE_URL.pathname,
           type:"classic",
           updateViaCache:"none"
         });
@@ -78,10 +82,10 @@
         this.transport = transport;
 
         const api = window.$scramjetController;
-        api.config.prefix = sitePath("prism/");
-        api.config.scramjetPath = sitePath("prism/prism.js");
-        api.config.injectPath = sitePath("prism/prism.inject.js");
-        api.config.wasmPath = sitePath("prism/prism.wasm");
+        api.config.prefix = assetPath("prism/");
+        api.config.scramjetPath = assetPath("prism.js");
+        api.config.injectPath = assetPath("prism.inject.js");
+        api.config.wasmPath = assetPath("prism.wasm");
         api.config.codec.encode = codec.encode;
         api.config.codec.decode = codec.decode;
 
