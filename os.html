@@ -509,7 +509,7 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="favicon.png">
 <script src="supabase-config.js"></script>
-<script src="proxy-config.js"></script>
+<script src="proxy-config.js?v=proxy2"></script>
 <script src="genesis-announcements.js" defer></script>
 </head>
 <body>
@@ -1608,7 +1608,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Genesis starts in <b>Proxy</b> mode. Public websites load through your Genesis Proxy Worker and stay inside this window. You can switch to <b>New Tab</b> mode whenever you want.
+            Search or enter a website above. Genesis starts in <b>Proxy</b> mode. Searches use <b>Bing</b> because Google commonly blocks shared proxy traffic with CAPTCHA challenges. You can switch to <b>New Tab</b> mode whenever you want.
           </p>
         </div>
       </div>
@@ -1706,16 +1706,38 @@ function normalizeURL(raw){
     (!raw.includes(".") && !/^localhost(?::\d+)?(?:\/|$)/i.test(raw));
 
   if(looksLikeSearch){
-    return "https://www.google.com/search?q="+encodeURIComponent(raw);
+    return "https://www.bing.com/search?q="+encodeURIComponent(raw);
   }
 
   return "https://"+raw;
 }
 
 
+
+function rewriteProxySearchURL(url){
+  try{
+    const u=new URL(url);
+
+    const host=u.hostname.toLowerCase().replace(/^www\./,"");
+    const isGoogleSearch =
+      (host==="google.com" || host.endsWith(".google.com")) &&
+      u.pathname==="/search";
+
+    if(isGoogleSearch){
+      const q=u.searchParams.get("q") || "";
+      return "https://www.bing.com/search?q="+encodeURIComponent(q);
+    }
+  }catch{}
+
+  return url;
+}
+
 function genesisProxyEndpoint(){
-  const endpoint=String(window.GENESIS_PROXY?.endpoint||"").trim().replace(/\/+$/,"");
-  if(!endpoint || endpoint.includes("PASTE_YOUR_WORKER_URL_HERE")) return "";
+  const fallback="https://genesis-proxy.bernye-eugene7.workers.dev";
+  const configured=String(window.GENESIS_PROXY?.endpoint||"").trim().replace(/\/+$/,"");
+  const endpoint=(!configured || configured.includes("PASTE_YOUR_WORKER_URL_HERE"))
+    ? fallback
+    : configured;
   return endpoint;
 }
 
@@ -1810,6 +1832,9 @@ function browserNavigate(raw,push,fromUser=false){
   if(browserState.mode==="tab"){
     openBrowserTab(url);
   }else{
+    url=rewriteProxySearchURL(url);
+    address.value=url;
+
     const proxyURL=genesisProxyURL(url);
     if(!proxyURL){
       showProxySetupNeeded();
@@ -1843,7 +1868,8 @@ function browserReload(){
   }else{
     const frame=win.querySelector("#browserFrame");
     const status=win.querySelector("#browserStatus");
-    const proxyURL=genesisProxyURL(current);
+    const safeCurrent=rewriteProxySearchURL(current);
+    const proxyURL=genesisProxyURL(safeCurrent);
 
     if(!proxyURL){
       showProxySetupNeeded();
