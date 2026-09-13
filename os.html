@@ -83,7 +83,7 @@ button{color:inherit}
 
 .player{height:100%;display:flex;flex-direction:column;background:#020305}.player-toolbar{height:50px;display:flex;align-items:center;gap:9px;padding:7px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}.player-toolbar .os-btn{padding:7px 11px}.player-name{flex:1;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-stage{position:relative;flex:1;min-height:0;background:#000}.player-frame{display:block;width:100%;height:100%;border:0;background:#000}.loader{position:absolute;inset:0;display:grid;place-items:center;background:#05070b;z-index:2;pointer-events:none;transition:.35s}.loader.hidden{opacity:0}.loader-inner{text-align:center;color:var(--muted);font-size:12px}.spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#fff;animation:spin .7s linear infinite;margin:0 auto 12px}@keyframes spin{to{transform:rotate(360deg)}}
 
-.browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{height:56px;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:24px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none}.browser-stage{position:relative;flex:1;min-height:0;background:#fff}.browser-frame{display:block;width:100%;height:100%;border:0;background:#fff}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{font-size:72px;font-weight:900;letter-spacing:-7px}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}
+.browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{min-height:56px;height:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px;flex:none}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1;min-width:160px}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:25px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.browser-stage{position:relative;flex:1;min-height:0;background:#070a11}.browser-frame{display:block;width:100%;height:100%;border:0;background:#070a11}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{font-size:72px;font-weight:900;letter-spacing:-7px}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}
 
 .music{
   min-height:100%;
@@ -431,10 +431,29 @@ button{color:inherit}
 }
 .browser-open-card h3{margin:0 0 8px;font-size:24px}
 .browser-open-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
-.browser-open-card button{
-  margin-top:18px;padding:11px 16px;border-radius:13px;
-  border:1px solid rgba(255,255,255,.11);
+.browser-open-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:9px;margin-top:18px}
+.browser-open-card button,.browser-open-card a{
+  padding:11px 16px;border-radius:13px;
+  border:1px solid rgba(255,255,255,.11);text-decoration:none;
   background:rgba(255,255,255,.08);color:#fff;cursor:pointer
+}
+.browser-open-card a{background:hsla(var(--accent),72%,55%,.34)}
+.browser-open-card button:hover,.browser-open-card a:hover{background:rgba(255,255,255,.15)}
+.browser-shortcuts{display:flex;justify-content:center;flex-wrap:wrap;gap:9px;margin-top:18px}
+.browser-shortcuts button{border:1px solid rgba(255,255,255,.1);border-radius:999px;background:rgba(255,255,255,.06);color:#fff;padding:8px 12px;cursor:pointer}
+.browser-shortcuts button:hover{background:rgba(255,255,255,.12)}
+
+@media (max-width:720px){
+  .browser-toolbar{flex-wrap:wrap;gap:6px;padding:7px}
+  .browser-toolbar .address-wrap{order:2;flex:0 0 100%}
+  .browser-address{height:36px}
+  .browser-go{top:4px}
+}
+@media (max-width:520px){
+  #browserForward,#browserHomeBtn,#browserProfile{display:none}
+  .browser-mode{margin-left:auto}
+  .browser-open-card{padding:20px}
+  .browser-open-card h3{font-size:20px}
 }
 
 
@@ -1434,6 +1453,23 @@ function openApp(appId){
 }
 
 function closeWindow(appId,win){
+  if(appId==="browser"){
+    browserState.navigationId++;
+    if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
+    if(browserState.settleTimer) clearTimeout(browserState.settleTimer);
+    Object.assign(browserState,{
+      history:["os://home"],
+      index:0,
+      mode:"proxy",
+      currentExternal:"",
+      prismFrame:null,
+      prismError:"",
+      loadTimer:null,
+      settleTimer:null,
+      frameMode:"home",
+      currentRoute:null
+    });
+  }
   win.classList.add("closing");
   setTimeout(()=>{
     win.remove();
@@ -1624,8 +1660,10 @@ function browserHTML(){
       <iframe
         id="browserFrame"
         class="browser-frame"
+        title="Genesis browser"
         referrerpolicy="strict-origin-when-cross-origin"
-        allow="fullscreen; autoplay; clipboard-read; clipboard-write; gamepad; pointer-lock"
+        allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock"
+        allowfullscreen
       ></iframe>
 
       <div class="browser-home" id="browserHome">
@@ -1633,8 +1671,13 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Genesis now uses <b>Brave Search</b> only. Links stay inside the OS whenever the embedded page supports it.
+            Search or enter a website above. Genesis uses <b>Brave Search</b> and automatically chooses the most compatible way to open each address.
           </p>
+          <div class="browser-shortcuts">
+            <button type="button" data-browser-url="https://www.youtube.com">YouTube</button>
+            <button type="button" data-browser-url="https://www.tiktok.com">TikTok</button>
+            <button type="button" data-browser-url="https://play.geforcenow.com">GeForce NOW</button>
+          </div>
         </div>
       </div>
 
@@ -1643,7 +1686,10 @@ function browserHTML(){
           <div class="globe">◎</div>
           <h3 id="browserOpenTitle">Opened in browser tab</h3>
           <p id="browserOpenText"></p>
-          <button id="browserOpenAgain" type="button">Open Again</button>
+          <div class="browser-open-actions">
+            <a id="browserOpenDirect" href="#" target="_blank" rel="noopener">Open Website</a>
+            <button id="browserTryInside" type="button">Try Inside OS</button>
+          </div>
         </div>
       </div>
     </div>
@@ -1660,8 +1706,9 @@ const browserState={
   prismError:"",
   loadTimer:null,
   settleTimer:null,
-  recoveryTimer:null,
-  recoveredUrls:new Set()
+  frameMode:"home",
+  currentRoute:null,
+  navigationId:0
 };
 
 async function ensureGenesisPrism(win){
@@ -1669,9 +1716,11 @@ async function ensureGenesisPrism(win){
   const status=win?.querySelector("#browserStatus");
   const frame=win?.querySelector("#browserFrame");
   if(!frame) throw new Error("Browser frame is missing.");
+  if(openWindows.browser!==win) throw new Error("Browser window was closed.");
   try{
     if(status) status.textContent="Starting Prism + Libcurl proxy…";
     const prismFrame=await window.GenesisPrism.createFrame(frame);
+    if(openWindows.browser!==win) throw new Error("Browser window was closed.");
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
     if(status) status.textContent="Ready · Prism proxy connected";
@@ -1694,7 +1743,8 @@ function initBrowser(win){
   const external=win.querySelector("#browserExternal");
   const mode=win.querySelector("#browserMode");
   const profile=win.querySelector("#browserProfile");
-  const again=win.querySelector("#browserOpenAgain");
+  const openDirect=win.querySelector("#browserOpenDirect");
+  const tryInside=win.querySelector("#browserTryInside");
   const frame=win.querySelector("#browserFrame");
   const status=win.querySelector("#browserStatus");
 
@@ -1739,29 +1789,45 @@ function initBrowser(win){
       :(browserState.prismError?"Embedded browser unavailable · "+browserState.prismError:"Inside OS mode · ready");
   };
 
-  again.onclick=()=>{
+  openDirect.onclick=()=>{
     const current=browserState.history[browserState.index];
-    if(current && current!=="os://home")openBrowserTab(current);
+    if(current && current!=="os://home") openDirect.href=current;
   };
+
+  tryInside.onclick=()=>{
+    const current=browserState.history[browserState.index];
+    if(current && current!=="os://home"){
+      browserState.mode="proxy";
+      mode.textContent="Inside OS";
+      mode.classList.add("embed");
+      browserNavigate(current,false,true,{forceProxy:true});
+    }
+  };
+
+  win.querySelectorAll("[data-browser-url]").forEach(button=>{
+    button.addEventListener("click",()=>browserNavigate(button.dataset.browserUrl,true,true));
+  });
 
   frame.addEventListener("load",()=>{
     if(browserState.loadTimer){clearTimeout(browserState.loadTimer);browserState.loadTimer=null;}
     if(browserState.settleTimer){clearTimeout(browserState.settleTimer);browserState.settleTimer=null;}
-    if(browserState.recoveryTimer){clearTimeout(browserState.recoveryTimer);browserState.recoveryTimer=null;}
     const current=browserState.history[browserState.index];
-    if(browserState.mode==="proxy" && current && current!=="os://home"){
+    if(browserState.frameMode==="official"){
+      status.textContent=(browserState.currentRoute?.label||"Media")+" player ready";
+      return;
+    }
+    if(browserState.frameMode==="proxy" && current && current!=="os://home"){
       status.textContent="Page connected · finishing scripts and images…";
       repairEmbeddedPage(win);
       browserState.settleTimer=setTimeout(()=>{
         if(browserState.history[browserState.index]===current)
           status.textContent="Loaded · "+current;
       },2200);
-      scheduleCompatibilityRecovery(win,current);
     }
   });
 
   updateBrowserButtons();
-  ensureGenesisPrism(win).catch(()=>{});
+  status.textContent="Ready · Brave Search";
 }
 
 function browserSearchURL(query){
@@ -1781,44 +1847,152 @@ function normalizeURL(raw){
   return "https://"+raw;
 }
 
-function openBrowserTab(url){
+function getCompatibilityRoute(url){
+  let parsed;
+  try{ parsed=new URL(url); }catch{return{kind:"proxy"};}
+
+  const host=parsed.hostname.toLowerCase().replace(/^www\./,"");
+  const path=parsed.pathname;
+
+  if(host==="youtu.be" || host==="youtube.com" || host.endsWith(".youtube.com") || host==="youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com")){
+    let videoId="";
+    if(host==="youtu.be") videoId=path.split("/").filter(Boolean)[0]||"";
+    else if(path==="/watch") videoId=parsed.searchParams.get("v")||"";
+    else{
+      const match=path.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{6,})/);
+      if(match) videoId=match[1];
+    }
+
+    if(/^[A-Za-z0-9_-]{6,}$/.test(videoId)){
+      const origin=encodeURIComponent(location.origin);
+      return{
+        kind:"official",
+        label:"YouTube",
+        src:`https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&origin=${origin}`
+      };
+    }
+
+    const playlist=parsed.searchParams.get("list");
+    if(playlist && /^[A-Za-z0-9_-]+$/.test(playlist)){
+      const origin=encodeURIComponent(location.origin);
+      return{
+        kind:"official",
+        label:"YouTube playlist",
+        src:`https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(playlist)}&playsinline=1&origin=${origin}`
+      };
+    }
+
+    return{
+      kind:"external",
+      label:"YouTube",
+      title:"Open YouTube",
+      message:"YouTube's full browsing interface works best as a normal webpage. Paste a video or playlist link into Genesis to play it inside the OS.",
+      canTryInside:true
+    };
+  }
+
+  if(host==="tiktok.com" || host.endsWith(".tiktok.com")){
+    const match=path.match(/\/(?:video|player\/v1)\/(\d+)/);
+    if(match){
+      return{
+        kind:"official",
+        label:"TikTok",
+        src:`https://www.tiktok.com/player/v1/${match[1]}?controls=1&description=1&music_info=1&rel=1`
+      };
+    }
+    return{
+      kind:"external",
+      label:"TikTok",
+      title:"Open TikTok",
+      message:"TikTok's full feed works best as a normal webpage. Paste a TikTok post link into Genesis to play that post inside the OS.",
+      canTryInside:true
+    };
+  }
+
+  const geforceNow = host==="play.geforcenow.com" || host.endsWith(".geforcenow.com") ||
+    ((host==="nvidia.com" || host.endsWith(".nvidia.com")) && path.toLowerCase().includes("geforce-now"));
+  if(geforceNow){
+    return{
+      kind:"external",
+      label:"GeForce NOW",
+      title:"Launch GeForce NOW",
+      message:"GeForce NOW needs a full browser tab for game streaming, sign-in, keyboard, mouse, and controller access.",
+      canTryInside:false
+    };
+  }
+
+  return{kind:"proxy",label:host};
+}
+
+function loadOfficialEmbed(win,url,route){
+  const frame=win.querySelector("#browserFrame");
+  const home=win.querySelector("#browserHome");
+  const card=win.querySelector("#browserOpenCard");
+  const status=win.querySelector("#browserStatus");
+
+  browserState.frameMode="official";
+  browserState.currentRoute=route;
+  home.classList.add("hidden");
+  card.classList.remove("show");
+  frame.style.display="block";
+  frame.title=route.label+" player";
+  status.textContent="Loading "+route.label+" player…";
+  frame.src=route.src;
+}
+
+function openBrowserTab(url,route={}){
   const win=openWindows.browser;
   const status=win?.querySelector("#browserStatus");
-  const opened=window.open(url,"_blank","noopener,noreferrer");
+  let opened=null;
+  try{
+    opened=window.open(url,"_blank");
+    if(opened) opened.opener=null;
+  }catch{}
 
   if(opened){
     browserState.currentExternal=url;
-    if(status)status.textContent="Opened "+url+" in a normal browser tab";
-    showBrowserOpenCard(url);
+    if(status)status.textContent="Opened "+(route.label||url)+" in a normal browser tab";
+    showBrowserOpenCard(url,false,route);
   }else{
-    if(status)status.textContent="Popup blocked · use the ↗ button to open the page";
-    showBrowserOpenCard(url,true);
+    if(status)status.textContent="Select Open Website to continue";
+    showBrowserOpenCard(url,true,route);
   }
 }
 
-function showBrowserOpenCard(url,blocked=false){
+function showBrowserOpenCard(url,blocked=false,route={}){
   const win=openWindows.browser;if(!win)return;
   const frame=win.querySelector("#browserFrame");
   const home=win.querySelector("#browserHome");
   const card=win.querySelector("#browserOpenCard");
   const title=win.querySelector("#browserOpenTitle");
   const text=win.querySelector("#browserOpenText");
+  const direct=win.querySelector("#browserOpenDirect");
+  const tryInside=win.querySelector("#browserTryInside");
 
+  browserState.frameMode="external";
+  browserState.currentRoute=route;
   frame.style.display="none";
   home.classList.add("hidden");
   card.classList.add("show");
-  title.textContent=blocked?"Browser blocked the new tab":"Opened in browser tab";
-  text.textContent=blocked
-    ?"Your browser blocked the automatic tab. Click Open Again to open "+url+"."
-    :url+" is open as a normal webpage.";
+  title.textContent=route.title || (blocked?"Open in a browser tab":"Opened in browser tab");
+  text.textContent=route.message || (blocked
+    ?"Select Open Website to open this address in a normal browser tab."
+    :url+" is open as a normal webpage.");
+  direct.href=url;
+  direct.textContent=route.label?"Open "+route.label:"Open Website";
+  tryInside.style.display=route.canTryInside===false?"none":"";
 }
 
 function repairEmbeddedPage(win){
   const frame=win?.querySelector("#browserFrame");
   if(!frame) return;
 
-  let doc;
-  try{ doc=frame.contentDocument; if(!doc) return; }catch{ return; }
+  let doc,pageWin;
+  try{
+    doc=frame.contentDocument;
+    pageWin=frame.contentWindow;
+    if(!doc || !pageWin) return;
+  }catch{ return; }
 
   // Do NOT walk/mutate every image or observe the entire DOM. Large SPAs
   // (especially YouTube) continuously rebuild their page and the old repair
@@ -1847,43 +2021,24 @@ function repairEmbeddedPage(win){
     },true);
     doc.__genesisSameTabHandler=true;
   }
-}
 
-function scheduleCompatibilityRecovery(win,url){
-  if(browserState.recoveryTimer) clearTimeout(browserState.recoveryTimer);
-  browserState.recoveryTimer=setTimeout(()=>{
-    if(browserState.history[browserState.index]!==url || browserState.mode!=="proxy") return;
-    const frame=win?.querySelector("#browserFrame");
-    const status=win?.querySelector("#browserStatus");
-    if(!frame) return;
-
-    let doc;
-    try{ doc=frame.contentDocument; }catch{return;}
-    if(!doc) return;
-
-    let host="";
-    try{host=new URL(url).hostname.toLowerCase();}catch{}
-
-    // YouTube is a very heavy SPA. If its shell loaded but the actual feed
-    // still has no videos after a generous wait, do one clean retry. Never
-    // loop forever; one retry is enough to recover transient Wisp/curl misses.
-    if(host==="youtube.com" || host.endsWith(".youtube.com")){
-      const hasVideoContent=!!doc.querySelector(
-        "ytd-rich-item-renderer a#thumbnail, ytd-video-renderer a#thumbnail, #movie_player video, ytd-watch-flexy #movie_player"
-      );
-      if(!hasVideoContent && !browserState.recoveredUrls.has(url)){
-        browserState.recoveredUrls.add(url);
-        if(status) status.textContent="YouTube shell loaded but assets stalled · retrying once…";
-        setTimeout(async()=>{
-          if(browserState.history[browserState.index]!==url) return;
-          try{
-            const prismFrame=await ensureGenesisPrism(win);
-            prismFrame.reload();
-          }catch{}
-        },350);
-      }
-    }
-  },12000);
+  // Keep ordinary script-created URL popups in the managed frame. Preserve
+  // empty/about:blank windows because some sign-in and download flows use them
+  // as temporary browser contexts.
+  if(!pageWin.__genesisSameFrameOpen){
+    try{
+      const originalOpen=pageWin.open.bind(pageWin);
+      pageWin.open=function(url,target,features){
+        const value=String(url||"");
+        const targetName=String(target||"_blank").toLowerCase();
+        if(value && value!=="about:blank" && (targetName==="_blank" || targetName==="_new" || targetName==="")){
+          return originalOpen(url,"_self",features);
+        }
+        return originalOpen(url,target,features);
+      };
+      pageWin.__genesisSameFrameOpen=true;
+    }catch{}
+  }
 }
 
 function showPrismError(message){
@@ -1898,16 +2053,23 @@ function showPrismError(message){
   frame.style.display="none";
   home.classList.add("hidden");
   card.classList.add("show");
+  browserState.frameMode="error";
   title.textContent="Embedded browser could not start";
-  text.textContent=message+" You can use External mode for sites that do not load inside the OS.";
+  text.textContent=message+" Open the website normally, or select Try Inside OS to retry.";
+  const current=browserState.history[browserState.index];
+  const direct=win.querySelector("#browserOpenDirect");
+  const tryInside=win.querySelector("#browserTryInside");
+  if(direct && current && current!=="os://home") direct.href=current;
+  if(tryInside) tryInside.style.display="";
   status.textContent="Embedded browser unavailable";
 }
 
-async function browserNavigate(raw,push,fromUser=false){
+async function browserNavigate(raw,push,fromUser=false,options={}){
   const win=openWindows.browser;if(!win)return;
   const url=normalizeURL(raw);
+  const navigationId=++browserState.navigationId;
 
-  if(push){
+  if(push && browserState.history[browserState.index]!==url){
     browserState.history=browserState.history.slice(0,browserState.index+1);
     browserState.history.push(url);
     browserState.index=browserState.history.length-1;
@@ -1922,9 +2084,10 @@ async function browserNavigate(raw,push,fromUser=false){
   addr.value=url;
   card.classList.remove("show");
   if(browserState.settleTimer){clearTimeout(browserState.settleTimer);browserState.settleTimer=null;}
-  if(browserState.recoveryTimer){clearTimeout(browserState.recoveryTimer);browserState.recoveryTimer=null;}
 
   if(url==="os://home"){
+    browserState.frameMode="home";
+    browserState.currentRoute=null;
     frame.style.display="none";
     home.classList.remove("hidden");
     status.textContent=browserState.prismError
@@ -1935,20 +2098,36 @@ async function browserNavigate(raw,push,fromUser=false){
   }
 
   if(browserState.mode==="tab"){
-    openBrowserTab(url);
+    openBrowserTab(url,{label:"website",canTryInside:true});
+    updateBrowserButtons();
+    return;
+  }
+
+  const route=options.forceProxy?{kind:"proxy",label:"website"}:getCompatibilityRoute(url);
+  browserState.currentRoute=route;
+  if(route.kind==="official"){
+    loadOfficialEmbed(win,url,route);
+    updateBrowserButtons();
+    return;
+  }
+  if(route.kind==="external"){
+    openBrowserTab(url,route);
     updateBrowserButtons();
     return;
   }
 
   try{
     const prismFrame=await ensureGenesisPrism(win);
+    if(navigationId!==browserState.navigationId || openWindows.browser!==win) return;
+    browserState.frameMode="proxy";
     home.classList.add("hidden");
     card.classList.remove("show");
     frame.style.display="block";
     status.textContent="Loading · "+url;
     if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
     browserState.loadTimer=setTimeout(()=>{
-      if(status) status.textContent="Still loading assets · waiting for the site to finish…";
+      if(navigationId===browserState.navigationId && status)
+        status.textContent="Still loading assets · waiting for the site to finish…";
     },18000);
     prismFrame.go(url);
   }catch(err){
@@ -1960,6 +2139,7 @@ async function browserNavigate(raw,push,fromUser=false){
 async function browserReload(){
   const win=openWindows.browser;if(!win)return;
   const current=browserState.history[browserState.index];
+  const navigationId=++browserState.navigationId;
   if(current==="os://home"){
     browserNavigate(current,false,false);
     return;
@@ -1970,9 +2150,20 @@ async function browserReload(){
     return;
   }
 
+  if(browserState.frameMode==="official" && browserState.currentRoute?.src){
+    loadOfficialEmbed(win,current,browserState.currentRoute);
+    return;
+  }
+
+  if(browserState.frameMode==="external"){
+    showBrowserOpenCard(current,false,browserState.currentRoute||{});
+    return;
+  }
+
   const status=win.querySelector("#browserStatus");
   try{
     const prismFrame=await ensureGenesisPrism(win);
+    if(navigationId!==browserState.navigationId || openWindows.browser!==win) return;
     status.textContent="Reloading · "+current;
     prismFrame.reload();
   }catch(err){
