@@ -1,0 +1,221 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Genesis Browser</title>
+<style>
+:root{
+  color-scheme:dark;
+  --panel:#0c111b;
+  --border:rgba(255,255,255,.12);
+  --text:#f7f9ff;
+  --muted:rgba(255,255,255,.62);
+  --accent:#4f8cff;
+}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#050811;color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+button,a{font:inherit}
+.shell{height:100%;display:grid;grid-template-rows:42px minmax(0,1fr) 64px;background:#050811}
+.topbar,.footer{display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(12,17,27,.96);border-color:var(--border)}
+.topbar{border-bottom:1px solid var(--border)}
+.brand{font-size:12px;font-weight:750;letter-spacing:.04em;white-space:nowrap}
+.status{min-width:0;flex:1;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}
+.stage{position:relative;min-height:0;background:#070a11}
+#browserFrame{display:block;width:100%;height:100%;border:0;background:#070a11}
+.loading,.error{position:absolute;inset:0;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 50% 35%,rgba(79,140,255,.16),transparent 35%),#070a11;z-index:2;text-align:center}
+.loading.hidden,.error.hidden{display:none}
+.spinner{width:38px;height:38px;margin:0 auto 14px;border-radius:50%;border:3px solid rgba(255,255,255,.13);border-top-color:#fff;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.message{max-width:520px}
+.message h1{font-size:23px;margin:0 0 8px}
+.message p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.error-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:18px}
+.footer{justify-content:space-between;border-top:1px solid var(--border);padding-bottom:max(0px,env(safe-area-inset-bottom))}
+.footer-note{min-width:0;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.button{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 15px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.075);color:#fff;text-decoration:none;cursor:pointer;white-space:nowrap}
+.button:hover{background:rgba(255,255,255,.14)}
+.button.primary{background:rgba(79,140,255,.4);border-color:rgba(112,161,255,.45)}
+@media(max-width:560px){
+  .shell{grid-template-rows:38px minmax(0,1fr) 58px}
+  .topbar,.footer{padding-left:10px;padding-right:10px}
+  .footer-note{display:none}
+  .footer{justify-content:center}
+  .button{min-height:36px;padding:0 12px}
+}
+</style>
+<script>
+(function(){
+  try{
+    const login=JSON.parse(localStorage.getItem("genesisLogin")||"null");
+    if(login?.expires && Date.now()<login.expires) return;
+  }catch{}
+  location.replace("index.html");
+})();
+</script>
+<script src="prism.js" defer></script>
+<script src="prism.api.js" defer></script>
+<script src="libby.js" defer></script>
+<script src="genesis-prism.js" defer></script>
+</head>
+<body>
+<main class="shell">
+  <header class="topbar">
+    <div class="brand">Genesis Browser</div>
+    <div class="status" id="status">Preparing browser…</div>
+  </header>
+
+  <section class="stage">
+    <iframe
+      id="browserFrame"
+      title="Genesis proxy browser"
+      referrerpolicy="strict-origin-when-cross-origin"
+      allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock; microphone; camera; display-capture"
+      allowfullscreen
+    ></iframe>
+
+    <div class="loading" id="loading">
+      <div class="message">
+        <div class="spinner"></div>
+        <p id="loadingText">Starting Genesis Browser…</p>
+      </div>
+    </div>
+
+    <div class="error hidden" id="error">
+      <div class="message">
+        <h1 id="errorTitle">Could not open this page</h1>
+        <p id="errorText"></p>
+        <div class="error-actions">
+          <button class="button primary" id="retry" type="button">Try Again</button>
+          <a class="button" href="os.html">Back to Genesis</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <a class="button primary" href="os.html">← Back to Genesis</a>
+    <div class="footer-note">The page stays inside a dedicated Genesis browser tab.</div>
+    <button class="button" id="reload" type="button">Reload</button>
+  </footer>
+</main>
+
+<script>
+(function(){
+  const TARGET_KEY="genesisBrowserTarget";
+  const LAUNCH_PREFIX="genesisBrowserLaunch:";
+  const frame=document.getElementById("browserFrame");
+  const status=document.getElementById("status");
+  const loading=document.getElementById("loading");
+  const loadingText=document.getElementById("loadingText");
+  const error=document.getElementById("error");
+  const errorText=document.getElementById("errorText");
+  const retry=document.getElementById("retry");
+  const reload=document.getElementById("reload");
+
+  let target="";
+  let prismFrame=null;
+  let started=false;
+  let starting=false;
+  let loadTimer=null;
+
+  function validTarget(value){
+    try{
+      const parsed=new URL(String(value||""));
+      return parsed.protocol==="https:" || parsed.protocol==="http:" ? parsed.href : "";
+    }catch{return"";}
+  }
+
+  function readTarget(){
+    const token=location.hash.slice(1);
+    if(token && /^[A-Za-z0-9_-]{12,80}$/.test(token)){
+      try{
+        const entry=JSON.parse(localStorage.getItem(LAUNCH_PREFIX+token)||"null");
+        if(entry?.expires>Date.now()){
+          const next=validTarget(entry.url);
+          if(next) sessionStorage.setItem(TARGET_KEY,next);
+        }
+      }catch{}
+    }
+
+    if(location.hash) history.replaceState(null,"",location.pathname);
+    try{return validTarget(sessionStorage.getItem(TARGET_KEY));}catch{return"";}
+  }
+
+  function showError(message){
+    clearTimeout(loadTimer);
+    loadTimer=null;
+    loading.classList.add("hidden");
+    errorText.textContent=message;
+    error.classList.remove("hidden");
+    status.textContent="Genesis Browser needs attention";
+  }
+
+  async function start(){
+    if(starting) return;
+    if(!target){
+      showError("This Genesis browser tab has expired. Return to Genesis and open the website again.");
+      return;
+    }
+
+    starting=true;
+    error.classList.add("hidden");
+    loading.classList.remove("hidden");
+    loadingText.textContent="Starting the Genesis proxy…";
+    status.textContent="Starting Prism + Libcurl…";
+
+    try{
+      prismFrame=await window.GenesisPrism.createFrame(frame);
+      started=true;
+      loadingText.textContent="Connecting to the website…";
+      status.textContent="Loading website…";
+      clearTimeout(loadTimer);
+      loadTimer=setTimeout(()=>{
+        showError("The website is taking too long to respond. You can retry or return to Genesis.");
+      },30000);
+      prismFrame.go(target);
+    }catch(err){
+      showError(err?.message||String(err));
+    }finally{
+      starting=false;
+    }
+  }
+
+  frame.addEventListener("load",()=>{
+    if(!started) return;
+    clearTimeout(loadTimer);
+    loadTimer=null;
+    loading.classList.add("hidden");
+    error.classList.add("hidden");
+    status.textContent="Connected · Genesis Browser";
+  });
+
+  retry.addEventListener("click",()=>{
+    if(prismFrame){
+      error.classList.add("hidden");
+      loading.classList.remove("hidden");
+      loadingText.textContent="Retrying website…";
+      status.textContent="Retrying…";
+      clearTimeout(loadTimer);
+      loadTimer=setTimeout(()=>showError("The website still is not responding."),30000);
+      prismFrame.go(target);
+    }else start();
+  });
+
+  reload.addEventListener("click",()=>{
+    if(prismFrame){
+      loading.classList.remove("hidden");
+      loadingText.textContent="Reloading website…";
+      status.textContent="Reloading…";
+      clearTimeout(loadTimer);
+      loadTimer=setTimeout(()=>showError("The website is taking too long to reload."),30000);
+      prismFrame.reload();
+    }else start();
+  });
+
+  target=readTarget();
+  window.addEventListener("DOMContentLoaded",start,{once:true});
+})();
+</script>
+</body>
+</html>
