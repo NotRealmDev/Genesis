@@ -57,6 +57,8 @@ test("Genesis uses Scramjet's native URL codec exactly",()=>{
   assert.equal(context.GenesisPrism.codec.encode(input),encodeURIComponent(input));
   assert.equal(context.GenesisPrism.codec.decode(encodeURIComponent(input)),input);
   assert.doesNotMatch(prismSource,/const KEY\s*=|TextEncoder\(\)\.encode\(value\)|btoa\(out\)/);
+  assert.doesNotThrow(()=>new vm.Script("("+context.GenesisPrism.codec.encode.toString()+")"));
+  assert.doesNotThrow(()=>new vm.Script("("+context.GenesisPrism.codec.decode.toString()+")"));
 });
 
 test("all ordinary addresses use the Scramjet + Wisp route",()=>{

@@ -7,7 +7,7 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-scramjet-runtime-r11";
+  const BUILD_ID = "2026-09-14-scramjet-runtime-r12";
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -23,11 +23,14 @@
   // codecs break URL rewriting on large apps such as YouTube because encoded
   // paths no longer have the shape expected by every Scramjet code path.
   const codec = {
-    encode(value){
+    // Controller serializes these functions into an injected data: script.
+    // Arrow expressions remain valid when Function#toString is embedded as a
+    // property value; object-method syntax does not.
+    encode: (value) => {
       if(!value) return value;
       return encodeURIComponent(value);
     },
-    decode(value){
+    decode: (value) => {
       if(!value) return value;
       return decodeURIComponent(value);
     }
