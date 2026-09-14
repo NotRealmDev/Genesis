@@ -1671,7 +1671,7 @@ function browserHTML(){
           <div class="logo">OS</div>
           <h2>Browser</h2>
           <p>
-            Search or enter a website above. Genesis uses <b>Brave Search</b> and automatically chooses the most compatible way to open each address.
+            Search or enter a website above. Genesis uses <b>Brave Search</b> and loads every website through the same <b>Scramjet + Wisp</b> browser.
           </p>
           <div class="browser-shortcuts">
             <button type="button" data-browser-url="https://www.youtube.com">YouTube</button>
@@ -1718,17 +1718,17 @@ async function ensureGenesisPrism(win){
   if(!frame) throw new Error("Browser frame is missing.");
   if(openWindows.browser!==win) throw new Error("Browser window was closed.");
   try{
-    if(status) status.textContent="Starting Prism + Libcurl proxy…";
+    if(status) status.textContent="Starting Scramjet + Wisp proxy…";
     const prismFrame=await window.GenesisPrism.createFrame(frame);
     if(openWindows.browser!==win) throw new Error("Browser window was closed.");
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
-    if(status) status.textContent="Ready · Prism proxy connected";
+    if(status) status.textContent="Ready · Scramjet proxy connected";
     return prismFrame;
   }catch(err){
     console.error("Genesis Prism failed to start",err);
     browserState.prismError=err?.message||String(err);
-    if(status) status.textContent="Prism proxy unavailable · "+browserState.prismError;
+    if(status) status.textContent="Scramjet proxy unavailable · "+browserState.prismError;
     throw err;
   }
 }
@@ -1854,80 +1854,12 @@ function normalizeURL(raw){
 }
 
 function getCompatibilityRoute(url){
-  let parsed;
-  try{ parsed=new URL(url); }catch{return{kind:"proxy"};}
-
-  const host=parsed.hostname.toLowerCase().replace(/^www\./,"");
-  const path=parsed.pathname;
-
-  if(host==="youtu.be" || host==="youtube.com" || host.endsWith(".youtube.com") || host==="youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com")){
-    let videoId="";
-    if(host==="youtu.be") videoId=path.split("/").filter(Boolean)[0]||"";
-    else if(path==="/watch") videoId=parsed.searchParams.get("v")||"";
-    else{
-      const match=path.match(/^\/(?:shorts|embed|live)\/([A-Za-z0-9_-]{6,})/);
-      if(match) videoId=match[1];
-    }
-
-    if(/^[A-Za-z0-9_-]{6,}$/.test(videoId)){
-      const origin=encodeURIComponent(location.origin);
-      return{
-        kind:"official",
-        label:"YouTube",
-        src:`https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0&origin=${origin}`
-      };
-    }
-
-    const playlist=parsed.searchParams.get("list");
-    if(playlist && /^[A-Za-z0-9_-]+$/.test(playlist)){
-      const origin=encodeURIComponent(location.origin);
-      return{
-        kind:"official",
-        label:"YouTube playlist",
-        src:`https://www.youtube-nocookie.com/embed/videoseries?list=${encodeURIComponent(playlist)}&playsinline=1&origin=${origin}`
-      };
-    }
-
-    return{
-      kind:"popout",
-      label:"YouTube",
-      title:"Open YouTube",
-      message:"YouTube's full browsing interface is opening in a dedicated Genesis tab. Paste a video or playlist link into Genesis to play it inside the OS.",
-      canTryInside:true
-    };
-  }
-
-  if(host==="tiktok.com" || host.endsWith(".tiktok.com")){
-    const match=path.match(/\/(?:video|player\/v1)\/(\d+)/);
-    if(match){
-      return{
-        kind:"official",
-        label:"TikTok",
-        src:`https://www.tiktok.com/player/v1/${match[1]}?controls=1&description=1&music_info=1&rel=1`
-      };
-    }
-    return{
-      kind:"popout",
-      label:"TikTok",
-      title:"Open TikTok",
-      message:"TikTok's full feed is opening in a dedicated Genesis tab. Paste a TikTok post link into Genesis to play that post inside the OS.",
-      canTryInside:true
-    };
-  }
-
-  const geforceNow = host==="play.geforcenow.com" || host.endsWith(".geforcenow.com") ||
-    ((host==="nvidia.com" || host.endsWith(".nvidia.com")) && path.toLowerCase().includes("geforce-now"));
-  if(geforceNow){
-    return{
-      kind:"popout",
-      label:"GeForce NOW",
-      title:"Launch GeForce NOW",
-      message:"Genesis is opening GeForce NOW in a dedicated full-size proxy tab for streaming, sign-in, keyboard, mouse, and controller access.",
-      canTryInside:false
-    };
-  }
-
-  return{kind:"proxy",label:host};
+  let label="website";
+  try{label=new URL(url).hostname.replace(/^www\./,"")||"website";}catch{}
+  // Every normal address follows the same Scramjet + Wisp pipeline. The
+  // dedicated Genesis Tab button remains available when a full-size view is
+  // better, but site-specific direct embeds no longer bypass Scramjet.
+  return{kind:"proxy",label,transport:"wisp"};
 }
 
 function loadOfficialEmbed(win,url,route){
@@ -2110,7 +2042,7 @@ function showPrismError(message){
   home.classList.add("hidden");
   card.classList.add("show");
   browserState.frameMode="error";
-  title.textContent="Embedded browser could not start";
+  title.textContent="Scramjet browser could not start";
   text.textContent=message+" Open it in a Genesis Tab, or select Try Inside OS to retry.";
   const current=browserState.history[browserState.index];
   const direct=win.querySelector("#browserOpenDirect");
@@ -2156,8 +2088,8 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
     frame.style.display="none";
     home.classList.remove("hidden");
     status.textContent=browserState.prismError
-      ?"Genesis Home · Prism proxy unavailable"
-      :"Genesis Home · Prism proxy ready";
+      ?"Genesis Home · Scramjet proxy unavailable"
+      :"Genesis Home · Scramjet proxy ready";
     updateBrowserButtons();
     return;
   }

@@ -18,17 +18,111 @@
   const TARGET_KEY="genesisBrowserTarget",LAUNCH_PREFIX="genesisBrowserLaunch:";
   const PROXY_ERROR_PATTERN=/Genesis upstream request failed|Internal Service Worker Error|Genesis transport error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
   const frame=document.getElementById("browserFrame"),status=document.getElementById("status"),loading=document.getElementById("loading"),loadingText=document.getElementById("loadingText"),error=document.getElementById("error"),errorText=document.getElementById("errorText"),retry=document.getElementById("retry"),repair=document.getElementById("repair"),reload=document.getElementById("reload"),footerNote=document.getElementById("footerNote");
-  let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="";
+  let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,readinessTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="";
 
   function validTarget(value){try{const parsed=new URL(String(value||""));return parsed.protocol==="https:"||parsed.protocol==="http:"?parsed.href:""}catch{return""}}
   function readTarget(){const token=location.hash.slice(1);if(token&&/^[A-Za-z0-9_-]{12,80}$/.test(token)){try{const key=LAUNCH_PREFIX+token,entry=JSON.parse(localStorage.getItem(key)||"null");if(entry?.expires>Date.now()){const next=validTarget(entry.url);if(next)sessionStorage.setItem(TARGET_KEY,next)}localStorage.removeItem(key)}catch{}}if(location.hash)history.replaceState(null,"",location.pathname+location.search);try{return validTarget(sessionStorage.getItem(TARGET_KEY))}catch{return""}}
   function clearLoadTimer(){if(loadTimer)clearTimeout(loadTimer);loadTimer=null}
+  function clearReadinessTimer(){if(readinessTimer)clearTimeout(readinessTimer);readinessTimer=null}
   function setBusy(message,stateText){error.classList.add("hidden");loading.classList.remove("hidden");loadingText.textContent=message;status.textContent=stateText;repair.disabled=recovering;reload.disabled=recovering}
-  function showError(message){clearLoadTimer();loading.classList.add("hidden");errorText.textContent=message;error.classList.remove("hidden");status.textContent="Genesis Browser needs attention";footerNote.textContent="Use Repair & Retry to rebuild the browser connection.";repair.disabled=false;reload.disabled=false}
+  function showError(message){clearLoadTimer();clearReadinessTimer();loading.classList.add("hidden");errorText.textContent=message;error.classList.remove("hidden");status.textContent="Genesis Browser needs attention";footerNote.textContent="Use Repair & Retry to rebuild the browser connection.";repair.disabled=false;reload.disabled=false}
   function readProxyFailure(){try{const text=(frame.contentDocument?.body?.innerText||"").trim();return text&&PROXY_ERROR_PATTERN.test(text)?text.slice(0,700):""}catch{return""}}
   function activeTransportLabel(){try{const info=window.GenesisPrism?.diagnostics?.();if(!info?.wisp)return"";return new URL(info.wisp).hostname}catch{return""}}
+  function targetFamily(){
+    try{
+      const host=new URL(target).hostname.toLowerCase().replace(/^www\./,"");
+      if(host==="youtu.be" || host==="youtube.com" || host.endsWith(".youtube.com")) return "YouTube";
+      if(host==="tiktok.com" || host.endsWith(".tiktok.com")) return "TikTok";
+      if(host==="geforcenow.com" || host.endsWith(".geforcenow.com") || host==="nvidia.com" || host.endsWith(".nvidia.com")) return "GeForce NOW";
+    }catch{}
+    return "";
+  }
+
+  function hasMeaningfulText(doc,selector){
+    try{return [...doc.querySelectorAll(selector)].some(node=>(node.textContent||"").trim().length>1)}catch{return false}
+  }
+
+  function dynamicSiteReady(family){
+    try{
+      const doc=frame.contentDocument;
+      if(!doc?.body) return false;
+      const bodyText=(doc.body.innerText||"").replace(/\s+/g," ").trim();
+      if(/before you continue|accept all|consent|verify you are human|sign in to continue/i.test(bodyText)) return true;
+
+      if(family==="YouTube"){
+        if(doc.querySelector("video[src],video source[src]")) return true;
+        if(hasMeaningfulText(doc,'a#video-title,ytd-video-renderer #video-title,yt-lockup-view-model h3,yt-lockup-view-model a[href*="/watch"],ytd-playlist-renderer #video-title')) return true;
+        return bodyText.length>2200 && !doc.querySelector("ytd-ghost-grid-renderer,[class*='skeleton'],[class*='placeholder']");
+      }
+
+      if(family==="TikTok"){
+        if(doc.querySelector("video[src],video source[src],[data-e2e='recommend-list-item-container']")) return true;
+        if(hasMeaningfulText(doc,'a[href*="/video/"],[data-e2e="browse-video-desc"],[data-e2e="video-desc"]')) return true;
+        return bodyText.length>1800 && !doc.querySelector("[class*='skeleton'],[class*='placeholder']");
+      }
+
+      if(family==="GeForce NOW"){
+        if(doc.querySelector("canvas,video,[role='application']")) return true;
+        return /games|play|library|sign in|log in|membership/i.test(bodyText) && bodyText.length>120;
+      }
+
+      return true;
+    }catch{
+      // If the frame cannot be inspected, do not mistake browser isolation for
+      // a stalled website.
+      return true;
+    }
+  }
+
+  function diagnosticSuffix(){
+    try{
+      const info=window.GenesisPrism?.diagnostics?.();
+      const requests=info?.requests;
+      if(!requests) return "";
+      const parts=[];
+      if(requests.retries) parts.push(requests.retries+" request "+(requests.retries===1?"retry":"retries"));
+      if(requests.failovers) parts.push(requests.failovers+" Wisp "+(requests.failovers===1?"switch":"switches"));
+      if(requests.failed) parts.push(requests.failed+" failed");
+      return parts.length?" Connection report: "+parts.join(", ")+".":"";
+    }catch{return "";}
+  }
+
+  function armDynamicReadiness(id){
+    clearReadinessTimer();
+    const family=targetFamily();
+    if(!family){
+      automaticRecoveries=0;
+      status.textContent="Connected · Genesis Browser";
+      return;
+    }
+
+    status.textContent="Connected · loading "+family+" data…";
+    footerNote.textContent=family+" opened through Scramjet · checking dynamic content.";
+    readinessTimer=setTimeout(()=>{
+      readinessTimer=null;
+      if(id!==navigationId || recovering) return;
+      if(dynamicSiteReady(family)){
+        automaticRecoveries=0;
+        status.textContent=family+" ready · Genesis Browser";
+        footerNote.textContent=family+" dynamic content loaded through Scramjet.";
+        return;
+      }
+
+      if(automaticRecoveries<2){
+        automaticRecoveries++;
+        status.textContent=family+" shell stalled · repairing data requests…";
+        footerNote.textContent="Genesis detected placeholders without live content and is switching Wisp routes.";
+        hardRecover(family+" dynamic content stalled",true,{rotateWisp:true})
+          .catch(err=>showError(err?.message||String(err)));
+        return;
+      }
+
+      showError(family+" opened its page shell, but its live data did not arrive after both automatic repairs."+diagnosticSuffix());
+    },22000);
+  }
+
   function armLoadTimeout(id,timeoutMs=30000){clearLoadTimer();loadTimer=setTimeout(()=>{if(id!==navigationId)return;if(automaticRecoveries<2){automaticRecoveries++;hardRecover("page load timeout",true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))}else{showError("The page stopped responding before it finished loading. Genesis already tried its available connection repairs.")}},timeoutMs)}
-  async function navigateCurrent(message="Connecting to the website…"){const id=++navigationId;setBusy(message,"Loading website…");armLoadTimeout(id);prismFrame.go(target)}
+  async function navigateCurrent(message="Connecting to the website…"){const id=++navigationId;clearReadinessTimer();setBusy(message,"Loading website…");armLoadTimeout(id);prismFrame.go(target)}
   async function start(){if(starting||recovering)return;if(!target){showError("This Genesis browser tab has expired. Return to Genesis and open the website again.");return}starting=true;setBusy("Starting the Genesis browser…","Starting Prism + Libcurl…");try{prismFrame=await window.GenesisPrism.createFrame(frame);started=true;await navigateCurrent()}catch(err){showError(err?.message||String(err))}finally{starting=false}}
 
   async function hardRecover(reason="manual repair",automatic=false,options={}){
@@ -37,6 +131,7 @@
     recovering=true;
     const id=++navigationId;
     clearLoadTimer();
+    clearReadinessTimer();
     setBusy(automatic?"Switching connection and retrying…":"Repairing Genesis Browser…",options.rotateWisp?"Switching Genesis transport…":"Rebuilding Prism + Libcurl…");
     footerNote.textContent=options.rotateWisp?"Trying another Genesis transport…":"Rebuilding the Genesis browser connection…";
     try{
@@ -59,6 +154,7 @@
     if(recovering || text===lastFailure)return;
     lastFailure=text;
     clearLoadTimer();
+    clearReadinessTimer();
     if(automaticRecoveries<2){
       automaticRecoveries++;
       hardRecover("upstream connection failure: "+text,true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)));
@@ -75,10 +171,9 @@
     loading.classList.add("hidden");
     error.classList.add("hidden");
     const transport=activeTransportLabel();
-    status.textContent="Connected · Genesis Browser";
     footerNote.textContent=transport?"Connected through "+transport+".":"Genesis Browser connected successfully.";
-    automaticRecoveries=0;
     lastFailure="";
+    armDynamicReadiness(navigationId);
   });
 
   window.addEventListener("message",event=>{
@@ -93,12 +188,23 @@
     });
   }
 
+  window.addEventListener("genesis:proxy-event",event=>{
+    const detail=event.detail;
+    if(!detail || typeof detail!=="object") return;
+    if(detail.type==="retry"){
+      status.textContent="Retrying a stalled website request…";
+    }else if(detail.type==="failover"){
+      const transport=activeTransportLabel();
+      footerNote.textContent=transport?"Switched to "+transport+" to keep the website loading.":"Switched Wisp route to keep the website loading.";
+    }
+  });
+
   retry.addEventListener("click",()=>{automaticRecoveries=0;lastFailure="";hardRecover("user retry",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))});
   repair.addEventListener("click",()=>{automaticRecoveries=0;lastFailure="";hardRecover("manual repair",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))});
   reload.addEventListener("click",()=>{if(recovering)return;if(prismFrame){const id=++navigationId;lastFailure="";setBusy("Reloading website…","Reloading…");armLoadTimeout(id,30000);try{prismFrame.reload()}catch(err){hardRecover("reload failed",false,{rotateWisp:true}).catch(recoverErr=>showError(recoverErr?.message||err?.message||String(err)))}}else start()});
   window.addEventListener("online",()=>{status.textContent="Connection restored";if(!error.classList.contains("hidden")){automaticRecoveries=0;lastFailure="";hardRecover("network connection restored",true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))}});
   window.addEventListener("offline",()=>{clearLoadTimer();status.textContent="Offline · waiting for connection";footerNote.textContent="Genesis will retry after the browser connection returns."});
-  window.addEventListener("pagehide",clearLoadTimer);
+  window.addEventListener("pagehide",()=>{clearLoadTimer();clearReadinessTimer()});
   target=readTarget();window.addEventListener("DOMContentLoaded",start,{once:true});
 })();
 </script>
