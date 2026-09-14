@@ -43,6 +43,34 @@ async function youtubeHasContent(){
   },null,{timeout:90000});
 }
 
+async function frameSnapshot(){
+  return page.evaluate(()=>{
+    const frame=document.getElementById("target");
+    try{
+      const win=frame?.contentWindow;
+      const doc=frame?.contentDocument;
+      return {
+        src:frame?.getAttribute("src")||"",
+        href:win?.location?.href||"",
+        readyState:doc?.readyState||"",
+        title:doc?.title||"",
+        bodyText:(doc?.body?.innerText||"").slice(0,3000),
+        html:(doc?.documentElement?.outerHTML||"").slice(0,12000),
+        scripts:[...(doc?.scripts||[])].slice(0,25).map(script=>script.src||"[inline]"),
+        globals:{
+          scramjet:typeof win?.$scramjet,
+          controller:typeof win?.$scramjetController,
+          prop:typeof win?.$scramjet$prop,
+          tryset:typeof win?.$scramjet$tryset,
+          rewrite:typeof win?.$scramjet$rewrite
+        }
+      };
+    }catch(error){
+      return {error:error?.message||String(error),src:frame?.getAttribute("src")||""};
+    }
+  });
+}
+
 try{
   await page.goto("http://127.0.0.1:4173/tests/proxy-harness.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>window.proxyHarnessLoaded===true,null,{timeout:30000});
@@ -57,6 +85,10 @@ try{
     return text.includes("Example Domain");
   },null,{timeout:60000});
 
+  const exampleSnapshot=await frameSnapshot();
+  assert.equal(exampleSnapshot.globals.scramjet,"object","Scramjet core was not injected into the proxied document");
+  assert.notEqual(exampleSnapshot.globals.prop,"undefined","Scramjet property hooks were not installed");
+
   await page.evaluate(()=>window.proxyHarness.go("https://www.youtube.com/results?search_query=lofi"));
   try{
     await youtubeHasContent();
@@ -67,12 +99,13 @@ try{
 
   const report=await page.evaluate(()=>window.proxyHarness.report());
   assert.ok(report.diagnostics.healthy);
-  console.log(JSON.stringify({health,diagnostics:report.diagnostics}));
+  console.log(JSON.stringify({health,diagnostics:report.diagnostics,frame:await frameSnapshot()}));
 }catch(error){
   await mkdir(join(root,"test-output"),{recursive:true});
   await page.screenshot({path:join(root,"test-output","proxy-failure.png"),fullPage:true}).catch(()=>{});
   const report=await page.evaluate(()=>window.proxyHarness?.report?.()).catch(()=>null);
-  console.error(JSON.stringify({error:error.message,report,logs:logs.slice(-80)},null,2));
+  const frame=await frameSnapshot().catch(()=>null);
+  console.error(JSON.stringify({error:error.message,report,frame,logs:logs.slice(-160)},null,2));
   throw error;
 }finally{
   await browser.close();

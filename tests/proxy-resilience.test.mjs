@@ -108,3 +108,10 @@ test("browser HTML inline scripts compile",()=>{
     }
   }
 });
+
+
+test("frame recovery clears an old encoded route before rebuilding",()=>{
+  assert.match(prismSource,/async resetFrameElement\(element\)/);
+  assert.match(prismSource,/element\.src="about:blank"/);
+  assert.match(prismSource,/await this\.resetFrameElement\(element\);[\s\S]*?await this\.recover\(reason,options\)/);
+});

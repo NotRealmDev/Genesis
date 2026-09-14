@@ -5,7 +5,7 @@
   const DEFAULT_WISP_URLS = [
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-scramjet-runtime-r9";
+  const BUILD_ID = "2026-09-14-scramjet-runtime-r10";
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -685,7 +685,36 @@
       return frame;
     },
 
+    async resetFrameElement(element){
+      if(!element) throw new Error("Genesis needs an iframe to reset.");
+      element.__genesisPrismFrame=null;
+
+      try{ element.contentWindow?.stop?.(); }catch{}
+      const current=String(element.getAttribute?.("src")||element.src||"");
+      if(current==="about:blank") return;
+
+      await new Promise(resolve=>{
+        let finished=false;
+        const done=()=>{
+          if(finished) return;
+          finished=true;
+          clearTimeout(timer);
+          try{ element.removeEventListener("load",done); }catch{}
+          resolve();
+        };
+        const timer=setTimeout(done,1800);
+        try{
+          element.addEventListener("load",done,{once:true});
+          element.removeAttribute?.("srcdoc");
+          element.src="about:blank";
+        }catch{ done(); }
+      });
+    },
+
     async recoverFrame(element,reason="frame recovery",options={}){
+      // Detach the old proxied document before a new Controller owns this
+      // iframe. Otherwise its already-encoded /prism/ URL can be encoded again.
+      await this.resetFrameElement(element);
       await this.recover(reason,options);
       element.__genesisPrismFrame=null;
       return this.createFrame(element,{fresh:true});
