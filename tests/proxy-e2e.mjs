@@ -28,7 +28,10 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(4173,"127.0.0.1",resolve));
 
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({
+  headless:true,
+  args:["--autoplay-policy=no-user-gesture-required"]
+});
 const page=await browser.newPage();
 const logs=[];
 page.on("console",message=>logs.push(message.type()+": "+message.text()));
@@ -41,6 +44,81 @@ async function youtubeHasContent(){
     const selectors='a#video-title,ytd-video-renderer #video-title,yt-lockup-view-model h3,yt-lockup-view-model a[href*="/watch"]';
     return [...doc.querySelectorAll(selectors)].some(node=>(node.textContent||"").trim().length>1);
   },null,{timeout:90000});
+}
+
+async function acceptYouTubeConsent(){
+  await page.evaluate(()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    if(!doc)return;
+    const buttons=[...doc.querySelectorAll("button,tp-yt-paper-button,input[type=submit]")];
+    const accept=buttons.find(button=>/accept all|i agree|agree|continue/i.test((button.innerText||button.value||button.textContent||"").trim()));
+    accept?.click();
+  });
+}
+
+async function youtubeVideoSnapshot(){
+  return page.evaluate(()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    const video=doc?.querySelector("video");
+    if(!video)return null;
+    const buffered=[];
+    for(let index=0;index<video.buffered.length;index++){
+      buffered.push([video.buffered.start(index),video.buffered.end(index)]);
+    }
+    return {
+      currentTime:video.currentTime,
+      duration:Number.isFinite(video.duration)?video.duration:null,
+      readyState:video.readyState,
+      networkState:video.networkState,
+      paused:video.paused,
+      ended:video.ended,
+      currentSrc:video.currentSrc||video.src||"",
+      buffered,
+      error:video.error?{code:video.error.code,message:video.error.message||""}:null
+    };
+  });
+}
+
+async function waitForYouTubePlayback(){
+  await acceptYouTubeConsent();
+  await page.waitForFunction(()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    const buttons=[...(doc?.querySelectorAll("button,tp-yt-paper-button,input[type=submit]")||[])];
+    const accept=buttons.find(button=>/accept all|i agree|agree|continue/i.test((button.innerText||button.value||button.textContent||"").trim()));
+    accept?.click();
+    return !!doc?.querySelector("video");
+  },null,{timeout:90000});
+  const started=await page.evaluate(async()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    const video=doc?.querySelector("video");
+    if(!video)throw new Error("YouTube did not create a video element");
+    video.muted=true;
+    video.volume=0;
+    video.playsInline=true;
+    let playError="";
+    try{
+      await Promise.race([
+        video.play(),
+        new Promise((_,reject)=>setTimeout(()=>reject(new Error("video.play() timed out")),10000))
+      ]);
+    }catch(error){playError=error?.message||String(error)}
+    return {initialTime:video.currentTime,playError};
+  });
+
+  await page.waitForFunction(initialTime=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    const video=doc?.querySelector("video");
+    if(!video||video.error)return false;
+    if(video.paused){video.muted=true;video.play().catch(()=>{})}
+    return video.readyState>=2 && video.currentTime>=initialTime+1;
+  },started.initialTime,{timeout:90000});
+
+  const snapshot=await youtubeVideoSnapshot();
+  assert.ok(snapshot,"YouTube video element disappeared");
+  assert.equal(snapshot.error,null,"YouTube reported a media error");
+  assert.ok(snapshot.readyState>=2,"YouTube never buffered playable media");
+  assert.ok(snapshot.currentTime>=started.initialTime+1,"YouTube video clock did not advance");
+  return {...snapshot,initialTime:started.initialTime,playError:started.playError};
 }
 
 async function waitForTikTokContent(){
@@ -126,6 +204,19 @@ try{
   const youtube=await frameSnapshot();
   assert.match(youtube.title,/YouTube/i);
 
+  await navigateWithRepair("https://www.youtube.com/watch?v=jNQXAC9IVRw",async()=>{
+    await waitForYouTubePlayback();
+  });
+  const youtubePlayback=await youtubeVideoSnapshot();
+  assert.ok(youtubePlayback?.currentTime>=1,"YouTube video did not make playback progress");
+  assert.equal(youtubePlayback?.error,null,"YouTube playback ended with a media error");
+  const youtubeReport=await page.evaluate(()=>window.proxyHarness.report());
+  const mediaStats=youtubeReport.diagnostics.requests;
+  assert.equal(mediaStats.midSessionFailover,false,"YouTube changed Wisp routes during playback");
+  assert.ok(mediaStats.youtubeMediaRequests>0,"No YouTube media requests reached the transport");
+  assert.ok(mediaStats.youtubeMediaResponses>0,"No YouTube media response reached the player");
+  assert.equal(mediaStats.youtubeMediaInvalidPartialResponses,0,"A 206 media response was missing Content-Range");
+
   await navigateWithRepair("https://www.tiktok.com/explore",waitForTikTokContent);
   const tiktok=await frameSnapshot();
   assert.match(tiktok.href,/tiktok\.com/i);
@@ -140,7 +231,7 @@ try{
     health,
     diagnostics:report.diagnostics,
     sites:{
-      youtube:{title:youtube.title,bodyText:youtube.bodyText.slice(0,600)},
+      youtube:{title:youtube.title,bodyText:youtube.bodyText.slice(0,600),playback:youtubePlayback,mediaStats},
       tiktok:{title:tiktok.title,bodyText:tiktok.bodyText.slice(0,600)},
       geforceNow:{title:geforceNow.title,bodyText:geforceNow.bodyText.slice(0,600)}
     }
@@ -150,7 +241,8 @@ try{
   await page.screenshot({path:join(root,"test-output","proxy-failure.png"),fullPage:true}).catch(()=>{});
   const report=await page.evaluate(()=>window.proxyHarness?.report?.()).catch(()=>null);
   const frame=await frameSnapshot().catch(()=>null);
-  console.error(JSON.stringify({error:error.message,report,frame,logs:logs.slice(-160)},null,2));
+  const video=await youtubeVideoSnapshot().catch(()=>null);
+  console.error(JSON.stringify({error:error.message,report,frame,video,logs:logs.slice(-160)},null,2));
   throw error;
 }finally{
   await browser.close();

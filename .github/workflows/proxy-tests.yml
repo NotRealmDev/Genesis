@@ -32,7 +32,7 @@ jobs:
 
   live-proxy:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -42,7 +42,7 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Test Wisp route, Scramjet rewrite, and YouTube dynamic results
+      - name: Test Scramjet sites and real YouTube playback
         run: node tests/proxy-e2e.mjs
       - name: Upload failure screenshot
         if: failure()

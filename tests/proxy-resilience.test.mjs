@@ -7,6 +7,7 @@ const prismSource=readFileSync(new URL("../genesis-prism.js",import.meta.url),"u
 const browserTab=readFileSync(new URL("../browser-tab.html",import.meta.url),"utf8");
 const os=readFileSync(new URL("../os.html",import.meta.url),"utf8");
 const serviceWorker=readFileSync(new URL("../servy.js",import.meta.url),"utf8");
+const prismApi=readFileSync(new URL("../prism.api.js",import.meta.url),"utf8");
 
 function loadPrismShell(){
   const store=new Map();
@@ -77,11 +78,18 @@ test("all ordinary addresses use the Scramjet + Wisp route",()=>{
   assert.match(os,/loads every website through the same <b>Scramjet \+ Wisp<\/b> browser/);
 });
 
-test("transport follows official Scramjet construction and adds safe recovery",()=>{
+test("transport keeps one Wisp route for signed media and retries safely",()=>{
   assert.match(prismSource,/new this\.Transport\(\{wisp:websocket\}\)/);
   assert.match(prismSource,/class ResilientWispTransport/);
   assert.match(prismSource,/mayReplayRequest/);
-  assert.match(prismSource,/switchEndpoint/);
+  assert.match(prismSource,/route:"same-wisp"/);
+  assert.match(prismSource,/routePolicy:"stable-session"/);
+  assert.match(prismSource,/midSessionFailover:false/);
+  assert.match(prismSource,/youtubeMediaPartialResponses/);
+  assert.match(prismSource,/youtubeMediaInvalidPartialResponses/);
+  assert.match(prismSource,/rawHeaderValue\(response\?\.headers,"content-range"\)/);
+  assert.doesNotMatch(prismSource,/async switchEndpoint\(/);
+  assert.doesNotMatch(prismSource,/Number\(status\)===403/);
   assert.match(prismSource,/healthCheck/);
   assert.doesNotMatch(prismSource,/connections:\s*\[/);
 });
@@ -94,10 +102,35 @@ test("dedicated Genesis tab detects dynamic placeholder stalls",()=>{
   assert.match(browserTab,/history\.replaceState\(null,"",location\.pathname\+location\.search\)/);
 });
 
-test("service worker has bounded request RPC and safe read retry",()=>{
+test("service worker never duplicates media streams or escalates segment failures",()=>{
   assert.match(serviceWorker,/Genesis RPC timed out/);
-  assert.match(serviceWorker,/method!=='GET' && method!=='HEAD'/);
+  assert.match(serviceWorker,/function isMediaRequest\(request\)/);
+  assert.match(serviceWorker,/isMediaRequest\(event\.request\)\) throw firstErr/);
+  assert.match(serviceWorker,/function shouldEscalateFailure\(request\)/);
+  assert.match(serviceWorker,/if\(shouldEscalateFailure\(event\.request\)\)/);
   assert.match(serviceWorker,/status:502/);
+});
+
+test("About Blank launchers retain Genesis controls and media permissions",()=>{
+  for(const source of [browserTab,os]){
+    assert.match(source,/window\.open\("about:blank","_blank"\)/);
+    assert.match(source,/fullscreen; autoplay; encrypted-media; picture-in-picture/);
+  }
+  assert.match(browserTab,/Back to Genesis/);
+  assert.match(browserTab,/id="aboutBlank"/);
+  assert.match(os,/id="browserAboutBlank"/);
+});
+
+test("browser sessions persist cookies, origin storage, and the last open page",()=>{
+  assert.match(prismApi,/indexedDB\.open\('__scramjet_controller'/);
+  assert.match(prismApi,/async persistCookies\(\)/);
+  assert.match(prismSource,/async persistSession\(\)/);
+  assert.match(prismSource,/sessionPersistence:"indexeddb-cookies-and-origin-storage"/);
+  assert.match(browserTab,/genesisBrowserLastTarget/);
+  assert.match(browserTab,/function syncTarget\(\)/);
+  assert.match(os,/genesisBrowserStateV2/);
+  assert.match(os,/restoreOnStartup:savedBrowserState\.open/);
+  assert.match(os,/if\(browserState\.restoreOnStartup\)setTimeout\(\(\)=>openApp\("browser"\),80\)/);
 });
 
 test("browser HTML inline scripts compile",()=>{

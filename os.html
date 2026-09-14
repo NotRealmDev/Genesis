@@ -1454,13 +1454,12 @@ function openApp(appId){
 
 function closeWindow(appId,win){
   if(appId==="browser"){
+    captureBrowserLocation(win);
+    persistBrowserState(false);
     browserState.navigationId++;
     if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
     if(browserState.settleTimer) clearTimeout(browserState.settleTimer);
     Object.assign(browserState,{
-      history:["os://home"],
-      index:0,
-      mode:"proxy",
       currentPopout:"",
       prismFrame:null,
       prismError:"",
@@ -1651,6 +1650,7 @@ function browserHTML(){
       </div>
       <div class="browser-profile browser-profile-fixed" id="browserProfile" title="Brave Search">Brave</div>
       <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Inside OS</button>
+      <button class="nav-btn" id="browserAboutBlank" title="Open Genesis in About Blank">□</button>
       <button class="nav-btn" id="browserExternal" title="Open current page in a Genesis tab">↗</button>
     </div>
 
@@ -1696,9 +1696,32 @@ function browserHTML(){
   </div>`;
 }
 
+const GENESIS_BROWSER_STATE_KEY="genesisBrowserStateV2";
+
+function validSavedBrowserAddress(value){
+  if(value==="os://home")return value;
+  try{
+    const parsed=new URL(String(value||""));
+    return parsed.protocol==="https:"||parsed.protocol==="http:"?parsed.href:"";
+  }catch{return "";}
+}
+
+function loadSavedBrowserState(){
+  try{
+    const saved=JSON.parse(localStorage.getItem(GENESIS_BROWSER_STATE_KEY)||"null");
+    const history=Array.isArray(saved?.history)
+      ?saved.history.map(validSavedBrowserAddress).filter(Boolean).slice(-30)
+      :[];
+    if(!history.length)history.push("os://home");
+    const index=Math.max(0,Math.min(history.length-1,Number(saved?.index)||0));
+    return{history,index,open:saved?.open===true};
+  }catch{return{history:["os://home"],index:0,open:false};}
+}
+
+const savedBrowserState=loadSavedBrowserState();
 const browserState={
-  history:["os://home"],
-  index:0,
+  history:savedBrowserState.history,
+  index:savedBrowserState.index,
   mode:"proxy",
   profile:"brave",
   currentPopout:"",
@@ -1708,8 +1731,54 @@ const browserState={
   settleTimer:null,
   frameMode:"home",
   currentRoute:null,
-  navigationId:0
+  navigationId:0,
+  restoreOnStartup:savedBrowserState.open
 };
+
+function persistBrowserState(open=openWindows.browser instanceof Element){
+  try{
+    localStorage.setItem(GENESIS_BROWSER_STATE_KEY,JSON.stringify({
+      history:browserState.history.slice(-30),
+      index:Math.max(0,Math.min(browserState.history.length-1,browserState.index)),
+      open:!!open,
+      updatedAt:Date.now()
+    }));
+  }catch{}
+}
+
+function decodeGenesisProxyAddress(value){
+  const direct=validSavedBrowserAddress(value);
+  if(direct && new URL(direct).origin!==location.origin)return direct;
+  try{
+    const parsed=new URL(String(value||""),location.href);
+    const marker="/prism/";
+    const markerIndex=parsed.pathname.indexOf(marker);
+    if(markerIndex<0)return "";
+    const routed=parsed.pathname.slice(markerIndex+marker.length);
+    const split=routed.indexOf("/");
+    if(split<0)return "";
+    return validSavedBrowserAddress(decodeURIComponent(routed.slice(split+1)));
+  }catch{return "";}
+}
+
+function captureBrowserLocation(win=openWindows.browser){
+  if(!win||browserState.frameMode!=="proxy")return "";
+  const frame=win.querySelector("#browserFrame");
+  let value="";
+  try{value=decodeGenesisProxyAddress(frame?.contentWindow?.location?.href||frame?.src||"");}catch{}
+  if(!value)return "";
+  const current=browserState.history[browserState.index];
+  if(current!==value){
+    browserState.history=browserState.history.slice(0,browserState.index+1);
+    browserState.history.push(value);
+    browserState.index=browserState.history.length-1;
+    const address=win.querySelector("#browserAddress");
+    if(address)address.value=value;
+    updateBrowserButtons();
+  }
+  persistBrowserState(true);
+  return value;
+}
 
 async function ensureGenesisPrism(win){
   if(browserState.prismFrame) return browserState.prismFrame;
@@ -1741,6 +1810,7 @@ function initBrowser(win){
   const reload=win.querySelector("#browserReload");
   const home=win.querySelector("#browserHomeBtn");
   const external=win.querySelector("#browserExternal");
+  const aboutBlank=win.querySelector("#browserAboutBlank");
   const mode=win.querySelector("#browserMode");
   const profile=win.querySelector("#browserProfile");
   const openDirect=win.querySelector("#browserOpenDirect");
@@ -1749,6 +1819,8 @@ function initBrowser(win){
   const status=win.querySelector("#browserStatus");
 
   if(profile) profile.textContent="Brave";
+  const restoredAddress=browserState.history[browserState.index]||"os://home";
+  address.value=restoredAddress;
 
   go.onclick=()=>browserNavigate(address.value,true,true);
   address.addEventListener("keydown",e=>{
@@ -1780,6 +1852,13 @@ function initBrowser(win){
     if(current && current!=="os://home") openGenesisTab(current);
   };
 
+  aboutBlank.onclick=()=>{
+    const opened=openAboutBlankShell(new URL("os.html",location.href).href,"Genesis");
+    status.textContent=opened
+      ?"Genesis opened in About Blank"
+      :"About Blank was blocked · allow this popup and try again";
+  };
+
   mode.onclick=()=>{
     browserState.mode=browserState.mode==="tab"?"proxy":"tab";
     mode.textContent=browserState.mode==="tab"?"Genesis Tab":"Inside OS";
@@ -1793,7 +1872,13 @@ function initBrowser(win){
     const current=browserState.history[browserState.index];
     if(!current || current==="os://home") return;
     try{
-      openDirect.href=createGenesisTabLaunch(current);
+      const launchUrl=createGenesisTabLaunch(current);
+      openDirect.href=launchUrl;
+      const opened=openAboutBlankShell(launchUrl,"Genesis Browser");
+      if(opened){
+        event.preventDefault();
+        status.textContent="Opened website in About Blank";
+      }
     }catch(err){
       event.preventDefault();
       status.textContent="Could not prepare a Genesis browser tab";
@@ -1825,6 +1910,7 @@ function initBrowser(win){
     if(browserState.frameMode==="proxy" && current && current!=="os://home"){
       status.textContent="Page connected · finishing scripts and images…";
       repairEmbeddedPage(win);
+      setTimeout(()=>captureBrowserLocation(win),0);
       browserState.settleTimer=setTimeout(()=>{
         if(browserState.history[browserState.index]===current)
           status.textContent="Loaded · "+current;
@@ -1833,7 +1919,11 @@ function initBrowser(win){
   });
 
   updateBrowserButtons();
-  status.textContent="Ready · Brave Search";
+  persistBrowserState(true);
+  status.textContent=restoredAddress==="os://home"?"Ready · Brave Search":"Restoring · "+restoredAddress;
+  if(restoredAddress!=="os://home"){
+    setTimeout(()=>browserNavigate(restoredAddress,false,false,{forceProxy:true}),0);
+  }
 }
 
 function browserSearchURL(query){
@@ -1879,6 +1969,41 @@ function loadOfficialEmbed(win,url,route){
 }
 
 const GENESIS_BROWSER_LAUNCH_PREFIX="genesisBrowserLaunch:";
+
+function openAboutBlankShell(destination,title="Genesis"){
+  let opened=null;
+  try{
+    opened=window.open("about:blank","_blank");
+    if(!opened)return null;
+
+    const doc=opened.document;
+    doc.title=title;
+    doc.documentElement.style.cssText="width:100%;height:100%;margin:0;background:#050811;overflow:hidden";
+    doc.body.style.cssText="width:100%;height:100%;margin:0;background:#050811;overflow:hidden";
+    doc.body.replaceChildren();
+
+    const viewport=doc.createElement("meta");
+    viewport.name="viewport";
+    viewport.content="width=device-width,initial-scale=1,viewport-fit=cover";
+    doc.head.appendChild(viewport);
+
+    const frame=doc.createElement("iframe");
+    frame.title=title;
+    frame.src=destination;
+    frame.referrerPolicy="strict-origin-when-cross-origin";
+    frame.allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock; microphone; camera; display-capture";
+    frame.allowFullscreen=true;
+    frame.style.cssText="display:block;width:100%;height:100%;border:0;background:#050811";
+    doc.body.appendChild(frame);
+    try{opened.opener=null;}catch{}
+    try{opened.focus();}catch{}
+    return opened;
+  }catch(err){
+    try{opened?.close();}catch{}
+    console.error("Genesis could not create the About Blank shell.",err);
+    return null;
+  }
+}
 
 function createGenesisTabLaunch(url){
   const now=Date.now();
@@ -1932,13 +2057,12 @@ function openGenesisTab(url,route={}){
 
   let opened=null;
   try{
-    opened=window.open(launchUrl,"_blank");
-    if(opened) opened.opener=null;
+    opened=openAboutBlankShell(launchUrl,"Genesis Browser");
   }catch{}
 
   if(opened){
     browserState.currentPopout=url;
-    if(status)status.textContent="Opened "+(route.label||"website")+" in a Genesis tab";
+    if(status)status.textContent="Opened "+(route.label||"website")+" in About Blank";
     showBrowserOpenCard(url,false,route,launchUrl);
   }else{
     if(status)status.textContent="Select Open Genesis Tab to continue";
@@ -1964,7 +2088,7 @@ function showBrowserOpenCard(url,blocked=false,route={},launchUrl=""){
   title.textContent=route.title || (blocked?"Open Genesis Tab":"Opened in Genesis tab");
   text.textContent=route.message || (blocked
     ?"Select Open Genesis Tab to open this address in the dedicated proxy browser."
-    :"The website is open in a dedicated Genesis browser tab.");
+    :"The website is open in a clean About Blank Genesis tab.");
   direct.href=launchUrl||"os.html";
   direct.style.display=launchUrl?"":"none";
   direct.textContent=route.label?"Open "+route.label+" in Genesis Tab":"Open Genesis Tab";
@@ -2008,6 +2132,14 @@ function repairEmbeddedPage(win){
       if(target==="_blank" || target==="_new") form.setAttribute("target","_self");
     },true);
     doc.__genesisSameTabHandler=true;
+  }
+
+  if(!doc.__genesisStatePersistence){
+    const syncLocation=()=>setTimeout(()=>captureBrowserLocation(win),0);
+    pageWin.addEventListener("popstate",syncLocation);
+    pageWin.addEventListener("pagehide",syncLocation);
+    doc.addEventListener("yt-navigate-finish",syncLocation,true);
+    doc.__genesisStatePersistence=true;
   }
 
   // Keep ordinary script-created URL popups in the managed frame. Preserve
@@ -2079,6 +2211,7 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
   const status=win.querySelector("#browserStatus");
 
   addr.value=url;
+  persistBrowserState(true);
   card.classList.remove("show");
   if(browserState.settleTimer){clearTimeout(browserState.settleTimer);browserState.settleTimer=null;}
 
@@ -2535,6 +2668,19 @@ function validateGenesis12HourSession(){
   }
 }
 
+function flushGenesisBrowserSession(){
+  if(openWindows.browser){
+    captureBrowserLocation(openWindows.browser);
+    persistBrowserState(true);
+  }
+  Promise.resolve(window.GenesisPrism?.persistSession?.()).catch(()=>{});
+}
+
+window.addEventListener("pagehide",flushGenesisBrowserSession);
+document.addEventListener("visibilitychange",()=>{
+  if(document.visibilityState==="hidden")flushGenesisBrowserSession();
+});
+
 showGenesisIdImmediately();
 setupGenesisAdminUI();
 ensureGenesisDevice();
@@ -2542,6 +2688,7 @@ pollGenesisAnnouncement();
 setInterval(checkGenesisDevice,5000);
 setInterval(pollGenesisAnnouncement,3000);
 setInterval(validateGenesis12HourSession,60000);
+if(browserState.restoreOnStartup)setTimeout(()=>openApp("browser"),80);
 
 
 </script>

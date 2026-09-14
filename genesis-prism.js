@@ -7,7 +7,7 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-scramjet-runtime-r12";
+  const BUILD_ID = "2026-09-14-youtube-playback-r13";
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -203,13 +203,20 @@
       host==="ytimg.com" || host.endsWith(".ytimg.com");
   }
 
-  function isCompatibilityHost(host){
-    return isYouTubeHost(host) ||
-      host==="tiktok.com" || host.endsWith(".tiktok.com") ||
-      host==="tiktokcdn.com" || host.endsWith(".tiktokcdn.com") ||
-      host==="geforcenow.com" || host.endsWith(".geforcenow.com") ||
-      host==="nvidia.com" || host.endsWith(".nvidia.com") ||
-      host==="nvidiagrid.net" || host.endsWith(".nvidiagrid.net");
+  function rawHeaderValue(headers,name){
+    const wanted=String(name||"").toLowerCase();
+    for(const entry of headers||[]){
+      if(!Array.isArray(entry) || String(entry[0]||"").toLowerCase()!==wanted) continue;
+      return String(entry[1]||"");
+    }
+    return "";
+  }
+
+  function isYouTubeMediaRequest(remote,headers){
+    const host=remote.hostname.toLowerCase();
+    return host==="googlevideo.com" || host.endsWith(".googlevideo.com") ||
+      /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname) ||
+      !!rawHeaderValue(headers,"range");
   }
 
   function mayReplayRequest(remote,method,body){
@@ -223,8 +230,7 @@
 
   function shouldRetryResponse(remote,method,body,status){
     if(!mayReplayRequest(remote,method,body)) return false;
-    if(TRANSIENT_STATUSES.has(Number(status))) return true;
-    return Number(status)===403 && isCompatibilityHost(remote.hostname.toLowerCase());
+    return TRANSIENT_STATUSES.has(Number(status));
   }
 
   async function releaseResponseBody(response){
@@ -243,7 +249,6 @@
       this.activeIndex=startIndex;
       this.client=null;
       this.ready=false;
-      this.switchPromise=null;
       this.officialVerified=false;
       this.stats={
         logicalRequests:0,
@@ -253,6 +258,15 @@
         retries:0,
         failovers:0,
         websocketFailures:0,
+        youtubeMediaRequests:0,
+        youtubeMediaResponses:0,
+        youtubeMediaPartialResponses:0,
+        youtubeMediaFailures:0,
+        youtubeMediaInvalidPartialResponses:0,
+        youtubeMediaLastStatus:0,
+        youtubeMediaLastRequestRange:"",
+        youtubeMediaLastContentRange:"",
+        youtubeMediaWisp:"",
         active:0,
         lastStatus:0,
         lastHost:"",
@@ -315,42 +329,17 @@
       throw lastError||new Error("No Genesis Wisp endpoint passed its route health check.");
     }
 
-    async switchEndpoint(failedClient,reason){
-      if(this.client!==failedClient) return this.client;
-      if(this.switchPromise) return this.switchPromise;
-
-      const pending=(async()=>{
-        let lastError=null;
-        const count=this.wispUrls.length;
-        const attempts=count>1?count-1:1;
-        for(let offset=1;offset<=attempts;offset++){
-          const index=count>1?(this.activeIndex+offset)%count:this.activeIndex;
-          try{
-            const result=await this.makeClient(index,true);
-            this.client=result.client;
-            this.activeIndex=index;
-            this.officialVerified=result.verified;
-            this.stats.failovers++;
-            this.emit("failover",{reason});
-            return this.client;
-          }catch(err){
-            lastError=err;
-            this.emit("endpoint-rejected",{host:new URL(this.wispUrls[index]).hostname,error:err?.message||String(err)});
-          }
-        }
-        throw lastError||new Error("Genesis could not switch Wisp endpoints.");
-      })();
-
-      this.switchPromise=pending;
-      try{return await pending;}
-      finally{if(this.switchPromise===pending)this.switchPromise=null;}
-    }
-
     async request(remote,method,body,headers,signal){
       if(!this.client) throw new Error("Genesis Wisp transport is not ready.");
       this.stats.logicalRequests++;
       this.stats.active++;
       this.stats.lastHost=remote.hostname;
+      const youtubeMedia=isYouTubeMediaRequest(remote,headers);
+      if(youtubeMedia){
+        this.stats.youtubeMediaRequests++;
+        this.stats.youtubeMediaLastRequestRange=rawHeaderValue(headers,"range");
+        this.stats.youtubeMediaWisp=this.activeWisp;
+      }
       const replayBody=copyReplayBody(body);
       const canRetry=mayReplayRequest(remote,method,body) &&
         (body==null || replayBody!==undefined);
@@ -364,33 +353,47 @@
         }catch(err){
           if(!canRetry || signal?.aborted) throw err;
           this.stats.retries++;
-          this.emit("retry",{host:remote.hostname,reason:err?.message||String(err)});
-          const nextClient=await this.switchEndpoint(firstClient,"request error");
+          // libcurl.js owns one process-wide Wisp route. Creating another
+          // client here changes the egress path for every subsequent request,
+          // which invalidates YouTube's signed googlevideo URLs. Retry the
+          // request on the same route; frame recovery rotates the entire page
+          // as one clean session if that route is truly unavailable.
+          this.emit("retry",{host:remote.hostname,reason:err?.message||String(err),route:"same-wisp",media:youtubeMedia});
           await delay(120);
           this.stats.attempts++;
-          response=await nextClient.request(remote,method,replayBody,headers,signal);
+          response=await firstClient.request(remote,method,replayBody,headers,signal);
         }
 
         if(canRetry && !signal?.aborted && shouldRetryResponse(remote,method,body,response?.status)){
           const retryStatus=Number(response?.status)||0;
           await releaseResponseBody(response);
           this.stats.retries++;
-          this.emit("retry",{host:remote.hostname,status:retryStatus,reason:"transient response"});
-          const nextClient=await this.switchEndpoint(firstClient,"HTTP "+retryStatus);
+          this.emit("retry",{host:remote.hostname,status:retryStatus,reason:"transient response",route:"same-wisp",media:youtubeMedia});
           await delay(120);
           this.stats.attempts++;
-          response=await nextClient.request(remote,method,replayBody,headers,signal);
+          response=await firstClient.request(remote,method,replayBody,headers,signal);
         }
 
         this.stats.completed++;
         this.stats.lastStatus=Number(response?.status)||0;
+        if(youtubeMedia){
+          const contentRange=rawHeaderValue(response?.headers,"content-range");
+          this.stats.youtubeMediaResponses++;
+          this.stats.youtubeMediaLastStatus=this.stats.lastStatus;
+          this.stats.youtubeMediaLastContentRange=contentRange;
+          if(this.stats.lastStatus===206){
+            this.stats.youtubeMediaPartialResponses++;
+            if(!contentRange) this.stats.youtubeMediaInvalidPartialResponses++;
+          }
+        }
         this.stats.lastError="";
-        this.emit("response",{host:remote.hostname,status:this.stats.lastStatus});
+        this.emit("response",{host:remote.hostname,status:this.stats.lastStatus,media:youtubeMedia});
         return response;
       }catch(err){
         this.stats.failed++;
+        if(youtubeMedia) this.stats.youtubeMediaFailures++;
         this.stats.lastError=err?.message||String(err);
-        this.emit("failure",{host:remote.hostname,error:this.stats.lastError});
+        this.emit("failure",{host:remote.hostname,error:this.stats.lastError,media:youtubeMedia});
         throw err;
       }finally{
         this.stats.active=Math.max(0,this.stats.active-1);
@@ -407,7 +410,9 @@
           this.stats.lastHost=url.hostname;
           this.stats.lastError=String(error||"WebSocket transport error");
           this.emit("websocket-failure",{host:url.hostname,error:this.stats.lastError});
-          this.switchEndpoint(client,"WebSocket connection error").catch(()=>{});
+          // Keep the active route stable for HTTP media already signed to this
+          // Wisp egress. The page-level repair path can rebuild the complete
+          // session on another endpoint when a WebSocket is essential.
           onerror(error);
         }
       );
@@ -432,7 +437,14 @@
     }
 
     diagnostics(){
-      return {...this.stats,activeIndex:this.activeIndex,wispCount:this.wispUrls.length,ready:this.ready};
+      return {
+        ...this.stats,
+        activeIndex:this.activeIndex,
+        wispCount:this.wispUrls.length,
+        ready:this.ready,
+        routePolicy:"stable-session",
+        midSessionFailover:false
+      };
     }
 
     async close(){
@@ -735,11 +747,20 @@
       return this.transport.healthCheck();
     },
 
+    async persistSession(){
+      if(!this.controller) return false;
+      if(typeof this.controller.persistCookies==="function"){
+        await this.controller.persistCookies();
+      }
+      return true;
+    },
+
     diagnostics(){
       return {
         build:BUILD_ID,
         searchEngine:"Brave Search",
         websiteTransport:"Wisp",
+        sessionPersistence:"indexeddb-cookies-and-origin-storage",
         scramjetFlags:{sourcemaps:false},
         officialWispClient:"@mercuryworkshop/wisp-js@0.5.0",
         officialWispVerified:this.officialWispVerified,

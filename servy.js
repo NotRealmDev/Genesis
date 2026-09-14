@@ -131,6 +131,24 @@ var $scramjetController;
       });
     }
 
+    function requestHeader(request,name){
+      try{return request.headers.get(name)||'';}catch{return '';}
+    }
+
+    function isMediaRequest(request){
+      const destination=String(request.destination||'').toLowerCase();
+      if(destination==='audio'||destination==='video'||destination==='track')return true;
+      if(requestHeader(request,'range'))return true;
+      const value=String(request.url||'').toLowerCase();
+      return value.includes('googlevideo.com')||value.includes('videoplayback');
+    }
+
+    function shouldEscalateFailure(request){
+      const destination=String(request.destination||'').toLowerCase();
+      return destination==='document'||destination==='iframe'||destination==='script'||
+        destination==='style'||destination==='worker'||destination==='sharedworker';
+    }
+
     async function a(event){
       try{
         const url=new URL(event.request.url);
@@ -157,7 +175,9 @@ var $scramjetController;
           response=await controller.rpc.call('request',payload,transfer,35000);
         }catch(firstErr){
           const method=(event.request.method||'GET').toUpperCase();
-          if(method!=='GET' && method!=='HEAD') throw firstErr;
+          // Never duplicate a partially-started range/media stream. YouTube's
+          // player will request the segment again with the correct byte offset.
+          if((method!=='GET' && method!=='HEAD') || isMediaRequest(event.request)) throw firstErr;
           await new Promise(resolve=>setTimeout(resolve,120));
           response=await controller.rpc.call('request',payload,[],20000);
         }
@@ -167,7 +187,12 @@ var $scramjetController;
         console.error('Service Worker error:',err);
         const message=err?.message||String(err);
         const clientId=event.clientId||event.resultingClientId;
-        notifyClient(clientId,message,event.request.url).catch(()=>{});
+        // A failed analytics, API, image or media segment must not tear down a
+        // healthy page and invalidate every signed stream URL. Escalate only
+        // failures that prevent the document or its executable shell loading.
+        if(shouldEscalateFailure(event.request)){
+          notifyClient(clientId,message,event.request.url).catch(()=>{});
+        }
         if(event.request.destination==='document'||event.request.destination==='iframe'){
           return proxyErrorResponse(message,event.request.url);
         }
