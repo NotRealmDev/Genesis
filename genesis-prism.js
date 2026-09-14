@@ -1,10 +1,11 @@
 (function(){
   const OFFICIAL_WISP_CLIENT_MODULE = "https://cdn.jsdelivr.net/npm/@mercuryworkshop/wisp-js@0.5.0/dist/wisp-client.mjs";
+  // Keep the verified Mercury endpoint as the default. Additional owner-run
+  // Wisp endpoints can still be supplied through genesisWispUrl.
   const DEFAULT_WISP_URLS = [
-    "wss://wisp.mercurywork.shop/",
-    "wss://formative.icu/lively/"
+    "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-scramjet-native-r8";
+  const BUILD_ID = "2026-09-14-scramjet-runtime-r9";
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -617,7 +618,15 @@
         api.config.codec.encode=codec.encode;
         api.config.codec.decode=codec.decode;
 
-        const controller=new api.Controller({serviceworker:sw,transport:this.transport});
+        const controller=new api.Controller({
+          serviceworker:sw,
+          transport:this.transport,
+          // Source-map calls must never be emitted before the injected client
+          // has installed its map receiver. They are diagnostic-only and are
+          // not required for rewriting; disabling them also removes substantial
+          // overhead on script-heavy sites.
+          scramjetConfig:{flags:{sourcemaps:false}}
+        });
         await withTimeout(controller.wait(),25000,"The Genesis browser controller did not respond.");
         this.controller=controller;
 
@@ -697,6 +706,7 @@
         build:BUILD_ID,
         searchEngine:"Brave Search",
         websiteTransport:"Wisp",
+        scramjetFlags:{sourcemaps:false},
         officialWispClient:"@mercuryworkshop/wisp-js@0.5.0",
         officialWispVerified:this.officialWispVerified,
         secure:window.isSecureContext,

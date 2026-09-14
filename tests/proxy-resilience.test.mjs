@@ -97,3 +97,14 @@ test("service worker has bounded request RPC and safe read retry",()=>{
   assert.match(serviceWorker,/method!=='GET' && method!=='HEAD'/);
   assert.match(serviceWorker,/status:502/);
 });
+
+test("browser HTML inline scripts compile",()=>{
+  for(const [name,html] of [["browser-tab.html",browserTab],["os.html",os]]){
+    const scripts=[...html.matchAll(/<script([^>]*)>([\s\S]*?)<\/script>/gi)];
+    assert.ok(scripts.length>0,name+" has inline scripts");
+    for(const [,attributes,code] of scripts){
+      if(/\bsrc\s*=/i.test(attributes) || /application\/(?:ld\+)?json/i.test(attributes)) continue;
+      assert.doesNotThrow(()=>new vm.Script(code,{filename:name}),name+" contains invalid inline JavaScript");
+    }
+  }
+});
