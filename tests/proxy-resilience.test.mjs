@@ -87,6 +87,9 @@ test("transport keeps one Wisp route for signed media and retries safely",()=>{
   assert.match(prismSource,/midSessionFailover:false/);
   assert.match(prismSource,/youtubeMediaPartialResponses/);
   assert.match(prismSource,/youtubeMediaInvalidPartialResponses/);
+  assert.match(prismSource,/YOUTUBE_MEDIA_CHUNK_BYTES\s*=\s*8 \* 1024 \* 1024/);
+  assert.match(prismSource,/function normalizeYouTubeMediaRequest\(/);
+  assert.match(prismSource,/headers:setRawHeader\(headers,"Range",appliedRange\)/);
   assert.match(prismSource,/rawHeaderValue\(response\?\.headers,"content-range"\)/);
   assert.doesNotMatch(prismSource,/async switchEndpoint\(/);
   assert.doesNotMatch(prismSource,/Number\(status\)===403/);

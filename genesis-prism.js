@@ -7,7 +7,8 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-youtube-playback-r13";
+  const BUILD_ID = "2026-09-14-youtube-playback-r14";
+  const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -215,8 +216,59 @@
   function isYouTubeMediaRequest(remote,headers){
     const host=remote.hostname.toLowerCase();
     return host==="googlevideo.com" || host.endsWith(".googlevideo.com") ||
-      /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname) ||
-      !!rawHeaderValue(headers,"range");
+      /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname);
+  }
+
+  function setRawHeader(headers,name,value){
+    const wanted=String(name||"").toLowerCase();
+    const next=[];
+    let replaced=false;
+    for(const entry of headers||[]){
+      if(!Array.isArray(entry) || String(entry[0]||"").toLowerCase()!==wanted){
+        next.push(entry);
+      }else if(!replaced){
+        next.push([entry[0],value]);
+        replaced=true;
+      }
+    }
+    if(!replaced)next.push([name,value]);
+    return next;
+  }
+
+  function parseMediaRange(value){
+    const match=String(value||"").trim().match(/^(?:bytes=)?(\d+)-(\d*)$/i);
+    if(!match)return null;
+    const start=Number(match[1]);
+    const end=match[2]?Number(match[2]):null;
+    if(!Number.isSafeInteger(start) || start<0 || (end!==null && (!Number.isSafeInteger(end)||end<start)))return null;
+    return {start,end};
+  }
+
+  function normalizeYouTubeMediaRequest(remote,method,headers){
+    const originalRange=rawHeaderValue(headers,"range");
+    const queryRange=remote.searchParams.get("range")||"";
+    if(!isYouTubeMediaRequest(remote,headers) || String(method||"GET").toUpperCase()!=="GET"){
+      return {remote,headers,originalRange,queryRange,appliedRange:""};
+    }
+
+    // googlevideo currently rejects unbounded/full-file reads with 403 on
+    // several player paths. Give every GET a finite byte window, matching the
+    // range-proxy behavior used by working media clients. The browser or
+    // YouTube MSE pipeline requests the following window normally.
+    const parsed=parseMediaRange(originalRange)||parseMediaRange(queryRange)||{start:0,end:null};
+    const maxEnd=parsed.start+YOUTUBE_MEDIA_CHUNK_BYTES-1;
+    let end=parsed.end===null?maxEnd:Math.min(parsed.end,maxEnd);
+    const contentLength=Number(remote.searchParams.get("clen"));
+    if(Number.isSafeInteger(contentLength)&&contentLength>0)end=Math.min(end,contentLength-1);
+    if(end<parsed.start)end=parsed.start;
+    const appliedRange=`bytes=${parsed.start}-${end}`;
+    return {
+      remote,
+      headers:setRawHeader(headers,"Range",appliedRange),
+      originalRange,
+      queryRange,
+      appliedRange
+    };
   }
 
   function mayReplayRequest(remote,method,body){
@@ -267,6 +319,7 @@
         youtubeMediaLastRequestRange:"",
         youtubeMediaLastContentRange:"",
         youtubeMediaWisp:"",
+        youtubeMediaTrace:[],
         active:0,
         lastStatus:0,
         lastHost:"",
@@ -335,10 +388,30 @@
       this.stats.active++;
       this.stats.lastHost=remote.hostname;
       const youtubeMedia=isYouTubeMediaRequest(remote,headers);
+      const normalizedMedia=normalizeYouTubeMediaRequest(remote,method,headers);
+      const requestRemote=normalizedMedia.remote;
+      const requestHeaders=normalizedMedia.headers;
+      const mediaTrace=youtubeMedia?{
+        method:String(method||"GET").toUpperCase(),
+        host:remote.hostname,
+        path:remote.pathname,
+        queryRange:normalizedMedia.queryRange,
+        requestRange:normalizedMedia.originalRange,
+        appliedRange:normalizedMedia.appliedRange,
+        contentLengthHint:remote.searchParams.get("clen")||"",
+        client:remote.searchParams.get("c")||"",
+        ump:remote.searchParams.has("ump"),
+        status:0,
+        contentRange:"",
+        responseLength:"",
+        contentType:""
+      }:null;
       if(youtubeMedia){
         this.stats.youtubeMediaRequests++;
-        this.stats.youtubeMediaLastRequestRange=rawHeaderValue(headers,"range");
+        this.stats.youtubeMediaLastRequestRange=normalizedMedia.appliedRange||normalizedMedia.originalRange;
         this.stats.youtubeMediaWisp=this.activeWisp;
+        this.stats.youtubeMediaTrace.push(mediaTrace);
+        if(this.stats.youtubeMediaTrace.length>24)this.stats.youtubeMediaTrace.shift();
       }
       const replayBody=copyReplayBody(body);
       const canRetry=mayReplayRequest(remote,method,body) &&
@@ -349,7 +422,7 @@
         this.stats.attempts++;
         let response;
         try{
-          response=await firstClient.request(remote,method,body,headers,signal);
+          response=await firstClient.request(requestRemote,method,body,requestHeaders,signal);
         }catch(err){
           if(!canRetry || signal?.aborted) throw err;
           this.stats.retries++;
@@ -361,7 +434,7 @@
           this.emit("retry",{host:remote.hostname,reason:err?.message||String(err),route:"same-wisp",media:youtubeMedia});
           await delay(120);
           this.stats.attempts++;
-          response=await firstClient.request(remote,method,replayBody,headers,signal);
+          response=await firstClient.request(requestRemote,method,replayBody,requestHeaders,signal);
         }
 
         if(canRetry && !signal?.aborted && shouldRetryResponse(remote,method,body,response?.status)){
@@ -371,7 +444,7 @@
           this.emit("retry",{host:remote.hostname,status:retryStatus,reason:"transient response",route:"same-wisp",media:youtubeMedia});
           await delay(120);
           this.stats.attempts++;
-          response=await firstClient.request(remote,method,replayBody,headers,signal);
+          response=await firstClient.request(requestRemote,method,replayBody,requestHeaders,signal);
         }
 
         this.stats.completed++;
@@ -381,6 +454,10 @@
           this.stats.youtubeMediaResponses++;
           this.stats.youtubeMediaLastStatus=this.stats.lastStatus;
           this.stats.youtubeMediaLastContentRange=contentRange;
+          mediaTrace.status=this.stats.lastStatus;
+          mediaTrace.contentRange=contentRange;
+          mediaTrace.responseLength=rawHeaderValue(response?.headers,"content-length");
+          mediaTrace.contentType=rawHeaderValue(response?.headers,"content-type");
           if(this.stats.lastStatus===206){
             this.stats.youtubeMediaPartialResponses++;
             if(!contentRange) this.stats.youtubeMediaInvalidPartialResponses++;
