@@ -15,13 +15,107 @@
 <main class="shell"><header class="topbar"><div class="brand">Genesis Browser</div><div class="status" id="status">Preparing browser…</div></header><section class="stage"><iframe id="browserFrame" title="Genesis browser" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock; microphone; camera; display-capture" allowfullscreen></iframe><div class="loading" id="loading"><div class="message"><div class="spinner"></div><p id="loadingText">Starting Genesis Browser…</p></div></div><div class="error hidden" id="error"><div class="message"><h1>Could not open this page</h1><p id="errorText"></p><div class="error-actions"><button class="button primary" id="retry" type="button">Repair & Retry</button><a class="button" href="os.html">Back to Genesis</a></div></div></div></section><footer class="footer"><a class="button primary" href="os.html">← Back to Genesis</a><div class="footer-note" id="footerNote">Genesis keeps the site in its dedicated browser tab.</div><div class="footer-actions"><button class="button" id="repair" type="button">Repair</button><button class="button" id="reload" type="button">Reload</button></div></footer></main>
 <script>
 (function(){
-  const TARGET_KEY="genesisBrowserTarget",LAUNCH_PREFIX="genesisBrowserLaunch:";
+  const TARGET_KEY="genesisBrowserTarget",LAST_TARGET_KEY="genesisBrowserLastTarget",SESSION_STATE_KEY="genesisBrowserSessionV1",LAUNCH_PREFIX="genesisBrowserLaunch:";
   const PROXY_ERROR_PATTERN=/Genesis upstream request failed|Internal Service Worker Error|Genesis transport error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
   const frame=document.getElementById("browserFrame"),status=document.getElementById("status"),loading=document.getElementById("loading"),loadingText=document.getElementById("loadingText"),error=document.getElementById("error"),errorText=document.getElementById("errorText"),retry=document.getElementById("retry"),repair=document.getElementById("repair"),reload=document.getElementById("reload"),footerNote=document.getElementById("footerNote");
-  let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,readinessTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="";
+  let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,readinessTimer=null,sessionSnapshotTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="",lastSavedTarget="";
 
   function validTarget(value){try{const parsed=new URL(String(value||""));return parsed.protocol==="https:"||parsed.protocol==="http:"?parsed.href:""}catch{return""}}
-  function readTarget(){const token=location.hash.slice(1);if(token&&/^[A-Za-z0-9_-]{12,80}$/.test(token)){try{const key=LAUNCH_PREFIX+token,entry=JSON.parse(localStorage.getItem(key)||"null");if(entry?.expires>Date.now()){const next=validTarget(entry.url);if(next)sessionStorage.setItem(TARGET_KEY,next)}localStorage.removeItem(key)}catch{}}if(location.hash)history.replaceState(null,"",location.pathname+location.search);try{return validTarget(sessionStorage.getItem(TARGET_KEY))}catch{return""}}
+  function isGenesisProxyTarget(value){
+    try{
+      const parsed=new URL(value);
+      if(parsed.origin!==location.origin)return false;
+      const controllerPrefix=window.GenesisPrism?.controller?.prefix;
+      if(controllerPrefix&&parsed.pathname.startsWith(controllerPrefix))return true;
+      return parsed.pathname.includes("/prism/");
+    }catch{return false}
+  }
+  function saveLastTarget(value){
+    const next=validTarget(value);
+    if(!next||isGenesisProxyTarget(next))return"";
+    target=next;
+    try{sessionStorage.setItem(TARGET_KEY,next)}catch{}
+    if(next!==lastSavedTarget){
+      lastSavedTarget=next;
+      try{
+        localStorage.setItem(LAST_TARGET_KEY,next);
+        localStorage.setItem(SESSION_STATE_KEY,JSON.stringify({url:next,updatedAt:Date.now()}));
+      }catch{}
+    }
+    return next;
+  }
+  function readSavedTarget(){
+    try{
+      const session=validTarget(sessionStorage.getItem(TARGET_KEY));
+      if(session)return session;
+    }catch{}
+    try{
+      const state=JSON.parse(localStorage.getItem(SESSION_STATE_KEY)||"null");
+      const saved=validTarget(state?.url);
+      if(saved)return saved;
+    }catch{}
+    try{return validTarget(localStorage.getItem(LAST_TARGET_KEY))}catch{return""}
+  }
+  function readTarget(){
+    const token=location.hash.slice(1);
+    let launched="";
+    if(token&&/^[A-Za-z0-9_-]{12,80}$/.test(token)){
+      try{
+        const key=LAUNCH_PREFIX+token,entry=JSON.parse(localStorage.getItem(key)||"null");
+        if(entry?.expires>Date.now())launched=validTarget(entry.url);
+        localStorage.removeItem(key);
+      }catch{}
+    }
+    if(location.hash)history.replaceState(null,"",location.pathname+location.search);
+    const next=launched||readSavedTarget();
+    if(next)saveLastTarget(next);
+    return next;
+  }
+  function decodeProxyTarget(value){
+    const direct=validTarget(value);
+    if(!direct)return"";
+    if(!isGenesisProxyTarget(direct))return direct;
+    try{
+      if(prismFrame?.context&&typeof window.$scramjet?.unrewriteUrl==="function"){
+        const decoded=validTarget(window.$scramjet.unrewriteUrl(direct,prismFrame.context));
+        if(decoded&&!isGenesisProxyTarget(decoded))return decoded;
+      }
+    }catch{}
+    return"";
+  }
+  function currentRemoteTarget(){
+    const candidates=[];
+    try{candidates.push(frame.contentWindow?.location?.href||"")}catch{}
+    try{candidates.push(frame.src||"")}catch{}
+    for(const candidate of candidates){
+      const decoded=decodeProxyTarget(candidate);
+      if(decoded)return decoded;
+    }
+    return validTarget(target);
+  }
+  function snapshotCurrentTarget(){
+    const current=currentRemoteTarget();
+    if(current)saveLastTarget(current);
+  }
+  async function flushPersistentState(){
+    snapshotCurrentTarget();
+    try{await window.GenesisPrism?.controller?.persistCookies?.()}catch{}
+  }
+  async function requestPersistentStorage(){
+    try{
+      if(!navigator.storage?.persist)return;
+      if(navigator.storage.persisted&&await navigator.storage.persisted())return;
+      await navigator.storage.persist();
+    }catch{}
+  }
+  function startSessionSnapshots(){
+    if(sessionSnapshotTimer)return;
+    sessionSnapshotTimer=setInterval(snapshotCurrentTarget,3000);
+  }
+  function stopSessionSnapshots(){
+    if(sessionSnapshotTimer)clearInterval(sessionSnapshotTimer);
+    sessionSnapshotTimer=null;
+  }
   function clearLoadTimer(){if(loadTimer)clearTimeout(loadTimer);loadTimer=null}
   function clearReadinessTimer(){if(readinessTimer)clearTimeout(readinessTimer);readinessTimer=null}
   function setBusy(message,stateText){error.classList.add("hidden");loading.classList.remove("hidden");loadingText.textContent=message;status.textContent=stateText;repair.disabled=recovering;reload.disabled=recovering}
@@ -68,8 +162,6 @@
 
       return true;
     }catch{
-      // If the frame cannot be inspected, do not mistake browser isolation for
-      // a stalled website.
       return true;
     }
   }
@@ -122,8 +214,8 @@
   }
 
   function armLoadTimeout(id,timeoutMs=30000){clearLoadTimer();loadTimer=setTimeout(()=>{if(id!==navigationId)return;if(automaticRecoveries<2){automaticRecoveries++;hardRecover("page load timeout",true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))}else{showError("The page stopped responding before it finished loading. Genesis already tried its available connection repairs.")}},timeoutMs)}
-  async function navigateCurrent(message="Connecting to the website…"){const id=++navigationId;clearReadinessTimer();setBusy(message,"Loading website…");armLoadTimeout(id);prismFrame.go(target)}
-  async function start(){if(starting||recovering)return;if(!target){showError("This Genesis browser tab has expired. Return to Genesis and open the website again.");return}starting=true;setBusy("Starting the Genesis browser…","Starting Prism + Libcurl…");try{prismFrame=await window.GenesisPrism.createFrame(frame);started=true;await navigateCurrent()}catch(err){showError(err?.message||String(err))}finally{starting=false}}
+  async function navigateCurrent(message="Connecting to the website…"){const id=++navigationId;clearReadinessTimer();saveLastTarget(target);setBusy(message,"Loading website…");armLoadTimeout(id);prismFrame.go(target)}
+  async function start(){if(starting||recovering)return;if(!target){showError("No saved website was found. Return to Genesis and open a website once; after that Genesis can restore it here.");return}starting=true;setBusy("Starting the Genesis browser…","Starting Prism + Libcurl…");try{await requestPersistentStorage();prismFrame=await window.GenesisPrism.createFrame(frame);started=true;startSessionSnapshots();await navigateCurrent()}catch(err){showError(err?.message||String(err))}finally{starting=false}}
 
   async function hardRecover(reason="manual repair",automatic=false,options={}){
     if(recovering)return;
@@ -132,6 +224,7 @@
     const id=++navigationId;
     clearLoadTimer();
     clearReadinessTimer();
+    snapshotCurrentTarget();
     setBusy(automatic?"Switching connection and retrying…":"Repairing Genesis Browser…",options.rotateWisp?"Switching Genesis transport…":"Rebuilding Prism + Libcurl…");
     footerNote.textContent=options.rotateWisp?"Trying another Genesis transport…":"Rebuilding the Genesis browser connection…";
     try{
@@ -170,8 +263,9 @@
     clearLoadTimer();
     loading.classList.add("hidden");
     error.classList.add("hidden");
+    snapshotCurrentTarget();
     const transport=activeTransportLabel();
-    footerNote.textContent=transport?"Connected through "+transport+".":"Genesis Browser connected successfully.";
+    footerNote.textContent=transport?"Connected through "+transport+". Login and page state are saved locally.":"Genesis Browser connected successfully. Login and page state are saved locally.";
     lastFailure="";
     armDynamicReadiness(navigationId);
   });
@@ -201,10 +295,12 @@
 
   retry.addEventListener("click",()=>{automaticRecoveries=0;lastFailure="";hardRecover("user retry",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))});
   repair.addEventListener("click",()=>{automaticRecoveries=0;lastFailure="";hardRecover("manual repair",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))});
-  reload.addEventListener("click",()=>{if(recovering)return;if(prismFrame){const id=++navigationId;lastFailure="";setBusy("Reloading website…","Reloading…");armLoadTimeout(id,30000);try{prismFrame.reload()}catch(err){hardRecover("reload failed",false,{rotateWisp:true}).catch(recoverErr=>showError(recoverErr?.message||err?.message||String(err)))}}else start()});
+  reload.addEventListener("click",()=>{if(recovering)return;if(prismFrame){const id=++navigationId;lastFailure="";snapshotCurrentTarget();setBusy("Reloading website…","Reloading…");armLoadTimeout(id,30000);try{prismFrame.reload()}catch(err){hardRecover("reload failed",false,{rotateWisp:true}).catch(recoverErr=>showError(recoverErr?.message||err?.message||String(err)))}}else start()});
   window.addEventListener("online",()=>{status.textContent="Connection restored";if(!error.classList.contains("hidden")){automaticRecoveries=0;lastFailure="";hardRecover("network connection restored",true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))}});
   window.addEventListener("offline",()=>{clearLoadTimer();status.textContent="Offline · waiting for connection";footerNote.textContent="Genesis will retry after the browser connection returns."});
-  window.addEventListener("pagehide",()=>{clearLoadTimer();clearReadinessTimer()});
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden")void flushPersistentState();else snapshotCurrentTarget()});
+  window.addEventListener("pagehide",()=>{clearLoadTimer();clearReadinessTimer();stopSessionSnapshots();void flushPersistentState()});
+  window.addEventListener("beforeunload",()=>{snapshotCurrentTarget();void window.GenesisPrism?.controller?.persistCookies?.()});
   target=readTarget();window.addEventListener("DOMContentLoaded",start,{once:true});
 })();
 </script>
