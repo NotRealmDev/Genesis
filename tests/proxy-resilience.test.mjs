@@ -115,3 +115,8 @@ test("frame recovery clears an old encoded route before rebuilding",()=>{
   assert.match(prismSource,/element\.src="about:blank"/);
   assert.match(prismSource,/await this\.resetFrameElement\(element\);[\s\S]*?await this\.recover\(reason,options\)/);
 });
+
+
+test("default transport has the current official-demo Wisp plus failover",()=>{
+  assert.match(prismSource,/DEFAULT_WISP_URLS\s*=\s*\[[\s\S]*?"wss:\/\/anura\.pro\/"[\s\S]*?"wss:\/\/wisp\.mercurywork\.shop\/"/);
+});

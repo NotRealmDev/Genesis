@@ -1,11 +1,13 @@
 (function(){
   const OFFICIAL_WISP_CLIENT_MODULE = "https://cdn.jsdelivr.net/npm/@mercuryworkshop/wisp-js@0.5.0/dist/wisp-client.mjs";
-  // Keep the verified Mercury endpoint as the default. Additional owner-run
-  // Wisp endpoints can still be supplied through genesisWispUrl.
+  // Scramjet's own current demo uses anura.pro. Keep a second independent
+  // endpoint for automatic failover, and allow an owner-supplied endpoint
+  // through genesisWispUrl to take priority over both.
   const DEFAULT_WISP_URLS = [
+    "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-scramjet-runtime-r10";
+  const BUILD_ID = "2026-09-14-scramjet-runtime-r11";
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
