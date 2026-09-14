@@ -43,6 +43,39 @@ async function youtubeHasContent(){
   },null,{timeout:90000});
 }
 
+async function waitForTikTokContent(){
+  return page.waitForFunction(()=>{
+    const frame=document.getElementById("target");
+    const doc=frame?.contentDocument;
+    const win=frame?.contentWindow;
+    if(!doc || typeof win?.$scramjet$prop==="undefined") return false;
+    const videoLinks=doc.querySelectorAll('a[href*="/video/"],[scramjet-attr-href*="/video/"]');
+    const playable=[...doc.querySelectorAll("video")].some(video=>video.currentSrc||video.src);
+    return videoLinks.length>=2 || playable;
+  },null,{timeout:90000});
+}
+
+async function waitForGeforceContent(){
+  return page.waitForFunction(()=>{
+    const frame=document.getElementById("target");
+    const doc=frame?.contentDocument;
+    const win=frame?.contentWindow;
+    if(!doc || typeof win?.$scramjet$prop==="undefined") return false;
+    const text=(doc.body?.innerText||"").replace(/\s+/g," ").trim();
+    return text.length>80 && /geforce\s*now|log\s*in|sign\s*in|join|games/i.test(text);
+  },null,{timeout:90000});
+}
+
+async function navigateWithRepair(url,ready){
+  await page.evaluate(target=>window.proxyHarness.go(target),url);
+  try{
+    await ready();
+  }catch(firstError){
+    await page.evaluate(target=>window.proxyHarness.repairAndGo(target),url);
+    await ready();
+  }
+}
+
 async function frameSnapshot(){
   return page.evaluate(()=>{
     const frame=document.getElementById("target");
@@ -89,17 +122,29 @@ try{
   assert.equal(exampleSnapshot.globals.scramjet,"object","Scramjet core was not injected into the proxied document");
   assert.notEqual(exampleSnapshot.globals.prop,"undefined","Scramjet property hooks were not installed");
 
-  await page.evaluate(()=>window.proxyHarness.go("https://www.youtube.com/results?search_query=lofi"));
-  try{
-    await youtubeHasContent();
-  }catch(firstError){
-    await page.evaluate(()=>window.proxyHarness.repairAndGo("https://www.youtube.com/results?search_query=lofi"));
-    await youtubeHasContent();
-  }
+  await navigateWithRepair("https://www.youtube.com/results?search_query=lofi",youtubeHasContent);
+  const youtube=await frameSnapshot();
+  assert.match(youtube.title,/YouTube/i);
+
+  await navigateWithRepair("https://www.tiktok.com/explore",waitForTikTokContent);
+  const tiktok=await frameSnapshot();
+  assert.match(tiktok.href,/tiktok\.com/i);
+
+  await navigateWithRepair("https://play.geforcenow.com/mall/",waitForGeforceContent);
+  const geforceNow=await frameSnapshot();
+  assert.match(geforceNow.href,/geforcenow\.com/i);
 
   const report=await page.evaluate(()=>window.proxyHarness.report());
   assert.ok(report.diagnostics.healthy);
-  console.log(JSON.stringify({health,diagnostics:report.diagnostics,frame:await frameSnapshot()}));
+  console.log(JSON.stringify({
+    health,
+    diagnostics:report.diagnostics,
+    sites:{
+      youtube:{title:youtube.title,bodyText:youtube.bodyText.slice(0,600)},
+      tiktok:{title:tiktok.title,bodyText:tiktok.bodyText.slice(0,600)},
+      geforceNow:{title:geforceNow.title,bodyText:geforceNow.bodyText.slice(0,600)}
+    }
+  }));
 }catch(error){
   await mkdir(join(root,"test-output"),{recursive:true});
   await page.screenshot({path:join(root,"test-output","proxy-failure.png"),fullPage:true}).catch(()=>{});
