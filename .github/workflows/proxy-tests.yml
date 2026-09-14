@@ -38,17 +38,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - name: Install Chromium and pinned official Scramjet runtime
+      - name: Verify pinned Scramjet assets and install Chromium
         run: |
           npm install --no-save --no-package-lock playwright@1.55.0 @mercuryworkshop/scramjet@2.0.67-alpha.2 @mercuryworkshop/scramjet-controller@0.0.14
-          test -f node_modules/@mercuryworkshop/scramjet/dist/scramjet.js
-          test -f node_modules/@mercuryworkshop/scramjet/dist/scramjet.wasm
-          test -f node_modules/@mercuryworkshop/scramjet-controller/dist/controller.api.js
-          test -f node_modules/@mercuryworkshop/scramjet-controller/dist/controller.inject.js
-          cp node_modules/@mercuryworkshop/scramjet/dist/scramjet.js prism.js
-          cp node_modules/@mercuryworkshop/scramjet/dist/scramjet.wasm prism.wasm
-          cp node_modules/@mercuryworkshop/scramjet-controller/dist/controller.api.js prism.api.js
-          cp node_modules/@mercuryworkshop/scramjet-controller/dist/controller.inject.js prism.inject.js
+          cmp prism.js node_modules/@mercuryworkshop/scramjet/dist/scramjet.js
+          cmp prism.wasm node_modules/@mercuryworkshop/scramjet/dist/scramjet.wasm
+          cmp prism.api.js node_modules/@mercuryworkshop/scramjet-controller/dist/controller.api.js
+          cmp prism.inject.js node_modules/@mercuryworkshop/scramjet-controller/dist/controller.inject.js
           sha256sum prism.js prism.wasm prism.api.js prism.inject.js
           npx playwright install --with-deps chromium
       - name: Test Wisp route, Scramjet rewrite, and YouTube dynamic results
