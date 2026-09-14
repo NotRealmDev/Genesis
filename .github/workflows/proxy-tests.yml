@@ -1,0 +1,53 @@
+name: Genesis proxy tests
+
+on:
+  pull_request:
+    paths:
+      - "genesis-prism.js"
+      - "browser-tab.html"
+      - "os.html"
+      - "servy.js"
+      - "prism*.js"
+      - "prism.wasm"
+      - "libby.js"
+      - "tests/**"
+      - ".github/workflows/proxy-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Run proxy unit and integration-contract tests
+        run: node --test tests/proxy-resilience.test.mjs
+
+  live-proxy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test Wisp route, Scramjet rewrite, and YouTube dynamic results
+        run: node tests/proxy-e2e.mjs
+      - name: Upload failure screenshot
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: genesis-proxy-failure
+          path: test-output/
+          if-no-files-found: ignore
