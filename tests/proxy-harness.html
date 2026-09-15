@@ -6,7 +6,7 @@
 <style>html,body,iframe{width:100%;height:100%;margin:0;border:0}body{background:#080b12}</style>
 </head>
 <body>
-<iframe id="target" allow="autoplay; encrypted-media; fullscreen"></iframe>
+<iframe id="target" allow="autoplay; encrypted-media; fullscreen; picture-in-picture"></iframe>
 <script src="../prism.js"></script>
 <script src="../prism.api.js"></script>
 <script src="../libby.js"></script>
@@ -39,6 +39,13 @@
     async repairAndGo(url){
       prismFrame=await window.GenesisPrism.recoverFrame(element,"automated integration retry",{rotateWisp:true});
       return waitForLoad(()=>prismFrame.go(url));
+    },
+    async openYouTubeFallback(url,index=0){
+      const fallbacks=window.GenesisPrism.youtubeEmbedFallbacks(url);
+      const selected=fallbacks[Math.max(0,Math.min(fallbacks.length-1,Number(index)||0))];
+      if(!selected)throw new Error("No YouTube embed fallback is available for this URL.");
+      await waitForLoad(()=>{element.src=selected});
+      return{url:selected,index:Number(index)||0,count:fallbacks.length};
     },
     report(){
       let text="";

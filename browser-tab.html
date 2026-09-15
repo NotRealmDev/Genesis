@@ -6,26 +6,90 @@
 <title>Genesis Browser</title>
 <style>
 :root{color-scheme:dark;--panel:#0c111b;--border:rgba(255,255,255,.12);--text:#f7f9ff;--muted:rgba(255,255,255,.62);--accent:#4f8cff}
-*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#050811;color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,a{font:inherit}.shell{height:100%;display:grid;grid-template-rows:42px minmax(0,1fr) 64px;background:#050811}.topbar,.footer{display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(12,17,27,.96);border-color:var(--border)}.topbar{border-bottom:1px solid var(--border)}.brand{font-size:12px;font-weight:750;letter-spacing:.04em;white-space:nowrap}.status{min-width:0;flex:1;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.stage{position:relative;min-height:0;background:#070a11}#browserFrame{display:block;width:100%;height:100%;border:0;background:#070a11}.loading,.error{position:absolute;inset:0;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 50% 35%,rgba(79,140,255,.16),transparent 35%),#070a11;z-index:2;text-align:center}.loading.hidden,.error.hidden{display:none}.spinner{width:38px;height:38px;margin:0 auto 14px;border-radius:50%;border:3px solid rgba(255,255,255,.13);border-top-color:#fff;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.message{max-width:560px}.message h1{font-size:23px;margin:0 0 8px}.message p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.error-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:18px}.footer{justify-content:space-between;border-top:1px solid var(--border);padding-bottom:max(0px,env(safe-area-inset-bottom))}.footer-note{min-width:0;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.footer-actions{display:flex;align-items:center;gap:8px}.button{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 15px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.075);color:#fff;text-decoration:none;cursor:pointer;white-space:nowrap}.button:hover{background:rgba(255,255,255,.14)}.button.primary{background:rgba(79,140,255,.4);border-color:rgba(112,161,255,.45)}.button:disabled{opacity:.45;cursor:default}@media(max-width:560px){.shell{grid-template-rows:38px minmax(0,1fr) 58px}.topbar,.footer{padding-left:10px;padding-right:10px}.footer-note{display:none}.footer{justify-content:center}.button{min-height:36px;padding:0 12px}}
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#050811;color:var(--text);font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}button,a{font:inherit}.shell{height:100%;display:grid;grid-template-rows:42px minmax(0,1fr) 64px;background:#050811}.topbar,.footer{display:flex;align-items:center;gap:12px;padding:0 16px;background:rgba(12,17,27,.96);border-color:var(--border)}.topbar{border-bottom:1px solid var(--border)}.brand{font-size:12px;font-weight:750;letter-spacing:.04em;white-space:nowrap}.status{min-width:0;flex:1;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right}.stage{position:relative;min-height:0;background:#070a11}#browserFrame,#officialFrame{display:block;width:100%;height:100%;border:0;background:#070a11}#officialFrame{display:none}.loading,.error{position:absolute;inset:0;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 50% 35%,rgba(79,140,255,.16),transparent 35%),#070a11;z-index:2;text-align:center}.loading.hidden,.error.hidden{display:none}.spinner{width:38px;height:38px;margin:0 auto 14px;border-radius:50%;border:3px solid rgba(255,255,255,.13);border-top-color:#fff;animation:spin .75s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}.message{max-width:560px}.message h1{font-size:23px;margin:0 0 8px}.message p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}.error-actions{display:flex;justify-content:center;gap:9px;flex-wrap:wrap;margin-top:18px}.footer{justify-content:space-between;border-top:1px solid var(--border);padding-bottom:max(0px,env(safe-area-inset-bottom))}.footer-note{min-width:0;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.footer-actions{display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}.button{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 15px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.075);color:#fff;text-decoration:none;cursor:pointer;white-space:nowrap}.button:hover{background:rgba(255,255,255,.14)}.button.primary{background:rgba(79,140,255,.4);border-color:rgba(112,161,255,.45)}.button:disabled{opacity:.45;cursor:default}@media(max-width:560px){.shell{grid-template-rows:38px minmax(0,1fr) 58px}.topbar,.footer{padding-left:8px;padding-right:8px}.footer-note{display:none}.footer{justify-content:space-between;gap:6px}.footer-actions{gap:5px;flex-wrap:nowrap}.button{min-height:34px;padding:0 8px;font-size:11px}}
 </style>
 <script>(function(){try{const login=JSON.parse(localStorage.getItem("genesisLogin")||"null");if(login?.expires&&Date.now()<login.expires)return}catch{}location.replace("index.html")})();</script>
 <script src="prism.js" defer></script><script src="prism.api.js" defer></script><script src="libby.js" defer></script><script src="genesis-prism.js" defer></script>
 </head>
 <body>
-<main class="shell"><header class="topbar"><div class="brand">Genesis Browser</div><div class="status" id="status">Preparing browser…</div></header><section class="stage"><iframe id="browserFrame" title="Genesis browser" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock; microphone; camera; display-capture" allowfullscreen></iframe><div class="loading" id="loading"><div class="message"><div class="spinner"></div><p id="loadingText">Starting Genesis Browser…</p></div></div><div class="error hidden" id="error"><div class="message"><h1>Could not open this page</h1><p id="errorText"></p><div class="error-actions"><button class="button primary" id="retry" type="button">Repair & Retry</button><a class="button" href="os.html">Back to Genesis</a></div></div></div></section><footer class="footer"><a class="button primary" href="os.html">← Back to Genesis</a><div class="footer-note" id="footerNote">Genesis keeps the site in its dedicated browser tab.</div><div class="footer-actions"><button class="button" id="repair" type="button">Repair</button><button class="button" id="reload" type="button">Reload</button></div></footer></main>
+<main class="shell"><header class="topbar"><div class="brand">Genesis Browser</div><div class="status" id="status">Preparing browser…</div></header><section class="stage"><iframe id="browserFrame" title="Genesis browser" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock; microphone; camera; display-capture" allowfullscreen></iframe><iframe id="officialFrame" title="Genesis media player" referrerpolicy="strict-origin-when-cross-origin" allow="fullscreen; autoplay; encrypted-media; picture-in-picture" allowfullscreen></iframe><div class="loading" id="loading"><div class="message"><div class="spinner"></div><p id="loadingText">Starting Genesis Browser…</p></div></div><div class="error hidden" id="error"><div class="message"><h1>Could not open this page</h1><p id="errorText"></p><div class="error-actions"><button class="button primary" id="retry" type="button">Repair & Retry</button><a class="button" href="os.html">Back to Genesis</a></div></div></div></section><footer class="footer"><a class="button primary" href="os.html">← Back to Genesis</a><div class="footer-note" id="footerNote">Genesis keeps the site in its dedicated browser tab.</div><div class="footer-actions"><button class="button" id="aboutBlank" type="button">About Blank</button><button class="button" id="repair" type="button">Repair</button><button class="button" id="reload" type="button">Reload</button></div></footer></main>
 <script>
 (function(){
-  const TARGET_KEY="genesisBrowserTarget",LAUNCH_PREFIX="genesisBrowserLaunch:";
+  const TARGET_KEY="genesisBrowserTarget",LAST_TARGET_KEY="genesisBrowserLastTarget",LAUNCH_PREFIX="genesisBrowserLaunch:";
   const PROXY_ERROR_PATTERN=/Genesis upstream request failed|Internal Service Worker Error|Genesis transport error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
-  const frame=document.getElementById("browserFrame"),status=document.getElementById("status"),loading=document.getElementById("loading"),loadingText=document.getElementById("loadingText"),error=document.getElementById("error"),errorText=document.getElementById("errorText"),retry=document.getElementById("retry"),repair=document.getElementById("repair"),reload=document.getElementById("reload"),footerNote=document.getElementById("footerNote");
-  let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,readinessTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="";
+  const frame=document.getElementById("browserFrame"),officialFrame=document.getElementById("officialFrame"),status=document.getElementById("status"),loading=document.getElementById("loading"),loadingText=document.getElementById("loadingText"),error=document.getElementById("error"),errorText=document.getElementById("errorText"),retry=document.getElementById("retry"),repair=document.getElementById("repair"),reload=document.getElementById("reload"),aboutBlank=document.getElementById("aboutBlank"),footerNote=document.getElementById("footerNote");
+  let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,readinessTimer=null,youtubeFallbackTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="",usingYouTubeFallback=false,youtubeFallbacks=[],youtubeFallbackIndex=0;
 
   function validTarget(value){try{const parsed=new URL(String(value||""));return parsed.protocol==="https:"||parsed.protocol==="http:"?parsed.href:""}catch{return""}}
-  function readTarget(){const token=location.hash.slice(1);if(token&&/^[A-Za-z0-9_-]{12,80}$/.test(token)){try{const key=LAUNCH_PREFIX+token,entry=JSON.parse(localStorage.getItem(key)||"null");if(entry?.expires>Date.now()){const next=validTarget(entry.url);if(next)sessionStorage.setItem(TARGET_KEY,next)}localStorage.removeItem(key)}catch{}}if(location.hash)history.replaceState(null,"",location.pathname+location.search);try{return validTarget(sessionStorage.getItem(TARGET_KEY))}catch{return""}}
+  function saveTarget(value){const next=validTarget(value);if(!next)return"";try{sessionStorage.setItem(TARGET_KEY,next);localStorage.setItem(LAST_TARGET_KEY,next)}catch{}return next}
+  function readTarget(){const token=location.hash.slice(1);if(token&&/^[A-Za-z0-9_-]{12,80}$/.test(token)){try{const key=LAUNCH_PREFIX+token,entry=JSON.parse(localStorage.getItem(key)||"null");if(entry?.expires>Date.now())saveTarget(entry.url);localStorage.removeItem(key)}catch{}}if(location.hash)history.replaceState(null,"",location.pathname+location.search);try{return validTarget(sessionStorage.getItem(TARGET_KEY))||validTarget(localStorage.getItem(LAST_TARGET_KEY))}catch{return""}}
+  function createLaunchUrl(value){const token=crypto.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2);localStorage.setItem(LAUNCH_PREFIX+token,JSON.stringify({url:value,expires:Date.now()+15*60*1000}));const launch=new URL("browser-tab.html",location.href);launch.hash=token;return launch.href}
+  function openAboutBlankShell(destination){let opened=null;try{opened=window.open("about:blank","_blank");if(!opened)return null;const doc=opened.document;doc.title="Genesis Browser";doc.documentElement.style.cssText="width:100%;height:100%;margin:0;background:#050811;overflow:hidden";doc.body.style.cssText="width:100%;height:100%;margin:0;background:#050811;overflow:hidden";doc.body.replaceChildren();const viewport=doc.createElement("meta");viewport.name="viewport";viewport.content="width=device-width,initial-scale=1,viewport-fit=cover";doc.head.appendChild(viewport);const shell=doc.createElement("iframe");shell.title="Genesis Browser";shell.src=destination;shell.referrerPolicy="strict-origin-when-cross-origin";shell.allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock; microphone; camera; display-capture";shell.allowFullscreen=true;shell.style.cssText="display:block;width:100%;height:100%;border:0;background:#050811";doc.body.appendChild(shell);try{opened.opener=null}catch{}try{opened.focus()}catch{}return opened}catch(err){try{opened?.close()}catch{}console.error("Genesis could not create the About Blank shell.",err);return null}}
+  function currentFrameTarget(){let value="";try{value=String(frame.contentWindow?.location?.href||frame.src||"")}catch{}const direct=validTarget(value);try{if(direct&&new URL(direct).origin!==location.origin)return direct;const parsed=new URL(value,location.href),marker="/prism/",at=parsed.pathname.indexOf(marker);if(at<0)return"";const routed=parsed.pathname.slice(at+marker.length),split=routed.indexOf("/");return split<0?"":validTarget(decodeURIComponent(routed.slice(split+1)))}catch{return""}}
+  function syncTarget(){const next=currentFrameTarget();if(next)target=saveTarget(next);return next}
+  function bindTargetPersistence(){try{const doc=frame.contentDocument,win=frame.contentWindow;if(!doc||!win||doc.__genesisTargetPersistence)return;const sync=()=>setTimeout(()=>{syncTarget();scheduleYouTubeFallback(navigationId)},0);win.addEventListener("popstate",sync);win.addEventListener("pagehide",sync);doc.addEventListener("yt-navigate-finish",sync,true);doc.__genesisTargetPersistence=true}catch{}}
   function clearLoadTimer(){if(loadTimer)clearTimeout(loadTimer);loadTimer=null}
   function clearReadinessTimer(){if(readinessTimer)clearTimeout(readinessTimer);readinessTimer=null}
+  function clearYouTubeFallbackTimer(){if(youtubeFallbackTimer)clearTimeout(youtubeFallbackTimer);youtubeFallbackTimer=null}
+  function inspectYouTubePlayback(){
+    try{
+      const doc=frame.contentDocument;
+      if(!doc?.body)return{playable:false,challenge:false};
+      const text=(doc.body.innerText||"").replace(/\s+/g," ").trim();
+      const video=doc.querySelector("video");
+      return{
+        playable:!!video&&(video.readyState>=2||video.buffered?.length>0),
+        challenge:/sign in to confirm you(?:'|’)?re not a bot|confirm you(?:'|’)?re not a bot|unusual traffic/i.test(text)
+      };
+    }catch{return{playable:true,challenge:false};}
+  }
+  function showYouTubeFallback(reason="",useNext=false){
+    const candidates=window.GenesisPrism?.youtubeEmbedFallbacks?.(target)||[];
+    if(!candidates.length)return false;
+    if(!usingYouTubeFallback||youtubeFallbacks.join("|")!==candidates.join("|")){
+      youtubeFallbacks=candidates;
+      youtubeFallbackIndex=0;
+    }else if(useNext&&youtubeFallbacks.length>1){
+      youtubeFallbackIndex=(youtubeFallbackIndex+1)%youtubeFallbacks.length;
+    }
+    usingYouTubeFallback=true;
+    clearLoadTimer();
+    clearReadinessTimer();
+    clearYouTubeFallbackTimer();
+    loading.classList.add("hidden");
+    error.classList.add("hidden");
+    frame.style.display="none";
+    officialFrame.style.display="block";
+    officialFrame.src=youtubeFallbacks[youtubeFallbackIndex];
+    status.textContent="YouTube player · inside Genesis";
+    footerNote.textContent=(reason?reason+" ":"")+"Repair switches between the official YouTube players.";
+    repair.disabled=false;
+    reload.disabled=false;
+    return true;
+  }
+  function scheduleYouTubeFallback(id){
+    clearYouTubeFallbackTimer();
+    const logicalTarget=target;
+    if(!window.GenesisPrism?.youtubeVideoId?.(logicalTarget)||usingYouTubeFallback)return;
+    const startedAt=Date.now();
+    const check=()=>{
+      if(id!==navigationId||recovering||usingYouTubeFallback||target!==logicalTarget)return;
+      const player=inspectYouTubePlayback();
+      if(player.playable)return;
+      if(player.challenge||Date.now()-startedAt>=11000){
+        showYouTubeFallback(
+          player.challenge
+            ?"YouTube requested its embedded player."
+            :"The proxied stream did not start in time."
+        );
+        return;
+      }
+      youtubeFallbackTimer=setTimeout(check,1400);
+    };
+    youtubeFallbackTimer=setTimeout(check,900);
+  }
   function setBusy(message,stateText){error.classList.add("hidden");loading.classList.remove("hidden");loadingText.textContent=message;status.textContent=stateText;repair.disabled=recovering;reload.disabled=recovering}
-  function showError(message){clearLoadTimer();clearReadinessTimer();loading.classList.add("hidden");errorText.textContent=message;error.classList.remove("hidden");status.textContent="Genesis Browser needs attention";footerNote.textContent="Use Repair & Retry to rebuild the browser connection.";repair.disabled=false;reload.disabled=false}
+  function showError(message){clearLoadTimer();clearReadinessTimer();clearYouTubeFallbackTimer();loading.classList.add("hidden");errorText.textContent=message;error.classList.remove("hidden");status.textContent="Genesis Browser needs attention";footerNote.textContent="Use Repair & Retry to rebuild the browser connection.";repair.disabled=false;reload.disabled=false}
   function readProxyFailure(){try{const text=(frame.contentDocument?.body?.innerText||"").trim();return text&&PROXY_ERROR_PATTERN.test(text)?text.slice(0,700):""}catch{return""}}
   function activeTransportLabel(){try{const info=window.GenesisPrism?.diagnostics?.();if(!info?.wisp)return"";return new URL(info.wisp).hostname}catch{return""}}
   function targetFamily(){
@@ -122,7 +186,20 @@
   }
 
   function armLoadTimeout(id,timeoutMs=30000){clearLoadTimer();loadTimer=setTimeout(()=>{if(id!==navigationId)return;if(automaticRecoveries<2){automaticRecoveries++;hardRecover("page load timeout",true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))}else{showError("The page stopped responding before it finished loading. Genesis already tried its available connection repairs.")}},timeoutMs)}
-  async function navigateCurrent(message="Connecting to the website…"){const id=++navigationId;clearReadinessTimer();setBusy(message,"Loading website…");armLoadTimeout(id);prismFrame.go(target)}
+  async function navigateCurrent(message="Connecting to the website…"){
+    const id=++navigationId;
+    clearReadinessTimer();
+    clearYouTubeFallbackTimer();
+    usingYouTubeFallback=false;
+    youtubeFallbacks=[];
+    youtubeFallbackIndex=0;
+    officialFrame.style.display="none";
+    if(officialFrame.getAttribute("src")!=="about:blank")officialFrame.src="about:blank";
+    frame.style.display="block";
+    setBusy(message,"Loading website…");
+    armLoadTimeout(id);
+    prismFrame.go(target);
+  }
   async function start(){if(starting||recovering)return;if(!target){showError("This Genesis browser tab has expired. Return to Genesis and open the website again.");return}starting=true;setBusy("Starting the Genesis browser…","Starting Prism + Libcurl…");try{prismFrame=await window.GenesisPrism.createFrame(frame);started=true;await navigateCurrent()}catch(err){showError(err?.message||String(err))}finally{starting=false}}
 
   async function hardRecover(reason="manual repair",automatic=false,options={}){
@@ -132,6 +209,11 @@
     const id=++navigationId;
     clearLoadTimer();
     clearReadinessTimer();
+    clearYouTubeFallbackTimer();
+    usingYouTubeFallback=false;
+    officialFrame.style.display="none";
+    if(officialFrame.getAttribute("src")!=="about:blank")officialFrame.src="about:blank";
+    frame.style.display="block";
     setBusy(automatic?"Switching connection and retrying…":"Repairing Genesis Browser…",options.rotateWisp?"Switching Genesis transport…":"Rebuilding Prism + Libcurl…");
     footerNote.textContent=options.rotateWisp?"Trying another Genesis transport…":"Rebuilding the Genesis browser connection…";
     try{
@@ -151,7 +233,7 @@
 
   function handleProxyFailure(message){
     const text=String(message||"Genesis upstream connection failed");
-    if(recovering || text===lastFailure)return;
+    if(recovering || usingYouTubeFallback || text===lastFailure)return;
     lastFailure=text;
     clearLoadTimer();
     clearReadinessTimer();
@@ -164,7 +246,7 @@
   }
 
   frame.addEventListener("load",()=>{
-    if(!started||recovering)return;
+    if(!started||recovering||usingYouTubeFallback)return;
     const failure=readProxyFailure();
     if(failure){handleProxyFailure(failure);return}
     clearLoadTimer();
@@ -173,7 +255,15 @@
     const transport=activeTransportLabel();
     footerNote.textContent=transport?"Connected through "+transport+".":"Genesis Browser connected successfully.";
     lastFailure="";
+    setTimeout(()=>{syncTarget();bindTargetPersistence()},0);
     armDynamicReadiness(navigationId);
+    scheduleYouTubeFallback(navigationId);
+  });
+  officialFrame.addEventListener("load",()=>{
+    if(!usingYouTubeFallback)return;
+    loading.classList.add("hidden");
+    error.classList.add("hidden");
+    status.textContent="YouTube player ready · inside Genesis";
   });
 
   window.addEventListener("message",event=>{
@@ -200,11 +290,35 @@
   });
 
   retry.addEventListener("click",()=>{automaticRecoveries=0;lastFailure="";hardRecover("user retry",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))});
-  repair.addEventListener("click",()=>{automaticRecoveries=0;lastFailure="";hardRecover("manual repair",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))});
-  reload.addEventListener("click",()=>{if(recovering)return;if(prismFrame){const id=++navigationId;lastFailure="";setBusy("Reloading website…","Reloading…");armLoadTimeout(id,30000);try{prismFrame.reload()}catch(err){hardRecover("reload failed",false,{rotateWisp:true}).catch(recoverErr=>showError(recoverErr?.message||err?.message||String(err)))}}else start()});
+  repair.addEventListener("click",()=>{
+    if(usingYouTubeFallback){
+      showYouTubeFallback("Trying the alternate official YouTube player.",true);
+      return;
+    }
+    automaticRecoveries=0;lastFailure="";
+    hardRecover("manual repair",false,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)));
+  });
+  reload.addEventListener("click",()=>{
+    if(recovering)return;
+    if(usingYouTubeFallback){
+      officialFrame.src=youtubeFallbacks[youtubeFallbackIndex]||window.GenesisPrism?.youtubeEmbedFallback?.(target)||"about:blank";
+      status.textContent="Reloading YouTube player…";
+      return;
+    }
+    if(prismFrame){
+      const id=++navigationId;
+      lastFailure="";
+      setBusy("Reloading website…","Reloading…");
+      armLoadTimeout(id,30000);
+      try{prismFrame.reload()}catch(err){hardRecover("reload failed",false,{rotateWisp:true}).catch(recoverErr=>showError(recoverErr?.message||err?.message||String(err)))}
+    }else start();
+  });
+  aboutBlank.addEventListener("click",()=>{let launch="";try{launch=target?createLaunchUrl(target):new URL("os.html",location.href).href}catch{}const opened=launch?openAboutBlankShell(launch):null;status.textContent=opened?"Opened in About Blank":"About Blank was blocked · allow this popup and try again"});
   window.addEventListener("online",()=>{status.textContent="Connection restored";if(!error.classList.contains("hidden")){automaticRecoveries=0;lastFailure="";hardRecover("network connection restored",true,{rotateWisp:true}).catch(err=>showError(err?.message||String(err)))}});
   window.addEventListener("offline",()=>{clearLoadTimer();status.textContent="Offline · waiting for connection";footerNote.textContent="Genesis will retry after the browser connection returns."});
-  window.addEventListener("pagehide",()=>{clearLoadTimer();clearReadinessTimer()});
+  function persistSession(){Promise.resolve(window.GenesisPrism?.persistSession?.()).catch(()=>{})}
+  window.addEventListener("pagehide",()=>{clearLoadTimer();clearReadinessTimer();clearYouTubeFallbackTimer();syncTarget();persistSession()});
+  document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="hidden"){syncTarget();persistSession()}});
   target=readTarget();window.addEventListener("DOMContentLoaded",start,{once:true});
 })();
 </script>

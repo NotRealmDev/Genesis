@@ -7,7 +7,8 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-scramjet-runtime-r12";
+  const BUILD_ID = "2026-09-15-youtube-player-r15";
+  const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -199,17 +200,134 @@
 
   function isYouTubeHost(host){
     return host==="youtu.be" || host==="youtube.com" || host.endsWith(".youtube.com") ||
+      host==="youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com") ||
       host==="googlevideo.com" || host.endsWith(".googlevideo.com") ||
       host==="ytimg.com" || host.endsWith(".ytimg.com");
   }
 
-  function isCompatibilityHost(host){
-    return isYouTubeHost(host) ||
-      host==="tiktok.com" || host.endsWith(".tiktok.com") ||
-      host==="tiktokcdn.com" || host.endsWith(".tiktokcdn.com") ||
-      host==="geforcenow.com" || host.endsWith(".geforcenow.com") ||
-      host==="nvidia.com" || host.endsWith(".nvidia.com") ||
-      host==="nvidiagrid.net" || host.endsWith(".nvidiagrid.net");
+  function youtubeVideoId(value){
+    try{
+      const remote=value instanceof URL?value:new URL(String(value||""));
+      const host=remote.hostname.toLowerCase().replace(/^www\./,"");
+      let id="";
+      if(host==="youtu.be"){
+        id=remote.pathname.split("/").filter(Boolean)[0]||"";
+      }else if(host==="youtube.com" || host.endsWith(".youtube.com")){
+        if(remote.pathname==="/watch")id=remote.searchParams.get("v")||"";
+        else{
+          const match=remote.pathname.match(/^\/(?:shorts|live|embed)\/([^/?#]+)/i);
+          id=match?.[1]||"";
+        }
+      }
+      return /^[A-Za-z0-9_-]{6,20}$/.test(id)?id:"";
+    }catch{return "";}
+  }
+
+  function youtubeStartSeconds(value){
+    try{
+      const remote=value instanceof URL?value:new URL(String(value||""));
+      const raw=remote.searchParams.get("start")||remote.searchParams.get("t")||"";
+      if(/^\d+$/.test(raw))return Math.max(0,Number(raw)||0);
+      const match=raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/i);
+      if(!match)return 0;
+      return (Number(match[1])||0)*3600+(Number(match[2])||0)*60+(Number(match[3])||0);
+    }catch{return 0;}
+  }
+
+  function youtubeEmbedFallbacks(value){
+    const id=youtubeVideoId(value);
+    if(!id)return [];
+    const start=youtubeStartSeconds(value);
+    let parentOrigin="";
+    try{
+      if(/^https?:$/.test(location.protocol))parentOrigin=location.origin;
+    }catch{}
+    return ["https://www.youtube-nocookie.com","https://www.youtube.com"].map(origin=>{
+      const embed=new URL("/embed/"+id,origin);
+      embed.searchParams.set("autoplay","1");
+      embed.searchParams.set("playsinline","1");
+      embed.searchParams.set("rel","0");
+      embed.searchParams.set("enablejsapi","1");
+      if(parentOrigin)embed.searchParams.set("origin",parentOrigin);
+      if(start>0)embed.searchParams.set("start",String(start));
+      return embed.href;
+    });
+  }
+
+  function youtubeEmbedFallback(value){
+    return youtubeEmbedFallbacks(value)[0]||"";
+  }
+
+  function rawHeaderValue(headers,name){
+    const wanted=String(name||"").toLowerCase();
+    for(const entry of headers||[]){
+      if(!Array.isArray(entry) || String(entry[0]||"").toLowerCase()!==wanted) continue;
+      return String(entry[1]||"");
+    }
+    return "";
+  }
+
+  function isYouTubeMediaRequest(remote,headers){
+    const host=remote.hostname.toLowerCase();
+    return host==="googlevideo.com" || host.endsWith(".googlevideo.com") ||
+      /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname);
+  }
+
+  function isYouTubePlaybackRequest(remote){
+    const host=remote.hostname.toLowerCase();
+    return (host==="googlevideo.com" || host.endsWith(".googlevideo.com")) &&
+      /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname);
+  }
+
+  function setRawHeader(headers,name,value){
+    const wanted=String(name||"").toLowerCase();
+    const next=[];
+    let replaced=false;
+    for(const entry of headers||[]){
+      if(!Array.isArray(entry) || String(entry[0]||"").toLowerCase()!==wanted){
+        next.push(entry);
+      }else if(!replaced){
+        next.push([entry[0],value]);
+        replaced=true;
+      }
+    }
+    if(!replaced)next.push([name,value]);
+    return next;
+  }
+
+  function parseMediaRange(value){
+    const match=String(value||"").trim().match(/^(?:bytes=)?(\d+)-(\d*)$/i);
+    if(!match)return null;
+    const start=Number(match[1]);
+    const end=match[2]?Number(match[2]):null;
+    if(!Number.isSafeInteger(start) || start<0 || (end!==null && (!Number.isSafeInteger(end)||end<start)))return null;
+    return {start,end};
+  }
+
+  function normalizeYouTubeMediaRequest(remote,method,headers){
+    const originalRange=rawHeaderValue(headers,"range");
+    const queryRange=remote.searchParams.get("range")||"";
+    if(!isYouTubePlaybackRequest(remote) || String(method||"GET").toUpperCase()!=="GET"){
+      return {remote,headers,originalRange,queryRange,appliedRange:""};
+    }
+
+    // Actual videoplayback streams can reject unbounded/full-file reads.
+    // Give only that endpoint a finite byte window; googlevideo health probes
+    // such as /generate_204 must keep their original no-body semantics.
+    const parsed=parseMediaRange(originalRange)||parseMediaRange(queryRange)||{start:0,end:null};
+    const maxEnd=parsed.start+YOUTUBE_MEDIA_CHUNK_BYTES-1;
+    let end=parsed.end===null?maxEnd:Math.min(parsed.end,maxEnd);
+    const contentLength=Number(remote.searchParams.get("clen"));
+    if(Number.isSafeInteger(contentLength)&&contentLength>0)end=Math.min(end,contentLength-1);
+    if(end<parsed.start)end=parsed.start;
+    const appliedRange=`bytes=${parsed.start}-${end}`;
+    return {
+      remote,
+      headers:setRawHeader(headers,"Range",appliedRange),
+      originalRange,
+      queryRange,
+      appliedRange
+    };
   }
 
   function mayReplayRequest(remote,method,body){
@@ -223,8 +341,7 @@
 
   function shouldRetryResponse(remote,method,body,status){
     if(!mayReplayRequest(remote,method,body)) return false;
-    if(TRANSIENT_STATUSES.has(Number(status))) return true;
-    return Number(status)===403 && isCompatibilityHost(remote.hostname.toLowerCase());
+    return TRANSIENT_STATUSES.has(Number(status));
   }
 
   async function releaseResponseBody(response){
@@ -243,7 +360,6 @@
       this.activeIndex=startIndex;
       this.client=null;
       this.ready=false;
-      this.switchPromise=null;
       this.officialVerified=false;
       this.stats={
         logicalRequests:0,
@@ -253,6 +369,16 @@
         retries:0,
         failovers:0,
         websocketFailures:0,
+        youtubeMediaRequests:0,
+        youtubeMediaResponses:0,
+        youtubeMediaPartialResponses:0,
+        youtubeMediaFailures:0,
+        youtubeMediaInvalidPartialResponses:0,
+        youtubeMediaLastStatus:0,
+        youtubeMediaLastRequestRange:"",
+        youtubeMediaLastContentRange:"",
+        youtubeMediaWisp:"",
+        youtubeMediaTrace:[],
         active:0,
         lastStatus:0,
         lastHost:"",
@@ -315,42 +441,37 @@
       throw lastError||new Error("No Genesis Wisp endpoint passed its route health check.");
     }
 
-    async switchEndpoint(failedClient,reason){
-      if(this.client!==failedClient) return this.client;
-      if(this.switchPromise) return this.switchPromise;
-
-      const pending=(async()=>{
-        let lastError=null;
-        const count=this.wispUrls.length;
-        const attempts=count>1?count-1:1;
-        for(let offset=1;offset<=attempts;offset++){
-          const index=count>1?(this.activeIndex+offset)%count:this.activeIndex;
-          try{
-            const result=await this.makeClient(index,true);
-            this.client=result.client;
-            this.activeIndex=index;
-            this.officialVerified=result.verified;
-            this.stats.failovers++;
-            this.emit("failover",{reason});
-            return this.client;
-          }catch(err){
-            lastError=err;
-            this.emit("endpoint-rejected",{host:new URL(this.wispUrls[index]).hostname,error:err?.message||String(err)});
-          }
-        }
-        throw lastError||new Error("Genesis could not switch Wisp endpoints.");
-      })();
-
-      this.switchPromise=pending;
-      try{return await pending;}
-      finally{if(this.switchPromise===pending)this.switchPromise=null;}
-    }
-
     async request(remote,method,body,headers,signal){
       if(!this.client) throw new Error("Genesis Wisp transport is not ready.");
       this.stats.logicalRequests++;
       this.stats.active++;
       this.stats.lastHost=remote.hostname;
+      const youtubeMedia=isYouTubeMediaRequest(remote,headers);
+      const normalizedMedia=normalizeYouTubeMediaRequest(remote,method,headers);
+      const requestRemote=normalizedMedia.remote;
+      const requestHeaders=normalizedMedia.headers;
+      const mediaTrace=youtubeMedia?{
+        method:String(method||"GET").toUpperCase(),
+        host:remote.hostname,
+        path:remote.pathname,
+        queryRange:normalizedMedia.queryRange,
+        requestRange:normalizedMedia.originalRange,
+        appliedRange:normalizedMedia.appliedRange,
+        contentLengthHint:remote.searchParams.get("clen")||"",
+        client:remote.searchParams.get("c")||"",
+        ump:remote.searchParams.has("ump"),
+        status:0,
+        contentRange:"",
+        responseLength:"",
+        contentType:""
+      }:null;
+      if(youtubeMedia){
+        this.stats.youtubeMediaRequests++;
+        this.stats.youtubeMediaLastRequestRange=normalizedMedia.appliedRange||normalizedMedia.originalRange;
+        this.stats.youtubeMediaWisp=this.activeWisp;
+        this.stats.youtubeMediaTrace.push(mediaTrace);
+        if(this.stats.youtubeMediaTrace.length>24)this.stats.youtubeMediaTrace.shift();
+      }
       const replayBody=copyReplayBody(body);
       const canRetry=mayReplayRequest(remote,method,body) &&
         (body==null || replayBody!==undefined);
@@ -360,37 +481,55 @@
         this.stats.attempts++;
         let response;
         try{
-          response=await firstClient.request(remote,method,body,headers,signal);
+          response=await firstClient.request(requestRemote,method,body,requestHeaders,signal);
         }catch(err){
           if(!canRetry || signal?.aborted) throw err;
           this.stats.retries++;
-          this.emit("retry",{host:remote.hostname,reason:err?.message||String(err)});
-          const nextClient=await this.switchEndpoint(firstClient,"request error");
+          // libcurl.js owns one process-wide Wisp route. Creating another
+          // client here changes the egress path for every subsequent request,
+          // which invalidates YouTube's signed googlevideo URLs. Retry the
+          // request on the same route; frame recovery rotates the entire page
+          // as one clean session if that route is truly unavailable.
+          this.emit("retry",{host:remote.hostname,reason:err?.message||String(err),route:"same-wisp",media:youtubeMedia});
           await delay(120);
           this.stats.attempts++;
-          response=await nextClient.request(remote,method,replayBody,headers,signal);
+          response=await firstClient.request(requestRemote,method,replayBody,requestHeaders,signal);
         }
 
         if(canRetry && !signal?.aborted && shouldRetryResponse(remote,method,body,response?.status)){
           const retryStatus=Number(response?.status)||0;
           await releaseResponseBody(response);
           this.stats.retries++;
-          this.emit("retry",{host:remote.hostname,status:retryStatus,reason:"transient response"});
-          const nextClient=await this.switchEndpoint(firstClient,"HTTP "+retryStatus);
+          this.emit("retry",{host:remote.hostname,status:retryStatus,reason:"transient response",route:"same-wisp",media:youtubeMedia});
           await delay(120);
           this.stats.attempts++;
-          response=await nextClient.request(remote,method,replayBody,headers,signal);
+          response=await firstClient.request(requestRemote,method,replayBody,requestHeaders,signal);
         }
 
         this.stats.completed++;
         this.stats.lastStatus=Number(response?.status)||0;
+        if(youtubeMedia){
+          const contentRange=rawHeaderValue(response?.headers,"content-range");
+          this.stats.youtubeMediaResponses++;
+          this.stats.youtubeMediaLastStatus=this.stats.lastStatus;
+          this.stats.youtubeMediaLastContentRange=contentRange;
+          mediaTrace.status=this.stats.lastStatus;
+          mediaTrace.contentRange=contentRange;
+          mediaTrace.responseLength=rawHeaderValue(response?.headers,"content-length");
+          mediaTrace.contentType=rawHeaderValue(response?.headers,"content-type");
+          if(this.stats.lastStatus===206){
+            this.stats.youtubeMediaPartialResponses++;
+            if(!contentRange) this.stats.youtubeMediaInvalidPartialResponses++;
+          }
+        }
         this.stats.lastError="";
-        this.emit("response",{host:remote.hostname,status:this.stats.lastStatus});
+        this.emit("response",{host:remote.hostname,status:this.stats.lastStatus,media:youtubeMedia});
         return response;
       }catch(err){
         this.stats.failed++;
+        if(youtubeMedia) this.stats.youtubeMediaFailures++;
         this.stats.lastError=err?.message||String(err);
-        this.emit("failure",{host:remote.hostname,error:this.stats.lastError});
+        this.emit("failure",{host:remote.hostname,error:this.stats.lastError,media:youtubeMedia});
         throw err;
       }finally{
         this.stats.active=Math.max(0,this.stats.active-1);
@@ -407,7 +546,9 @@
           this.stats.lastHost=url.hostname;
           this.stats.lastError=String(error||"WebSocket transport error");
           this.emit("websocket-failure",{host:url.hostname,error:this.stats.lastError});
-          this.switchEndpoint(client,"WebSocket connection error").catch(()=>{});
+          // Keep the active route stable for HTTP media already signed to this
+          // Wisp egress. The page-level repair path can rebuild the complete
+          // session on another endpoint when a WebSocket is essential.
           onerror(error);
         }
       );
@@ -432,7 +573,14 @@
     }
 
     diagnostics(){
-      return {...this.stats,activeIndex:this.activeIndex,wispCount:this.wispUrls.length,ready:this.ready};
+      return {
+        ...this.stats,
+        activeIndex:this.activeIndex,
+        wispCount:this.wispUrls.length,
+        ready:this.ready,
+        routePolicy:"stable-session",
+        midSessionFailover:false
+      };
     }
 
     async close(){
@@ -475,6 +623,9 @@
     activeWisp:"",
     frameRecoveryState:new WeakMap(),
     codec,
+    youtubeVideoId,
+    youtubeEmbedFallback,
+    youtubeEmbedFallbacks,
 
     get wisp(){ return this.transport?.activeWisp || this.activeWisp || this.wispUrls[this.wispIndex] || ""; },
 
@@ -735,11 +886,20 @@
       return this.transport.healthCheck();
     },
 
+    async persistSession(){
+      if(!this.controller) return false;
+      if(typeof this.controller.persistCookies==="function"){
+        await this.controller.persistCookies();
+      }
+      return true;
+    },
+
     diagnostics(){
       return {
         build:BUILD_ID,
         searchEngine:"Brave Search",
         websiteTransport:"Wisp",
+        sessionPersistence:"indexeddb-cookies-and-origin-storage",
         scramjetFlags:{sourcemaps:false},
         officialWispClient:"@mercuryworkshop/wisp-js@0.5.0",
         officialWispVerified:this.officialWispVerified,

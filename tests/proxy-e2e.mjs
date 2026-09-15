@@ -28,7 +28,10 @@ const server=createServer(async(req,res)=>{
 });
 await new Promise(resolve=>server.listen(4173,"127.0.0.1",resolve));
 
-const browser=await chromium.launch({headless:true});
+const browser=await chromium.launch({
+  headless:process.env.GENESIS_TEST_HEADFUL!=="1",
+  args:["--autoplay-policy=no-user-gesture-required"]
+});
 const page=await browser.newPage();
 const logs=[];
 page.on("console",message=>logs.push(message.type()+": "+message.text()));
@@ -41,6 +44,162 @@ async function youtubeHasContent(){
     const selectors='a#video-title,ytd-video-renderer #video-title,yt-lockup-view-model h3,yt-lockup-view-model a[href*="/watch"]';
     return [...doc.querySelectorAll(selectors)].some(node=>(node.textContent||"").trim().length>1);
   },null,{timeout:90000});
+}
+
+async function acceptYouTubeConsent(){
+  const direct=page.frames().find(candidate=>/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()));
+  if(direct){
+    await direct.evaluate(()=>{
+      const buttons=[...document.querySelectorAll("button,tp-yt-paper-button,input[type=submit]")];
+      const accept=buttons.find(button=>/accept all|i agree|agree|continue/i.test((button.innerText||button.value||button.textContent||"").trim()));
+      accept?.click();
+    }).catch(()=>{});
+    return;
+  }
+  await page.evaluate(()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    if(!doc)return;
+    const buttons=[...doc.querySelectorAll("button,tp-yt-paper-button,input[type=submit]")];
+    const accept=buttons.find(button=>/accept all|i agree|agree|continue/i.test((button.innerText||button.value||button.textContent||"").trim()));
+    accept?.click();
+  });
+}
+
+async function youtubeVideoSnapshot(){
+  const direct=page.frames().find(candidate=>/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()));
+  if(direct){
+    return direct.evaluate(()=>{
+      const video=document.querySelector("video");
+      if(!video)return null;
+      const buffered=[];
+      for(let index=0;index<video.buffered.length;index++)buffered.push([video.buffered.start(index),video.buffered.end(index)]);
+      return{
+        currentTime:video.currentTime,
+        duration:Number.isFinite(video.duration)?video.duration:null,
+        readyState:video.readyState,
+        networkState:video.networkState,
+        paused:video.paused,
+        ended:video.ended,
+        currentSrc:video.currentSrc||video.src||"",
+        buffered,
+        error:video.error?{code:video.error.code,message:video.error.message||""}:null
+      };
+    }).catch(()=>null);
+  }
+  return page.evaluate(()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    const video=doc?.querySelector("video");
+    if(!video)return null;
+    const buffered=[];
+    for(let index=0;index<video.buffered.length;index++){
+      buffered.push([video.buffered.start(index),video.buffered.end(index)]);
+    }
+    return {
+      currentTime:video.currentTime,
+      duration:Number.isFinite(video.duration)?video.duration:null,
+      readyState:video.readyState,
+      networkState:video.networkState,
+      paused:video.paused,
+      ended:video.ended,
+      currentSrc:video.currentSrc||video.src||"",
+      buffered,
+      error:video.error?{code:video.error.code,message:video.error.message||""}:null
+    };
+  });
+}
+
+async function nudgeYouTubePlayback(){
+  const direct=page.frames().find(candidate=>/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()));
+  if(direct){
+    return direct.evaluate(async()=>{
+      const video=document.querySelector("video");
+      if(!video)return null;
+      video.muted=true;
+      video.volume=0;
+      video.playsInline=true;
+      let playError="";
+      try{await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("video.play() timed out")),10000))])}
+      catch(error){playError=error?.message||String(error)}
+      return{initialTime:video.currentTime,playError};
+    }).catch(()=>null);
+  }
+  return page.evaluate(async()=>{
+    const doc=document.getElementById("target")?.contentDocument;
+    const video=doc?.querySelector("video");
+    if(!video)return null;
+    video.muted=true;
+    video.volume=0;
+    video.playsInline=true;
+    let playError="";
+    try{await Promise.race([video.play(),new Promise((_,reject)=>setTimeout(()=>reject(new Error("video.play() timed out")),10000))])}
+    catch(error){playError=error?.message||String(error)}
+    return{initialTime:video.currentTime,playError};
+  });
+}
+
+async function waitForYouTubePlayback(timeoutMs=90000){
+  await acceptYouTubeConsent();
+  const deadline=Date.now()+timeoutMs;
+  let started=null;
+  while(Date.now()<deadline&&!started){
+    await acceptYouTubeConsent();
+    started=await nudgeYouTubePlayback();
+    if(!started)await new Promise(resolve=>setTimeout(resolve,750));
+  }
+  if(!started)throw new Error("YouTube did not create a video element");
+  while(Date.now()<deadline){
+    const snapshot=await youtubeVideoSnapshot();
+    if(snapshot?.error)throw new Error("YouTube reported media error "+snapshot.error.code+": "+snapshot.error.message);
+    if(snapshot?.readyState>=2&&snapshot.currentTime>=started.initialTime+1)break;
+    await nudgeYouTubePlayback();
+    await new Promise(resolve=>setTimeout(resolve,750));
+  }
+
+  const snapshot=await youtubeVideoSnapshot();
+  assert.ok(snapshot,"YouTube video element disappeared");
+  assert.equal(snapshot.error,null,"YouTube reported a media error");
+  assert.ok(snapshot.readyState>=2,"YouTube never buffered playable media");
+  assert.ok(snapshot.currentTime>=started.initialTime+1,"YouTube video clock did not advance");
+  return {...snapshot,initialTime:started.initialTime,playError:started.playError};
+}
+
+async function youtubeChallengeDetected(){
+  return page.evaluate(()=>{
+    try{
+      const text=document.getElementById("target")?.contentDocument?.body?.innerText||"";
+      return /sign in to confirm you(?:'|’)?re not a bot|confirm you(?:'|’)?re not a bot|unusual traffic/i.test(text);
+    }catch{return false}
+  });
+}
+
+async function directYouTubeDiagnostics(){
+  const direct=page.frames().find(candidate=>/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()));
+  if(!direct)return null;
+  return direct.evaluate(()=>{
+    let playerResponse=null;
+    for(const candidate of [
+      globalThis.ytInitialPlayerResponse,
+      globalThis.ytplayer?.config?.args?.player_response
+    ]){
+      try{
+        const parsed=typeof candidate==="string"?JSON.parse(candidate):candidate;
+        if(parsed?.playabilityStatus){
+          playerResponse={
+            status:parsed.playabilityStatus.status||"",
+            reason:parsed.playabilityStatus.reason||"",
+            subreason:parsed.playabilityStatus.errorScreen?.playerErrorMessageRenderer?.subreason?.runs?.map(run=>run.text).join("")||""
+          };
+          break;
+        }
+      }catch{}
+    }
+    return{
+      url:location.href,
+      title:document.title,
+      bodyText:(document.body?.innerText||"").replace(/\s+/g," ").trim().slice(0,1200),
+      playerResponse
+    };
+  }).catch(error=>({url:direct.url(),error:error?.message||String(error)}));
 }
 
 async function waitForTikTokContent(){
@@ -126,7 +285,53 @@ try{
   const youtube=await frameSnapshot();
   assert.match(youtube.title,/YouTube/i);
 
-  await navigateWithRepair("https://www.tiktok.com/explore",waitForTikTokContent);
+  // YouTube's own IFrame API documentation uses this public video as its
+  // reference embed, making it a stable target for a player-health test.
+  const watchUrl="https://www.youtube.com/watch?v=M7lc1UVf-VE";
+  await page.evaluate(target=>window.proxyHarness.go(target),watchUrl);
+  let youtubePlayback=null;
+  let youtubePlaybackMode="scramjet";
+  let youtubeChallenge=false;
+  let proxyPlaybackError="";
+  try{
+    youtubePlayback=await waitForYouTubePlayback(20000);
+  }catch(error){
+    proxyPlaybackError=error?.message||String(error);
+    youtubeChallenge=await youtubeChallengeDetected();
+    const fallbacks=await page.evaluate(target=>window.GenesisPrism.youtubeEmbedFallbacks(target),watchUrl);
+    let fallbackError=null;
+    for(let index=0;index<fallbacks.length;index++){
+      try{
+        await page.evaluate(({target,index})=>window.proxyHarness.openYouTubeFallback(target,index),{target:watchUrl,index});
+        youtubePlayback=await waitForYouTubePlayback(65000);
+        youtubePlaybackMode=index===0?"official-youtube-nocookie":"official-youtube";
+        fallbackError=null;
+        break;
+      }catch(error){
+        fallbackError=error;
+      }
+    }
+    if(!youtubePlayback)throw fallbackError||error;
+  }
+  assert.ok(youtubePlayback?.currentTime>=1,"YouTube video did not make playback progress");
+  assert.equal(youtubePlayback?.error,null,"YouTube playback ended with a media error");
+  const youtubeReport=await page.evaluate(()=>window.proxyHarness.report());
+  const mediaStats=youtubeReport.diagnostics.requests;
+  assert.equal(mediaStats.midSessionFailover,false,"YouTube changed Wisp routes during playback");
+  if(youtubePlaybackMode==="scramjet"){
+    assert.ok(mediaStats.youtubeMediaRequests>0,"No YouTube media requests reached the transport");
+    assert.ok(mediaStats.youtubeMediaResponses>0,"No YouTube media response reached the player");
+  }else{
+    assert.match(page.frames().find(candidate=>/youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()))?.url()||"",/youtube(?:-nocookie)?\.com\/embed\/M7lc1UVf-VE/i);
+  }
+  assert.equal(mediaStats.youtubeMediaInvalidPartialResponses,0,"A 206 media response was missing Content-Range");
+
+  if(youtubePlaybackMode==="scramjet"){
+    await navigateWithRepair("https://www.tiktok.com/explore",waitForTikTokContent);
+  }else{
+    await page.evaluate(target=>window.proxyHarness.repairAndGo(target),"https://www.tiktok.com/explore");
+    await waitForTikTokContent();
+  }
   const tiktok=await frameSnapshot();
   assert.match(tiktok.href,/tiktok\.com/i);
 
@@ -140,7 +345,7 @@ try{
     health,
     diagnostics:report.diagnostics,
     sites:{
-      youtube:{title:youtube.title,bodyText:youtube.bodyText.slice(0,600)},
+      youtube:{title:youtube.title,bodyText:youtube.bodyText.slice(0,600),playback:youtubePlayback,playbackMode:youtubePlaybackMode,youtubeChallenge,proxyPlaybackError,mediaStats},
       tiktok:{title:tiktok.title,bodyText:tiktok.bodyText.slice(0,600)},
       geforceNow:{title:geforceNow.title,bodyText:geforceNow.bodyText.slice(0,600)}
     }
@@ -150,7 +355,9 @@ try{
   await page.screenshot({path:join(root,"test-output","proxy-failure.png"),fullPage:true}).catch(()=>{});
   const report=await page.evaluate(()=>window.proxyHarness?.report?.()).catch(()=>null);
   const frame=await frameSnapshot().catch(()=>null);
-  console.error(JSON.stringify({error:error.message,report,frame,logs:logs.slice(-160)},null,2));
+  const video=await youtubeVideoSnapshot().catch(()=>null);
+  const directYouTube=await directYouTubeDiagnostics().catch(()=>null);
+  console.error(JSON.stringify({error:error.message,report,frame,video,directYouTube,logs:logs.slice(-160)},null,2));
   throw error;
 }finally{
   await browser.close();
