@@ -40,6 +40,13 @@
       prismFrame=await window.GenesisPrism.recoverFrame(element,"automated integration retry",{rotateWisp:true});
       return waitForLoad(()=>prismFrame.go(url));
     },
+    async openYouTubeFallback(url,index=0){
+      const fallbacks=window.GenesisPrism.youtubeEmbedFallbacks(url);
+      const selected=fallbacks[Math.max(0,Math.min(fallbacks.length-1,Number(index)||0))];
+      if(!selected)throw new Error("No YouTube embed fallback is available for this URL.");
+      await waitForLoad(()=>{element.src=selected});
+      return{url:selected,index:Number(index)||0,count:fallbacks.length};
+    },
     report(){
       let text="";
       try{text=(element.contentDocument?.body?.innerText||"").slice(0,1200)}catch{}

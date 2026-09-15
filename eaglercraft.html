@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,viewport-fit=cover">
+<meta name="description" content="Eaglercraft 1.12.2 in Genesis">
+<title>Eaglercraft 1.12.2 · Genesis</title>
+<style>
+*{box-sizing:border-box}html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#000;color:#fff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+#game_frame{position:fixed;inset:0;background:#000}
+.genesis-game-nav{position:fixed;z-index:2147483647;left:max(12px,env(safe-area-inset-left));top:max(12px,env(safe-area-inset-top));display:flex;gap:8px;opacity:.28;transition:opacity .2s ease}
+.genesis-game-nav:hover,.genesis-game-nav:focus-within{opacity:1}
+.genesis-game-nav a,.genesis-game-nav button{height:36px;padding:0 13px;border:1px solid rgba(255,255,255,.2);border-radius:11px;background:rgba(7,10,17,.82);backdrop-filter:blur(14px);color:#fff;text-decoration:none;font:600 11px/34px inherit;cursor:pointer}
+.genesis-game-status{position:fixed;z-index:2;inset:0;display:grid;place-items:center;text-align:center;color:rgba(255,255,255,.68);font-size:13px;pointer-events:none;background:radial-gradient(circle,rgba(57,111,255,.18),transparent 38%),#000}
+.genesis-game-status.hidden{display:none}
+</style>
+<script>
+(function(){
+  try{
+    const login=JSON.parse(localStorage.getItem("genesisLogin")||"null");
+    if(login?.expires&&Date.now()<login.expires)return;
+  }catch{}
+  location.replace("index.html");
+})();
+</script>
+<script>
+"use strict";
+const EAGLERCRAFT_ASSET_ROOT="https://cdn.statically.io/gh/JessePinkman27/eaglercraft-1.12.2/d9e759ec21fdb807742201b11de8835e34ccd48a/web/wasm/";
+window.eaglercraftXOpts={
+  demoMode:false,
+  container:"game_frame",
+  assetsURI:EAGLERCRAFT_ASSET_ROOT+"assets.epw",
+  worldsDB:"worlds",
+  logInvalidCerts:true,
+  crashOnUncaughtExceptions:true
+};
+</script>
+<script src="https://cdn.statically.io/gh/JessePinkman27/eaglercraft-1.12.2/d9e759ec21fdb807742201b11de8835e34ccd48a/web/wasm/bootstrap.js" crossorigin="anonymous"></script>
+<script>
+"use strict";
+window.addEventListener("load",async()=>{
+  const status=document.getElementById("gameStatus");
+  try{
+    if(typeof main!=="function")throw new Error("The Eaglercraft client did not load.");
+    await main();
+    setTimeout(()=>status?.classList.add("hidden"),900);
+  }catch(err){
+    if(status)status.textContent="Eaglercraft could not start · "+(err?.message||String(err));
+  }
+});
+function openGameAboutBlank(){
+  const opened=window.open("about:blank","_blank");
+  if(!opened)return;
+  opened.document.title="Eaglercraft 1.12.2 · Genesis";
+  opened.document.documentElement.style.cssText="width:100%;height:100%;margin:0;background:#000;overflow:hidden";
+  opened.document.body.style.cssText="width:100%;height:100%;margin:0;background:#000;overflow:hidden";
+  const frame=opened.document.createElement("iframe");
+  frame.src=location.href;
+  frame.allow="fullscreen; autoplay; gamepad; pointer-lock";
+  frame.allowFullscreen=true;
+  frame.style.cssText="display:block;width:100%;height:100%;border:0";
+  opened.document.body.replaceChildren(frame);
+  try{opened.opener=null}catch{}
+  opened.focus();
+}
+</script>
+</head>
+<body>
+  <div id="game_frame" aria-label="Eaglercraft game"></div>
+  <div class="genesis-game-status" id="gameStatus">Loading Eaglercraft 1.12.2…</div>
+  <nav class="genesis-game-nav" aria-label="Genesis game controls">
+    <a href="os.html">← Back to Genesis</a>
+    <button type="button" onclick="openGameAboutBlank()">About Blank</button>
+  </nav>
+</body>
+</html>

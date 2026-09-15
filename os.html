@@ -45,11 +45,14 @@ button{color:inherit}
  position:absolute;top:16px;right:16px;bottom:16px;width:205px;padding:22px;border-radius:28px;
  background:linear-gradient(150deg,rgba(255,255,255,.10),rgba(255,255,255,.035));
  border:1px solid var(--border);backdrop-filter:blur(var(--blur)) saturate(150%);-webkit-backdrop-filter:blur(var(--blur)) saturate(150%);
- box-shadow:inset 0 1px rgba(255,255,255,.1),0 25px 70px rgba(0,0,0,.30);z-index:40
+ box-shadow:inset 0 1px rgba(255,255,255,.1),0 25px 70px rgba(0,0,0,.30);z-index:40;overflow:hidden
 }
+.sidebar>*:not(.welcome-fireworks){position:relative;z-index:2}
+.welcome-fireworks{position:absolute;inset:0;width:100%;height:100%;z-index:1;pointer-events:none;opacity:1;transition:opacity .9s ease}
+.welcome-fireworks.done{opacity:0}
 .clock-line{display:flex;align-items:flex-end;gap:6px}.clock{font-size:44px;font-weight:300;letter-spacing:-3px}.seconds{font-size:15px;color:var(--muted);padding-bottom:7px}
 .date{font-size:13px;line-height:1.5;color:var(--muted);margin-top:3px}.divider{height:1px;background:rgba(255,255,255,.09);margin:20px 0}.side-title{font-size:10px;text-transform:uppercase;letter-spacing:1.6px;color:rgba(255,255,255,.40);margin-bottom:10px}
-.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick{height:58px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.055);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.18s}.quick:hover{transform:translateY(-2px);background:rgba(255,255,255,.11)}.quick.active{background:hsla(var(--accent),80%,55%,.44)}.quick small{font-size:9px;color:rgba(255,255,255,.7)}
+.quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick{height:58px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.055);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.18s}.quick:hover{transform:translateY(-2px);background:rgba(255,255,255,.11)}.quick.active{background:hsla(var(--accent),80%,55%,.44)}.quick.blank-quick{grid-column:1/-1;height:48px;flex-direction:row}.quick small{font-size:9px;color:rgba(255,255,255,.7)}
 .system-card{padding:12px 13px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}.system-row{display:flex;justify-content:space-between;font-size:11px;margin:8px 0}.system-row span:first-child{color:var(--muted)}
 
 .dock-wrap{position:absolute;left:calc(50% - 105px);bottom:18px;transform:translateX(-50%);z-index:100}
@@ -80,10 +83,13 @@ button{color:inherit}
 .game-search-wrap{flex:1;position:relative}.game-search{width:100%;height:43px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 15px 0 41px;transition:.18s}.game-search:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18);box-shadow:0 0 0 4px rgba(255,255,255,.035)}.search-glyph{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.55;pointer-events:none}
 .games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:16px}.game-card{overflow:hidden;border-radius:22px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);box-shadow:0 15px 34px rgba(0,0,0,.20);transition:.23s cubic-bezier(.2,.8,.2,1)}.game-card:hover{transform:translateY(-5px) scale(1.012);background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}
 .game-thumb{width:100%;height:145px;object-fit:cover;display:block;background:#111}.game-info{height:62px;padding:0 14px;display:flex;align-items:center;justify-content:space-between}.game-name{font-size:14px;font-weight:650}.game-dev{font-size:10px;color:var(--muted);margin-top:2px}.play-pill{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.10);font-size:12px}.no-games{display:none;padding:35px;text-align:center;color:var(--muted)}
+.games-more{display:none;margin:22px auto 4px;min-width:180px}
 
 .player{height:100%;display:flex;flex-direction:column;background:#020305}.player-toolbar{height:50px;display:flex;align-items:center;gap:9px;padding:7px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}.player-toolbar .os-btn{padding:7px 11px}.player-name{flex:1;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-stage{position:relative;flex:1;min-height:0;background:#000}.player-frame{display:block;width:100%;height:100%;border:0;background:#000}.loader{position:absolute;inset:0;display:grid;place-items:center;background:#05070b;z-index:2;pointer-events:none;transition:.35s}.loader.hidden{opacity:0}.loader-inner{text-align:center;color:var(--muted);font-size:12px}.spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#fff;animation:spin .7s linear infinite;margin:0 auto 12px}@keyframes spin{to{transform:rotate(360deg)}}
 
 .browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{min-height:56px;height:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px;flex:none}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1;min-width:160px}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:25px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.browser-stage{position:relative;flex:1;min-height:0;background:#070a11}.browser-frame{display:block;width:100%;height:100%;border:0;background:#070a11}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{font-size:72px;font-weight:900;letter-spacing:-7px}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}
+
+.browser-official-frame{display:none}
 
 .music{
   min-height:100%;
@@ -599,6 +605,7 @@ button{color:inherit}
   </main>
 
   <aside class="sidebar">
+    <canvas id="welcomeFireworks" class="welcome-fireworks" aria-hidden="true"></canvas>
     <div class="clock-line"><span id="clock" class="clock">7:12</span><span id="seconds" class="seconds">00</span></div>
     <div id="date" class="date">Friday<br>September 11</div>
     <div class="divider"></div>
@@ -608,6 +615,7 @@ button{color:inherit}
       <button class="quick active" onclick="this.classList.toggle('active')"><span>ᛒ</span><small>Bluetooth</small></button>
       <button class="quick" onclick="this.classList.toggle('active')"><span>☾</span><small>Focus</small></button>
       <button class="quick" onclick="toggleDim(this)"><span>☀</span><small>Dim</small></button>
+      <button class="quick blank-quick" onclick="launchGenesisAboutBlank()"><span>□</span><small>About Blank</small></button>
     </div>
     <div class="divider"></div>
     <div class="side-title">System</div>
@@ -625,6 +633,7 @@ button{color:inherit}
   </div></div>
 </div>
 
+<script src="games-c-s.js"></script>
 <script>
 const embeddedGamePayloads = {
   "drive-mad": "H4sIANi2pGoC/+1XS2/jNhC+51ewAuJTZEl2/FBipS22yK1ogbZngSJHEjc0qZK0E2+x/71D0ZYVJwV2u7eiQMLHzDcfR5wZkt58xzVzhw5I67by4WrjOyKpaooIVLyzkZcB5Q9XhGwqahFooC6i1rnO3iUJ42r60XKQYm+mClzStEktFJXCCbAJ31Ied/pJ/HCbVwtaLat8vaoX9byCxbrOOYVFzvIZrGuWUVrlVZpE/VJbcJSwlhoLroh2ro7XI4VfPYY/d2JfRB+0cqBc/Dt+RURYmBWRgxeX+K+5H2hGLE44CQ8/GbEH8jPlmyQIhgUU3UIRNVo3ckyqtDNUWUkdRJfgvYDnThs3gj8L7tqCw14wiPvJjVC4MVTGllEJRXazs2D6Ca1wrnSglUI9EQOyiKw7SLAtAPKGnX+GinZdUlPFKIcps/bSRqADb9B7L51iE9CWGdE5PyTkWSiun6fU2oZzUpC/eikhuAJYp80vRjRC2btBQUh6R4YUaPDz7dQHecr0NroZQNkINKiP2s8nmHdzhKvzxfIWbiGGeraIcVTFFV2uYlZlGc0Wq2VV8X6tuMHMQ8KEsaxiixWNYb5Ai2W+jPMVm8VpvqrqZbZeL9Nlgl8IL1OfDt8zvVPOHIo/fpvsjCxxeTAGTNF7cD3/8Xr2iH8nf3E4scJBKXgxnwiry744QE08okSGfzYEhU2D/9znWYylMGm1sK44gJ0orX4FY7UvlU/ACzVhUu+4pXvoNxQFNd0KeXg0AhSXB4/AvGs0zm2xWl/PPuRz3yyxyVI/nK9Wvs1TbG9T364DZJZ7TDbrodk8zG7T0GWhm4du1XfLMFsv+i4PyDwI89XEdsAwi0tMKY75rFWBu8KFaibed79XXxLHAN7jLiCDN/qSUE4wE3F1TMsiHXJN9xn6LWk0UHVGO820HMgGTautQ+m/p/YE/qz4JhJ/xCDBeU5deyT92lIYOCxQw1pk+L84/oPF0VLrYxtO3s/3/vRPzsf/8SYg1rAi6jPO8ie80qOHM2qThCfAptL8QNCXyA/CRcLFvpdsNcdv7qjBmy8K98qF7ngtHpV+5Y6qsV5qC2W1cw6vr4eJExjoe3QCUYPJidFfS1D6K698TU6YxHvsRCmUAuO/BO3ecuCzAMpaSPhKjmF4Hpw4GVV7astKG45GJyLYhp0EddJcbFAn6eHt8oJzCYShbLA42px4eYPvkLGk0i8XAknZ02CM5mLbhFgfXwZMY45NP3bNsG4vGZt0J03/SIrGz6buPRjduVYjw2N4ooxQYcPG7WVQ8PhtDFhbalP6XXnlx1H3Cji4LTX1RRaRPZU7fI+lEdnSlyLK0tRH74R/7crVpe8cQqiEz8HB83HwQ4jfhjYaJUBEHK36g7aI4swTBflF2BuDLvclMV7gpMUA+TfluW7eybtx8R4DavXOMExpoS6q+H14uA4u693Xd1/3/lfB3w98DZslDAAA",
@@ -652,7 +661,8 @@ function shouldConvertGameSourceToHTML(url){
       u.hostname === "cdn.jsdelivr.net" &&
       (
         u.pathname.includes("/npm/ugs-singlefiles") ||
-        u.pathname.includes("/gh/bubbls/ugs-singlefile")
+        u.pathname.includes("/gh/bubbls/ugs-singlefile") ||
+        u.pathname.includes("/gh/seanstonator-lang/UGS-Web-Hub")
       )
     );
   }catch{
@@ -679,7 +689,8 @@ async function fetchGameHTMLAsBlob(sourceUrl){
   const response = await fetch(sourceUrl, {
     method:"GET",
     mode:"cors",
-    cache:"force-cache"
+    cache:"force-cache",
+    signal:typeof AbortSignal?.timeout==="function"?AbortSignal.timeout(20000):undefined
   });
 
   if(!response.ok){
@@ -703,14 +714,24 @@ async function unpackEmbeddedGame(gameId){
   const game = gameLibrary.find(g => g.id === gameId);
 
   if(game && game.src){
-    if(shouldConvertGameSourceToHTML(game.src)){
-      const blobUrl = await fetchGameHTMLAsBlob(game.src);
-      embeddedGameUrls[gameId] = blobUrl;
-      return blobUrl;
-    }
+    const sources=Array.isArray(game.sources)&&game.sources.length?game.sources:[game.src];
+    let lastError=null;
+    for(const source of sources){
+      try{
+        if(shouldConvertGameSourceToHTML(source)){
+          const blobUrl = await fetchGameHTMLAsBlob(source);
+          embeddedGameUrls[gameId] = blobUrl;
+          return blobUrl;
+        }
 
-    // Local pages and special public ports can load normally.
-    return game.src;
+        // Local pages and special public ports can load normally.
+        return source;
+      }catch(err){
+        lastError=err;
+        console.warn("Genesis game source failed, trying its mirror.",source,err);
+      }
+    }
+    throw lastError||new Error("No working source is available for "+game.name+".");
   }
 
   const payload = embeddedGamePayloads[gameId];
@@ -742,6 +763,24 @@ function gameWebSearchThumb(name){
   return "https://tse1.mm.bing.net/th?q="
     + encodeURIComponent(name + " game cover official icon")
     + "&w=640&h=400&c=7&rs=1&p=0&dpr=1&pid=1.7&mkt=en-US&adlt=moderate";
+}
+
+const GENESIS_GAME_SOURCE_COMMIT=globalThis.GENESIS_GAME_CATALOG?.sourceCommit||"";
+const GENESIS_GAME_CDN_BASE="https://cdn.jsdelivr.net/gh/seanstonator-lang/UGS-Web-Hub@"+GENESIS_GAME_SOURCE_COMMIT+"/";
+const GENESIS_GAME_PAGES_BASE="https://seanstonator-lang.github.io/UGS-Web-Hub/";
+
+function catalogGame(entry){
+  const primary=new URL(entry.file,GENESIS_GAME_CDN_BASE).href;
+  const fallback=new URL(entry.file,GENESIS_GAME_PAGES_BASE).href;
+  return{
+    id:entry.id,
+    name:entry.name,
+    developer:"UGS · "+entry.section,
+    section:entry.section,
+    thumb:gameWebSearchThumb(entry.name),
+    src:primary,
+    sources:[primary,fallback]
+  };
 }
 
 const gameLibrary = [
@@ -876,73 +915,8 @@ const gameLibrary = [
   {id:"ugs-burger-and-frights",name:"Burger and Frights",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Burger and Frights"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clburgerandfrights.html"},
   {id:"ugs-burrito-bison-launcha-libre",name:"Burrito Bison Launcha Libre",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Burrito Bison Launcha Libre"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clburritobisonlaunchalibre.html"},
   {id:"ugs-buster-jam",name:"Buster Jam",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Buster Jam"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBusterJam.html"},
-  {id:"ugs-cannon-balls-3d",name:"Cannon Balls 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cannon Balls 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcannonballs3d.html"},
-  {id:"ugs-candy-box-1",name:"Candy Box 1",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Candy Box 1"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcandybox1.html"},
-  {id:"ugs-capybara-clicker",name:"Capybara Clicker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Capybara Clicker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcapybaraclicker.html"},
-  {id:"ugs-call-of-battle",name:"Call of Battle",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Call of Battle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcallofbattle.html"},
-  {id:"ugs-captchaware",name:"CaptchaWare",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("CaptchaWare"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcaptchaware.html"},
-  {id:"ugs-car-crash-3",name:"Car Crash 3",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car Crash 3"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcarcrash3.html"},
-  {id:"ugs-car-drawing",name:"Car Drawing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car Drawing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcardrawing.html"},
-  {id:"ugs-car-king-arena",name:"Car King Arena",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car King Arena"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcarkingarena.html"},
-  {id:"ugs-car-ramp-vs-police-chase",name:"Car Ramp Vs Police Chase",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Car Ramp Vs Police Chase"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcarrampvspolicechase.html"},
-  {id:"ugs-cartoon-network-table-tennis-ultimate-tournament",name:"Cartoon Network Table Tennis Ultimate Tournament",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cartoon Network Table Tennis Ultimate Tournament"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clCartoonNetworkTableTennisUltimateTournament.html"},
-  {id:"ugs-caseoh-s-basics-in-eating-and-fast-food",name:"CaseOh's Basics in Eating and Fast Food",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("CaseOh's Basics in Eating and Fast Food"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clbaldicaseoh.html"},
-  {id:"ugs-castle-wars-modern",name:"Castle Wars Modern",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Castle Wars Modern"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcastlewarsmodern.html"},
-  {id:"ugs-cat-mario",name:"Cat Mario",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cat Mario"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcatmario.html"},
-  {id:"ugs-cats-love-cake-2",name:"Cats Love Cake 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cats Love Cake 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcatslovecake2.html"},
-  {id:"ugs-cave-crawler",name:"Cave Crawler",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cave Crawler"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcavecrawler.html"},
-  {id:"ugs-cave-story",name:"Cave Story",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cave Story"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcavestory.html"},
-  {id:"ugs-celeste-pico",name:"Celeste Pico",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Celeste Pico"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clceleste.html"},
-  {id:"ugs-celeste-2",name:"Celeste 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Celeste 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clceleste2.html"},
-  {id:"ugs-cell-machine",name:"Cell Machine",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cell Machine"),src:"https://cdn.jsdelivr.net/gh/Sebastian-105/Assets-105.github.io@main/cell-machine/index.html"},
-  {id:"ugs-cell-to-singularity",name:"Cell to Singularity",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cell to Singularity"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clCellToSingularity.html"},
-  {id:"ugs-chaos-faction-2",name:"Chaos Faction 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chaos Faction 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchaosfaction2.html"},
-  {id:"ugs-cheese-chompers-3d",name:"Cheese Chompers 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheese Chompers 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheesechompers3d.html"},
-  {id:"ugs-cheese-is-the-reason",name:"Cheese Is The Reason",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheese Is The Reason"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheeseisthereason.html"},
-  {id:"ugs-cheese-rolling",name:"Cheese Rolling",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheese Rolling"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheeserolling.html"},
-  {id:"ugs-chickencs",name:"ChickenCS",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("ChickenCS"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clChickenCS.html"},
-  {id:"ugs-cheshire-in-a-chatroom",name:"Cheshire In a Chatroom",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cheshire In a Chatroom"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcheshireinachatroom.html"},
-  {id:"ugs-chess-classic",name:"Chess Classic",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chess Classic"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchessclassic.html"},
-  {id:"ugs-chicken-scream",name:"Chicken Scream",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chicken Scream"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchickenscream.html"},
-  {id:"ugs-chickenwar",name:"Chickenwar",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Chickenwar"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchickenwar.html"},
-  {id:"ugs-choppy-orc",name:"Choppy Orc",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Choppy Orc"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clchoppyorc.html"},
-  {id:"ugs-circloo-2",name:"CircloO 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("CircloO 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clCircloO2.html"},
-  {id:"ugs-civiballs",name:"Civiballs",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Civiballs"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clciviballs.html"},
-  {id:"ugs-civiballs-2",name:"Civiballs 2",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Civiballs 2"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clciviballs2.html"},
-  {id:"ugs-clash-of-vikings",name:"Clash Of Vikings",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Clash Of Vikings"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clclashofvikings.html"},
-  {id:"ugs-class-of-09",name:"Class of ‘09",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Class of ‘09"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clclassof09.html"},
-  {id:"ugs-cleanup-io",name:"Cleanup.io",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cleanup.io"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcleanupio.html"},
-  {id:"ugs-cluster-rush",name:"Cluster Rush",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cluster Rush"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clclusterrush.html"},
-  {id:"ugs-coal-llc",name:"Coal LLC",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Coal LLC"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoalllcdemo.html"},
-  {id:"ugs-cold-pines",name:"Cold Pines",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cold Pines"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoldpines.html"},
-  {id:"ugs-coffee-maker",name:"Coffee Maker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Coffee Maker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoffeemaker.html"},
-  {id:"ugs-colorbox-mustard",name:"Colorbox Mustard",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Colorbox Mustard"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcolorboxmustard.html"},
-  {id:"ugs-combo-pool",name:"Combo Pool",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Combo Pool"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcombopool.html"},
-  {id:"ugs-command-and-conquer-red-alert",name:"Command and Conquer Red Alert",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Command and Conquer Red Alert"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcommandandconquer.html"},
-  {id:"ugs-command-and-conquer-tiberian-dawn",name:"Command and Conquer Tiberian Dawn",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Command and Conquer Tiberian Dawn"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcommandandconquertiberiandawn.html"},
-  {id:"ugs-cookie-clicker",name:"Cookie Clicker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cookie Clicker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcookieclicker.html"},
-  {id:"ugs-cookie-clicker-mod-menu",name:"Cookie Clicker Mod Menu",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cookie Clicker Mod Menu"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcookieclickermodmenu.html"},
-  {id:"ugs-core-ball",name:"Core Ball",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Core Ball"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcoreball.html"},
-  {id:"ugs-cold-front",name:"Cold Front",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cold Front"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcoldfront.html"},
-  {id:"ugs-count-masters-stickman-games",name:"Count Masters: Stickman Games",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Count Masters: Stickman Games"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcountmastersstickmangames.html"},
-  {id:"ugs-counter-snipe",name:"Counter Snipe",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Counter Snipe"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcountersnipe.html"},
-  {id:"ugs-crank-it",name:"Crank It!",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crank It!"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrankit%21.html"},
-  {id:"ugs-crazy-cars",name:"Crazy Cars",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Cars"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazycars.html"},
-  {id:"ugs-crazy-cattle-3d",name:"Crazy Cattle 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Cattle 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazycattle3d.html"},
-  {id:"ugs-crazy-chicken-3d",name:"Crazy Chicken 3D",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Chicken 3D"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazychicken3D.html"},
-  {id:"ugs-crazy-crash-landing",name:"Crazy Crash Landing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Crash Landing"),src:"https://cdn.jsdelivr.net/gh/bubbls/ugs-singlefile@main/UGS-Files/clcrazycrashlanding.html"},
-  {id:"ugs-crazy-motorcycle",name:"Crazy Motorcycle",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Motorcycle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazymotorcycle.html"},
-  {id:"ugs-crazy-plane-landing",name:"Crazy Plane Landing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crazy Plane Landing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrazyplanelanding.html"},
-  {id:"ugs-creature-card-idle",name:"Creature Card Idle",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Creature Card Idle"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcreaturecardidle.html"},
-  {id:"ugs-crossy-road",name:"Crossy Road",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Crossy Road"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcrossyroad.html"},
-  {id:"ugs-c-s-1-6",name:"C.S 1.6",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("C.S 1.6"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcs16.html"},
-  {id:"ugs-csgo-clicker",name:"Csgo Clicker",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Csgo Clicker"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcsgoclicker.html"},
-  {id:"ugs-customer-support",name:"Customer Support",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Customer Support"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcustomersupport.html"},
-  {id:"ugs-curse-of-the-lich-king",name:"Curse of the Lich King",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Curse of the Lich King"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcotlk.html"},
-  {id:"ugs-cut-the-rope",name:"Cut the Rope",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cut the Rope"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcuttherope.html"},
-  {id:"ugs-cut-the-rope-holiday",name:"Cut the Rope: Holiday",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cut the Rope: Holiday"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcuttheropeholiday.html"},
-  {id:"ugs-cut-the-rope-time-travel",name:"Cut the Rope: Time Travel",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cut the Rope: Time Travel"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcuttheropetimetravel.html"},
-  {id:"ugs-cyberbung-racing",name:"Cyberbung Racing",developer:"UGS · C",section:"C",thumb:gameWebSearchThumb("Cyberbung Racing"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clcyberbungracing.html"},
+  ...((globalThis.GENESIS_GAME_CATALOG?.games||[]).map(catalogGame)),
+  {id:"eaglercraft-1-12-2",name:"Eaglercraft 1.12.2",developer:"Eaglercraft",section:"E",thumb:gameWebSearchThumb("Eaglercraft 1.12.2"),page:"eaglercraft.html"},
   {id:"ragdoll-archers",name:"Ragdoll Archers",developer:"Ericetto",thumb:"ragdoll-archers.png",src:"ragdoll-archers.html"},
   {id:"drive-mad",name:"Drive Mad",developer:"Fancade",thumb:"data:image/webp;base64,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"},
   {id:"retro-bowl",name:"Retro Bowl",developer:"New Star Games",thumb:"data:image/webp;base64,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"},
@@ -1393,7 +1367,7 @@ const apps = {
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
   </div>`},
-  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · 206 Games</div></div>`},
+  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
   music:{title:"Music",content:musicHTML},
   games:{title:"Games",content:gamesHTML},
   gameRequest:{title:"Game Request",content:gameRequestHTML},
@@ -1531,14 +1505,30 @@ function setDockRunning(appId,on){
   if(el)el.classList.toggle("running",on);
 }
 
+const GAME_RENDER_BATCH=120;
+let gameVisibleLimit=GAME_RENDER_BATCH;
+let gameSearchQuery="";
+
+function matchingGames(query=""){
+  const normalized=String(query||"").trim().toLowerCase();
+  if(!normalized)return gameLibrary;
+  return gameLibrary.filter(game=>
+    (game.name+" "+game.developer+" "+(game.section||"")).toLowerCase().includes(normalized)
+  );
+}
+
 function gamesHTML(){
+  gameVisibleLimit=GAME_RENDER_BATCH;
+  gameSearchQuery="";
+  const initial=gameLibrary.slice(0,gameVisibleLimit);
   return `<div class="games">
     <div class="games-top">
       <div class="games-title-wrap"><div class="games-title">Games</div><div class="games-count" id="gamesCount">${gameLibrary.length} games</div></div>
       <div class="game-search-wrap"><span class="search-glyph">⌕</span><input class="game-search" id="gameSearch" placeholder="Search games..." oninput="filterGames(this.value)" autocomplete="off"></div>
     </div>
-    <div class="games-grid" id="gamesGrid">${gameLibrary.map(gameCardHTML).join("")}</div>
+    <div class="games-grid" id="gamesGrid">${initial.map(gameCardHTML).join("")}</div>
     <div class="no-games" id="noGames">No games found.</div>
+    <button class="os-btn games-more" id="gamesMore" type="button" onclick="showMoreGames()" style="display:${initial.length<gameLibrary.length?"block":"none"}">Show more · ${initial.length} of ${gameLibrary.length}</button>
   </div>`;
 }
 function gameCardHTML(g){
@@ -1548,20 +1538,36 @@ function gameCardHTML(g){
   </article>`;
 }
 function filterGames(q){
-  q=q.trim().toLowerCase();
-  const cards=[...document.querySelectorAll("#gamesGrid .game-card")];
-  let shown=0;
-  cards.forEach(card=>{
-    const yes=card.dataset.search.includes(q);
-    card.style.display=yes?"":"none";if(yes)shown++;
-  });
+  gameSearchQuery=String(q||"");
+  gameVisibleLimit=GAME_RENDER_BATCH;
+  renderGameResults();
+}
+function showMoreGames(){
+  gameVisibleLimit+=GAME_RENDER_BATCH;
+  renderGameResults();
+}
+function renderGameResults(){
+  const games=matchingGames(gameSearchQuery);
+  const shown=games.slice(0,gameVisibleLimit);
+  const grid=document.getElementById("gamesGrid");
   const count=document.getElementById("gamesCount"),none=document.getElementById("noGames");
-  if(count)count.textContent=shown+" game"+(shown===1?"":"s");
-  if(none)none.style.display=shown?"none":"block";
+  const more=document.getElementById("gamesMore");
+  if(grid)grid.innerHTML=shown.map(gameCardHTML).join("");
+  if(count)count.textContent=games.length+" game"+(games.length===1?"":"s");
+  if(none)none.style.display=games.length?"none":"block";
+  if(more){
+    more.style.display=shown.length<games.length?"block":"none";
+    more.textContent="Show more · "+shown.length+" of "+games.length;
+  }
 }
 async function openGame(gameId){
   const g=gameLibrary.find(x=>x.id===gameId);
   if(!g)return;
+
+  if(g.page){
+    location.href=new URL(g.page,location.href).href;
+    return;
+  }
 
   if(!openWindows.games)openApp("games");
 
@@ -1665,6 +1671,14 @@ function browserHTML(){
         allow="fullscreen; autoplay; encrypted-media; picture-in-picture; clipboard-read; clipboard-write; gamepad; pointer-lock"
         allowfullscreen
       ></iframe>
+      <iframe
+        id="browserOfficialFrame"
+        class="browser-frame browser-official-frame"
+        title="Genesis media player"
+        referrerpolicy="strict-origin-when-cross-origin"
+        allow="fullscreen; autoplay; encrypted-media; picture-in-picture"
+        allowfullscreen
+      ></iframe>
 
       <div class="browser-home" id="browserHome">
         <div>
@@ -1729,6 +1743,7 @@ const browserState={
   prismError:"",
   loadTimer:null,
   settleTimer:null,
+  youtubeFallbackTimer:null,
   frameMode:"home",
   currentRoute:null,
   navigationId:0,
@@ -1816,6 +1831,7 @@ function initBrowser(win){
   const openDirect=win.querySelector("#browserOpenDirect");
   const tryInside=win.querySelector("#browserTryInside");
   const frame=win.querySelector("#browserFrame");
+  const officialFrame=win.querySelector("#browserOfficialFrame");
   const status=win.querySelector("#browserStatus");
 
   if(profile) profile.textContent="Brave";
@@ -1911,11 +1927,16 @@ function initBrowser(win){
       status.textContent="Page connected · finishing scripts and images…";
       repairEmbeddedPage(win);
       setTimeout(()=>captureBrowserLocation(win),0);
+      scheduleYouTubePlayerFallback(win,current);
       browserState.settleTimer=setTimeout(()=>{
         if(browserState.history[browserState.index]===current)
           status.textContent="Loaded · "+current;
       },2200);
     }
+  });
+  officialFrame?.addEventListener("load",()=>{
+    if(browserState.frameMode!=="official")return;
+    status.textContent=(browserState.currentRoute?.label||"Media")+" player ready · inside Genesis";
   });
 
   updateBrowserButtons();
@@ -1952,8 +1973,64 @@ function getCompatibilityRoute(url){
   return{kind:"proxy",label,transport:"wisp"};
 }
 
+function clearYouTubeFallbackTimer(){
+  if(browserState.youtubeFallbackTimer)clearTimeout(browserState.youtubeFallbackTimer);
+  browserState.youtubeFallbackTimer=null;
+}
+
+function youtubePlayerFallbackRoute(url,reason=""){
+  const fallbacks=window.GenesisPrism?.youtubeEmbedFallbacks?.(url)||[];
+  if(!fallbacks.length)return null;
+  return{
+    kind:"official",
+    label:"YouTube",
+    src:fallbacks[0],
+    fallbacks,
+    fallbackIndex:0,
+    reason,
+    logicalUrl:url
+  };
+}
+
+function inspectProxiedYouTubePlayer(frame){
+  try{
+    const doc=frame?.contentDocument;
+    if(!doc?.body)return{playable:false,challenge:false};
+    const text=(doc.body.innerText||"").replace(/\s+/g," ").trim();
+    const video=doc.querySelector("video");
+    return{
+      playable:!!video&&(video.readyState>=2||video.buffered?.length>0),
+      challenge:/sign in to confirm you(?:'|’)?re not a bot|confirm you(?:'|’)?re not a bot|unusual traffic/i.test(text)
+    };
+  }catch{return{playable:true,challenge:false};}
+}
+
+function scheduleYouTubePlayerFallback(win,url){
+  clearYouTubeFallbackTimer();
+  const route=youtubePlayerFallbackRoute(url);
+  if(!route||browserState.frameMode!=="proxy")return;
+  const frame=win?.querySelector("#browserFrame");
+  const started=Date.now();
+  const check=()=>{
+    if(openWindows.browser!==win || browserState.frameMode!=="proxy" || browserState.history[browserState.index]!==url)return;
+    const player=inspectProxiedYouTubePlayer(frame);
+    if(player.playable)return;
+    if(player.challenge || Date.now()-started>=11000){
+      loadOfficialEmbed(win,url,{
+        ...route,
+        reason:player.challenge?"YouTube requested its official embedded player.":"The proxied video stream did not start in time."
+      });
+      return;
+    }
+    browserState.youtubeFallbackTimer=setTimeout(check,1400);
+  };
+  browserState.youtubeFallbackTimer=setTimeout(check,900);
+}
+
 function loadOfficialEmbed(win,url,route){
+  clearYouTubeFallbackTimer();
   const frame=win.querySelector("#browserFrame");
+  const officialFrame=win.querySelector("#browserOfficialFrame");
   const home=win.querySelector("#browserHome");
   const card=win.querySelector("#browserOpenCard");
   const status=win.querySelector("#browserStatus");
@@ -1962,10 +2039,13 @@ function loadOfficialEmbed(win,url,route){
   browserState.currentRoute=route;
   home.classList.add("hidden");
   card.classList.remove("show");
-  frame.style.display="block";
-  frame.title=route.label+" player";
-  status.textContent="Loading "+route.label+" player…";
-  frame.src=route.src;
+  frame.style.display="none";
+  if(officialFrame){
+    officialFrame.style.display="block";
+    officialFrame.title=route.label+" player";
+    officialFrame.src=route.src;
+  }
+  status.textContent="Opening "+route.label+" player inside Genesis…";
 }
 
 const GENESIS_BROWSER_LAUNCH_PREFIX="genesisBrowserLaunch:";
@@ -2073,6 +2153,7 @@ function openGenesisTab(url,route={}){
 function showBrowserOpenCard(url,blocked=false,route={},launchUrl=""){
   const win=openWindows.browser;if(!win)return;
   const frame=win.querySelector("#browserFrame");
+  const officialFrame=win.querySelector("#browserOfficialFrame");
   const home=win.querySelector("#browserHome");
   const card=win.querySelector("#browserOpenCard");
   const title=win.querySelector("#browserOpenTitle");
@@ -2083,6 +2164,7 @@ function showBrowserOpenCard(url,blocked=false,route={},launchUrl=""){
   browserState.frameMode="popout";
   browserState.currentRoute={...route,launchUrl};
   frame.style.display="none";
+  if(officialFrame)officialFrame.style.display="none";
   home.classList.add("hidden");
   card.classList.add("show");
   title.textContent=route.title || (blocked?"Open Genesis Tab":"Opened in Genesis tab");
@@ -2135,7 +2217,10 @@ function repairEmbeddedPage(win){
   }
 
   if(!doc.__genesisStatePersistence){
-    const syncLocation=()=>setTimeout(()=>captureBrowserLocation(win),0);
+    const syncLocation=()=>setTimeout(()=>{
+      const next=captureBrowserLocation(win);
+      if(next)scheduleYouTubePlayerFallback(win,next);
+    },0);
     pageWin.addEventListener("popstate",syncLocation);
     pageWin.addEventListener("pagehide",syncLocation);
     doc.addEventListener("yt-navigate-finish",syncLocation,true);
@@ -2164,6 +2249,7 @@ function repairEmbeddedPage(win){
 function showPrismError(message){
   const win=openWindows.browser;if(!win)return;
   const frame=win.querySelector("#browserFrame");
+  const officialFrame=win.querySelector("#browserOfficialFrame");
   const home=win.querySelector("#browserHome");
   const card=win.querySelector("#browserOpenCard");
   const title=win.querySelector("#browserOpenTitle");
@@ -2171,6 +2257,7 @@ function showPrismError(message){
   const status=win.querySelector("#browserStatus");
 
   frame.style.display="none";
+  if(officialFrame)officialFrame.style.display="none";
   home.classList.add("hidden");
   card.classList.add("show");
   browserState.frameMode="error";
@@ -2206,12 +2293,14 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
 
   const addr=win.querySelector("#browserAddress");
   const frame=win.querySelector("#browserFrame");
+  const officialFrame=win.querySelector("#browserOfficialFrame");
   const home=win.querySelector("#browserHome");
   const card=win.querySelector("#browserOpenCard");
   const status=win.querySelector("#browserStatus");
 
   addr.value=url;
   persistBrowserState(true);
+  clearYouTubeFallbackTimer();
   card.classList.remove("show");
   if(browserState.settleTimer){clearTimeout(browserState.settleTimer);browserState.settleTimer=null;}
 
@@ -2219,6 +2308,10 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
     browserState.frameMode="home";
     browserState.currentRoute=null;
     frame.style.display="none";
+    if(officialFrame){
+      officialFrame.style.display="none";
+      officialFrame.src="about:blank";
+    }
     home.classList.remove("hidden");
     status.textContent=browserState.prismError
       ?"Genesis Home · Scramjet proxy unavailable"
@@ -2252,6 +2345,10 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
     browserState.frameMode="proxy";
     home.classList.add("hidden");
     card.classList.remove("show");
+    if(officialFrame){
+      officialFrame.style.display="none";
+      if(officialFrame.getAttribute("src")!=="about:blank")officialFrame.src="about:blank";
+    }
     frame.style.display="block";
     status.textContent="Loading · "+url;
     if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
@@ -2281,7 +2378,19 @@ async function browserReload(){
   }
 
   if(browserState.frameMode==="official" && browserState.currentRoute?.src){
-    loadOfficialEmbed(win,current,browserState.currentRoute);
+    const route=browserState.currentRoute;
+    const fallbacks=Array.isArray(route.fallbacks)?route.fallbacks:[];
+    if(fallbacks.length>1){
+      const fallbackIndex=(Number(route.fallbackIndex||0)+1)%fallbacks.length;
+      loadOfficialEmbed(win,current,{
+        ...route,
+        fallbackIndex,
+        src:fallbacks[fallbackIndex],
+        reason:"Trying another official YouTube player."
+      });
+    }else{
+      loadOfficialEmbed(win,current,route);
+    }
     return;
   }
 
@@ -2317,6 +2426,122 @@ function updateClock(){
   document.getElementById("date").innerHTML=`${now.toLocaleDateString(undefined,{weekday:"long"})}<br>${now.toLocaleDateString(undefined,{month:"long",day:"numeric"})} · ${ampm}`;
 }
 updateClock();setInterval(updateClock,1000);
+
+function launchGenesisAboutBlank(){
+  const opened=openAboutBlankShell(new URL("os.html",location.href).href,"Genesis");
+  if(!opened && typeof showGenesisAnnouncement==="function"){
+    showGenesisAnnouncement("Allow popups once, then select Blank again.",4500);
+  }
+}
+
+function startWelcomeFireworks(){
+  const canvas=document.getElementById("welcomeFireworks");
+  if(!canvas || matchMedia("(prefers-reduced-motion: reduce)").matches){
+    canvas?.classList.add("done");
+    return;
+  }
+  const context=canvas.getContext("2d",{alpha:true});
+  if(!context)return;
+  let width=0,height=0,dpr=1,nextLaunch=0;
+  const rockets=[],particles=[];
+  const started=performance.now();
+  const ends=started+15000;
+  const resize=()=>{
+    const rect=canvas.getBoundingClientRect();
+    width=Math.max(1,rect.width);
+    height=Math.max(1,rect.height);
+    dpr=Math.min(devicePixelRatio||1,2);
+    canvas.width=Math.round(width*dpr);
+    canvas.height=Math.round(height*dpr);
+    context.setTransform(dpr,0,0,dpr,0,0);
+  };
+  const launch=()=>{
+    const hue=Math.floor(Math.random()*360);
+    rockets.push({
+      x:width*(.12+Math.random()*.76),
+      y:height+8,
+      target:height*(.08+Math.random()*.48),
+      speed:4.2+Math.random()*2.2,
+      hue,
+      drift:(Math.random()-.5)*.25
+    });
+  };
+  const explode=rocket=>{
+    const count=18+Math.floor(Math.random()*10);
+    for(let index=0;index<count;index++){
+      const angle=(Math.PI*2*index/count)+Math.random()*.18;
+      const speed=1.05+Math.random()*2.65;
+      particles.push({
+        x:rocket.x,y:rocket.y,
+        previousX:rocket.x,previousY:rocket.y,
+        vx:Math.cos(angle)*speed,
+        vy:Math.sin(angle)*speed,
+        hue:(rocket.hue+Math.random()*38-19+360)%360,
+        alpha:1,
+        decay:.012+Math.random()*.013
+      });
+    }
+    if(particles.length>260)particles.splice(0,particles.length-260);
+  };
+  const frame=now=>{
+    const remaining=ends-now;
+    context.clearRect(0,0,width,height);
+    if(now>=nextLaunch && remaining>950){
+      launch();
+      nextLaunch=now+430+Math.random()*420;
+    }
+    for(let index=rockets.length-1;index>=0;index--){
+      const rocket=rockets[index];
+      const oldX=rocket.x,oldY=rocket.y;
+      rocket.y-=rocket.speed;
+      rocket.x+=rocket.drift;
+      context.beginPath();
+      context.moveTo(oldX,oldY);
+      context.lineTo(rocket.x,rocket.y+10);
+      context.strokeStyle=`hsla(${rocket.hue},100%,72%,.9)`;
+      context.lineWidth=1.7;
+      context.stroke();
+      if(rocket.y<=rocket.target){
+        explode(rocket);
+        rockets.splice(index,1);
+      }
+    }
+    const endingFade=Math.max(0,Math.min(1,remaining/900));
+    context.save();
+    context.globalAlpha=endingFade;
+    for(let index=particles.length-1;index>=0;index--){
+      const particle=particles[index];
+      particle.previousX=particle.x;
+      particle.previousY=particle.y;
+      particle.x+=particle.vx;
+      particle.y+=particle.vy;
+      particle.vx*=.988;
+      particle.vy=particle.vy*.988+.035;
+      particle.alpha-=particle.decay;
+      if(particle.alpha<=0){
+        particles.splice(index,1);
+        continue;
+      }
+      context.beginPath();
+      context.moveTo(particle.previousX,particle.previousY);
+      context.lineTo(particle.x,particle.y);
+      context.strokeStyle=`hsla(${particle.hue},100%,72%,${particle.alpha})`;
+      context.lineWidth=1.45;
+      context.stroke();
+    }
+    context.restore();
+    if(now<ends){
+      requestAnimationFrame(frame);
+    }else{
+      context.clearRect(0,0,width,height);
+      canvas.classList.add("done");
+    }
+  };
+  resize();
+  new ResizeObserver(resize).observe(canvas);
+  launch();
+  requestAnimationFrame(frame);
+}
 
 function getStoredHue(){return localStorage.getItem("realmOsHue")||215}
 function getStoredBlur(){return localStorage.getItem("realmOsBlur")||28}
@@ -2683,6 +2908,7 @@ document.addEventListener("visibilitychange",()=>{
 
 showGenesisIdImmediately();
 setupGenesisAdminUI();
+startWelcomeFireworks();
 ensureGenesisDevice();
 pollGenesisAnnouncement();
 setInterval(checkGenesisDevice,5000);

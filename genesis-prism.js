@@ -7,7 +7,7 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-14-youtube-playback-r14";
+  const BUILD_ID = "2026-09-15-youtube-player-r15";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
 
   const currentScript = document.currentScript;
@@ -200,8 +200,56 @@
 
   function isYouTubeHost(host){
     return host==="youtu.be" || host==="youtube.com" || host.endsWith(".youtube.com") ||
+      host==="youtube-nocookie.com" || host.endsWith(".youtube-nocookie.com") ||
       host==="googlevideo.com" || host.endsWith(".googlevideo.com") ||
       host==="ytimg.com" || host.endsWith(".ytimg.com");
+  }
+
+  function youtubeVideoId(value){
+    try{
+      const remote=value instanceof URL?value:new URL(String(value||""));
+      const host=remote.hostname.toLowerCase().replace(/^www\./,"");
+      let id="";
+      if(host==="youtu.be"){
+        id=remote.pathname.split("/").filter(Boolean)[0]||"";
+      }else if(host==="youtube.com" || host.endsWith(".youtube.com")){
+        if(remote.pathname==="/watch")id=remote.searchParams.get("v")||"";
+        else{
+          const match=remote.pathname.match(/^\/(?:shorts|live|embed)\/([^/?#]+)/i);
+          id=match?.[1]||"";
+        }
+      }
+      return /^[A-Za-z0-9_-]{6,20}$/.test(id)?id:"";
+    }catch{return "";}
+  }
+
+  function youtubeStartSeconds(value){
+    try{
+      const remote=value instanceof URL?value:new URL(String(value||""));
+      const raw=remote.searchParams.get("start")||remote.searchParams.get("t")||"";
+      if(/^\d+$/.test(raw))return Math.max(0,Number(raw)||0);
+      const match=raw.match(/^(?:(\d+)h)?(?:(\d+)m)?(?:(\d+)s)?$/i);
+      if(!match)return 0;
+      return (Number(match[1])||0)*3600+(Number(match[2])||0)*60+(Number(match[3])||0);
+    }catch{return 0;}
+  }
+
+  function youtubeEmbedFallbacks(value){
+    const id=youtubeVideoId(value);
+    if(!id)return [];
+    const start=youtubeStartSeconds(value);
+    return ["https://www.youtube-nocookie.com","https://www.youtube.com"].map(origin=>{
+      const embed=new URL("/embed/"+id,origin);
+      embed.searchParams.set("autoplay","1");
+      embed.searchParams.set("playsinline","1");
+      embed.searchParams.set("rel","0");
+      if(start>0)embed.searchParams.set("start",String(start));
+      return embed.href;
+    });
+  }
+
+  function youtubeEmbedFallback(value){
+    return youtubeEmbedFallbacks(value)[0]||"";
   }
 
   function rawHeaderValue(headers,name){
@@ -216,6 +264,12 @@
   function isYouTubeMediaRequest(remote,headers){
     const host=remote.hostname.toLowerCase();
     return host==="googlevideo.com" || host.endsWith(".googlevideo.com") ||
+      /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname);
+  }
+
+  function isYouTubePlaybackRequest(remote){
+    const host=remote.hostname.toLowerCase();
+    return (host==="googlevideo.com" || host.endsWith(".googlevideo.com")) &&
       /(?:^|\/)videoplayback(?:\/|$)/i.test(remote.pathname);
   }
 
@@ -247,14 +301,13 @@
   function normalizeYouTubeMediaRequest(remote,method,headers){
     const originalRange=rawHeaderValue(headers,"range");
     const queryRange=remote.searchParams.get("range")||"";
-    if(!isYouTubeMediaRequest(remote,headers) || String(method||"GET").toUpperCase()!=="GET"){
+    if(!isYouTubePlaybackRequest(remote) || String(method||"GET").toUpperCase()!=="GET"){
       return {remote,headers,originalRange,queryRange,appliedRange:""};
     }
 
-    // googlevideo currently rejects unbounded/full-file reads with 403 on
-    // several player paths. Give every GET a finite byte window, matching the
-    // range-proxy behavior used by working media clients. The browser or
-    // YouTube MSE pipeline requests the following window normally.
+    // Actual videoplayback streams can reject unbounded/full-file reads.
+    // Give only that endpoint a finite byte window; googlevideo health probes
+    // such as /generate_204 must keep their original no-body semantics.
     const parsed=parseMediaRange(originalRange)||parseMediaRange(queryRange)||{start:0,end:null};
     const maxEnd=parsed.start+YOUTUBE_MEDIA_CHUNK_BYTES-1;
     let end=parsed.end===null?maxEnd:Math.min(parsed.end,maxEnd);
@@ -564,6 +617,9 @@
     activeWisp:"",
     frameRecoveryState:new WeakMap(),
     codec,
+    youtubeVideoId,
+    youtubeEmbedFallback,
+    youtubeEmbedFallbacks,
 
     get wisp(){ return this.transport?.activeWisp || this.activeWisp || this.wispUrls[this.wispIndex] || ""; },
 
