@@ -19,7 +19,7 @@ const requestHeaders={
 };
 
 async function responseOrThrow(url,options={}){
-  const response=await fetch(url,{...options,signal:AbortSignal.timeout(45000)});
+  const response=await fetch(url,{...options,signal:AbortSignal.timeout(75000)});
   if(!response.ok && response.status!==206){
     throw new Error(`${url} returned HTTP ${response.status}`);
   }
@@ -27,23 +27,43 @@ async function responseOrThrow(url,options={}){
 }
 
 async function readPrefix(url,minimumBytes=32){
-  const response=await responseOrThrow(url,{headers:{Range:"bytes=0-4095"}});
-  const reader=response.body?.getReader();
-  if(!reader)throw new Error(`${url} returned no response body`);
-  let size=0;
-  const chunks=[];
-  while(size<4096){
-    const {done,value}=await reader.read();
-    if(done)break;
-    chunks.push(value);
-    size+=value.byteLength;
+  let lastError=null;
+  for(let attempt=1;attempt<=2;attempt++){
+    try{
+      const response=await responseOrThrow(url,{headers:{Range:"bytes=0-4095"}});
+      const reader=response.body?.getReader();
+      if(!reader)throw new Error("response had no body");
+      let size=0;
+      const chunks=[];
+      while(size<4096){
+        const {done,value}=await reader.read();
+        if(done)break;
+        chunks.push(value);
+        size+=value.byteLength;
+      }
+      await reader.cancel().catch(()=>{});
+      assert.ok(size>=minimumBytes,`${url} returned only ${size} bytes`);
+      const joined=new Uint8Array(size);
+      let offset=0;
+      for(const chunk of chunks){joined.set(chunk,offset);offset+=chunk.byteLength;}
+      return joined;
+    }catch(error){
+      lastError=error;
+      if(attempt<2)await new Promise(resolve=>setTimeout(resolve,800));
+    }
   }
-  await reader.cancel().catch(()=>{});
-  assert.ok(size>=minimumBytes,`${url} returned only ${size} bytes`);
-  const joined=new Uint8Array(size);
-  let offset=0;
-  for(const chunk of chunks){joined.set(chunk,offset);offset+=chunk.byteLength;}
-  return joined;
+  throw new Error(`${url} failed twice: ${lastError?.message||String(lastError)}`,{cause:lastError});
+}
+
+async function mapWithConcurrency(values,limit,task){
+  const queue=Array.from(values);
+  const workers=Array.from({length:Math.min(limit,queue.length)},async()=>{
+    while(queue.length){
+      const value=queue.shift();
+      await task(value);
+    }
+  });
+  await Promise.all(workers);
 }
 
 const treeResponse=await responseOrThrow(
@@ -58,12 +78,13 @@ assert.equal(missing.length,0,`Catalog files missing at the pinned commit: ${mis
 
 const samples=new Map();
 for(const game of games)if(!samples.has(game.section))samples.set(game.section,game);
-await Promise.all([...samples.values()].map(async game=>{
+await mapWithConcurrency(samples.values(),4,async game=>{
   const url=`https://cdn.jsdelivr.net/gh/${catalogRepository}@${sourceCommit}/${game.file}`;
+  console.log(`Checking ${game.section}: ${game.name}`);
   const prefix=await readPrefix(url,64);
   const text=new TextDecoder().decode(prefix);
   assert.match(text,/<(?:!doctype|html|head|script|style)\b/i,`${game.name} did not return an HTML document`);
-}));
+});
 
 await Promise.all(["bootstrap.js","assets.epw"].map(file=>
   readPrefix(`https://cdn.statically.io/gh/${eaglerRepository}/${eaglerCommit}/web/wasm/${file}`,64)
