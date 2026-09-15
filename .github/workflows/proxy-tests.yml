@@ -56,7 +56,7 @@ jobs:
           npm install --no-save --no-package-lock playwright@1.55.0
           npx playwright install --with-deps chromium
       - name: Test Scramjet sites and real YouTube playback
-        run: node tests/proxy-e2e.mjs
+        run: xvfb-run -a env GENESIS_TEST_HEADFUL=1 node tests/proxy-e2e.mjs
       - name: Upload failure screenshot
         if: failure()
         uses: actions/upload-artifact@v4

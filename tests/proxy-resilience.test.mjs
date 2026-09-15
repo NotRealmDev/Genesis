@@ -109,6 +109,8 @@ test("YouTube watch pages have an in-Genesis official player fallback",()=>{
   assert.equal(fallbacks.length,2);
   assert.match(fallbacks[0],/^https:\/\/www\.youtube-nocookie\.com\/embed\/jNQXAC9IVRw\?/);
   assert.match(fallbacks[0],/[?&]start=12(?:&|$)/);
+  assert.match(fallbacks[0],/[?&]enablejsapi=1(?:&|$)/);
+  assert.match(fallbacks[0],/[?&]origin=https%3A%2F%2Fgenesis\.example(?:&|$)/);
   assert.match(fallbacks[1],/^https:\/\/www\.youtube\.com\/embed\/jNQXAC9IVRw\?/);
   assert.equal(context.GenesisPrism.youtubeEmbedFallback("https://www.youtube.com/results?search_query=test"),"");
   assert.match(browserTab,/id="officialFrame"/);

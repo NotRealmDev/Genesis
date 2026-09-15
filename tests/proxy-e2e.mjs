@@ -29,7 +29,7 @@ const server=createServer(async(req,res)=>{
 await new Promise(resolve=>server.listen(4173,"127.0.0.1",resolve));
 
 const browser=await chromium.launch({
-  headless:true,
+  headless:process.env.GENESIS_TEST_HEADFUL!=="1",
   args:["--autoplay-policy=no-user-gesture-required"]
 });
 const page=await browser.newPage();
@@ -172,6 +172,36 @@ async function youtubeChallengeDetected(){
   });
 }
 
+async function directYouTubeDiagnostics(){
+  const direct=page.frames().find(candidate=>/^https:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()));
+  if(!direct)return null;
+  return direct.evaluate(()=>{
+    let playerResponse=null;
+    for(const candidate of [
+      globalThis.ytInitialPlayerResponse,
+      globalThis.ytplayer?.config?.args?.player_response
+    ]){
+      try{
+        const parsed=typeof candidate==="string"?JSON.parse(candidate):candidate;
+        if(parsed?.playabilityStatus){
+          playerResponse={
+            status:parsed.playabilityStatus.status||"",
+            reason:parsed.playabilityStatus.reason||"",
+            subreason:parsed.playabilityStatus.errorScreen?.playerErrorMessageRenderer?.subreason?.runs?.map(run=>run.text).join("")||""
+          };
+          break;
+        }
+      }catch{}
+    }
+    return{
+      url:location.href,
+      title:document.title,
+      bodyText:(document.body?.innerText||"").replace(/\s+/g," ").trim().slice(0,1200),
+      playerResponse
+    };
+  }).catch(error=>({url:direct.url(),error:error?.message||String(error)}));
+}
+
 async function waitForTikTokContent(){
   return page.waitForFunction(()=>{
     const frame=document.getElementById("target");
@@ -255,7 +285,9 @@ try{
   const youtube=await frameSnapshot();
   assert.match(youtube.title,/YouTube/i);
 
-  const watchUrl="https://www.youtube.com/watch?v=jNQXAC9IVRw";
+  // YouTube's own IFrame API documentation uses this public video as its
+  // reference embed, making it a stable target for a player-health test.
+  const watchUrl="https://www.youtube.com/watch?v=M7lc1UVf-VE";
   await page.evaluate(target=>window.proxyHarness.go(target),watchUrl);
   let youtubePlayback=null;
   let youtubePlaybackMode="scramjet";
@@ -290,7 +322,7 @@ try{
     assert.ok(mediaStats.youtubeMediaRequests>0,"No YouTube media requests reached the transport");
     assert.ok(mediaStats.youtubeMediaResponses>0,"No YouTube media response reached the player");
   }else{
-    assert.match(page.frames().find(candidate=>/youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()))?.url()||"",/youtube(?:-nocookie)?\.com\/embed\/jNQXAC9IVRw/i);
+    assert.match(page.frames().find(candidate=>/youtube(?:-nocookie)?\.com\/embed\//i.test(candidate.url()))?.url()||"",/youtube(?:-nocookie)?\.com\/embed\/M7lc1UVf-VE/i);
   }
   assert.equal(mediaStats.youtubeMediaInvalidPartialResponses,0,"A 206 media response was missing Content-Range");
 
@@ -324,7 +356,8 @@ try{
   const report=await page.evaluate(()=>window.proxyHarness?.report?.()).catch(()=>null);
   const frame=await frameSnapshot().catch(()=>null);
   const video=await youtubeVideoSnapshot().catch(()=>null);
-  console.error(JSON.stringify({error:error.message,report,frame,video,logs:logs.slice(-160)},null,2));
+  const directYouTube=await directYouTubeDiagnostics().catch(()=>null);
+  console.error(JSON.stringify({error:error.message,report,frame,video,directYouTube,logs:logs.slice(-160)},null,2));
   throw error;
 }finally{
   await browser.close();

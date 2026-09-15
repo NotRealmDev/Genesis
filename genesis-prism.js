@@ -238,11 +238,17 @@
     const id=youtubeVideoId(value);
     if(!id)return [];
     const start=youtubeStartSeconds(value);
+    let parentOrigin="";
+    try{
+      if(/^https?:$/.test(location.protocol))parentOrigin=location.origin;
+    }catch{}
     return ["https://www.youtube-nocookie.com","https://www.youtube.com"].map(origin=>{
       const embed=new URL("/embed/"+id,origin);
       embed.searchParams.set("autoplay","1");
       embed.searchParams.set("playsinline","1");
       embed.searchParams.set("rel","0");
+      embed.searchParams.set("enablejsapi","1");
+      if(parentOrigin)embed.searchParams.set("origin",parentOrigin);
       if(start>0)embed.searchParams.set("start",String(start));
       return embed.href;
     });
