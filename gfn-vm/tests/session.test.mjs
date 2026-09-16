@@ -41,14 +41,16 @@ test("Genesis origin matching is exact",()=>{
   assert.equal(originAllowed("https://genesisos.lol.evil.example","https://genesisos.lol"),false);
 });
 
-test("client is configured for Genesis GFN VM, not Switchboard",()=>{
+test("client is configured for Genesis Host, not Switchboard",()=>{
   const config=fs.readFileSync(path.join(repo,"supabase-config.js"),"utf8");
-  assert.match(config,/Genesis GFN VM/);
+  assert.match(config,/provider:\s*["']Genesis Host["']/);
+  assert.match(config,/mode:\s*["']host["']/);
+  assert.match(config,/genesis-host-vm\.js/);
+  assert.match(config,/displayMode:\s*["']embed["']/);
   assert.doesNotMatch(config,/os\.switchboard\.computer/i);
-  assert.match(config,/sessionEndpoint/);
 });
 
-test("appliance uses NVIDIA official GeForce NOW Flatpak",()=>{
+test("legacy cloud appliance still uses NVIDIA official GeForce NOW Flatpak",()=>{
   const install=fs.readFileSync(path.join(repo,"gfn-vm/install.sh"),"utf8");
   assert.match(install,/international\.download\.nvidia\.com\/GFNLinux\/flatpak\/geforcenow\.flatpakrepo/);
   assert.match(install,/com\.nvidia\.geforcenow/);
@@ -56,7 +58,7 @@ test("appliance uses NVIDIA official GeForce NOW Flatpak",()=>{
   assert.match(install,/580\.126\.07/);
 });
 
-test("gateway never contains a Supabase service-role secret",()=>{
+test("legacy cloud gateway never contains a Supabase service-role secret",()=>{
   const server=fs.readFileSync(path.join(repo,"gfn-vm/server.mjs"),"utf8");
   assert.doesNotMatch(server,/service[_-]?role/i);
   assert.match(server,/GENESIS_ADMIN_EMAIL/);

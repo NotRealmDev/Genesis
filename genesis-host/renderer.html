@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Genesis Host</title>
+<style>
+:root{color-scheme:dark;--bg:#05070c;--panel:#0c111b;--border:rgba(255,255,255,.11);--muted:rgba(255,255,255,.58);--accent:#4f8cff}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(circle at 60% 8%,rgba(79,140,255,.17),transparent 34%),var(--bg);color:#fff;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}body{padding:22px}.shell{max-width:430px;margin:auto}.brand{display:flex;align-items:center;gap:12px;margin-bottom:18px}.logo{width:46px;height:46px;border-radius:15px;display:grid;place-items:center;border:1px solid var(--border);background:rgba(255,255,255,.065);font-size:18px;font-weight:850}.brand h1{font-size:22px;margin:0;letter-spacing:-.03em}.brand p{margin:4px 0 0;color:var(--muted);font-size:11px}.card{padding:17px;border:1px solid var(--border);border-radius:19px;background:rgba(255,255,255,.045);box-shadow:0 18px 50px rgba(0,0,0,.22);margin-bottom:12px}.label{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}.status-row{display:flex;align-items:center;gap:9px}.dot{width:9px;height:9px;border-radius:50%;background:#ffad59;box-shadow:0 0 0 4px rgba(255,173,89,.08)}.dot.live{background:#62f5a4;box-shadow:0 0 0 4px rgba(98,245,164,.09),0 0 18px rgba(98,245,164,.3)}.status{font-size:13px;font-weight:650}.sub{font-size:10px;color:var(--muted);margin-top:5px;line-height:1.5}.key-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.key{height:40px;border:1px solid var(--border);border-radius:12px;background:rgba(0,0,0,.22);padding:0 11px;color:#fff;font:600 11px ui-monospace,SFMono-Regular,Consolas,monospace;outline:0;width:100%}.btn{height:40px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,.07);color:#fff;padding:0 13px;font-weight:650;font-size:11px;cursor:pointer}.btn:hover{background:rgba(255,255,255,.13)}.btn.primary{background:rgba(79,140,255,.36);border-color:rgba(99,151,255,.45)}.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:11px}.toggle input{width:18px;height:18px}.log{max-height:130px;overflow:auto;font:10px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;color:rgba(255,255,255,.58);white-space:pre-wrap}.foot{font-size:9px;color:rgba(255,255,255,.38);line-height:1.5;text-align:center;padding:5px 8px 0}
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="brand"><div class="logo">GH</div><div><h1>Genesis Host</h1><p>Streams GeForce NOW to the Genesis VM app</p></div></div>
+  <section class="card"><div class="label">Host status</div><div class="status-row"><span class="dot" id="statusDot"></span><div><div class="status" id="statusText">Starting…</div><div class="sub" id="statusSub">Preparing GeForce NOW and secure signaling.</div></div></div></section>
+  <section class="card"><div class="label">Host Key</div><div class="key-row"><input class="key" id="hostKey" readonly><button class="btn" id="copyKey">Copy</button></div><div class="sub">Paste this key into the VM app on Genesis. Treat it like a password for this host.</div><div style="margin-top:9px"><button class="btn" id="newKey">Generate New Key</button></div></section>
+  <section class="card"><div class="label">GeForce NOW</div><div class="actions"><button class="btn primary" id="launchGfn">Open GeForce NOW</button><button class="btn" id="focusGfn">Focus Window</button></div><div class="sub" id="gfnStatus">Checking browser…</div></section>
+  <section class="card"><label class="toggle"><span><b>Open GeForce NOW automatically</b><div class="sub">Uses a persistent browser profile so your GFN login can stay signed in.</div></span><input id="autoLaunch" type="checkbox"></label></section>
+  <section class="card"><div class="label">Activity</div><div class="log" id="log">Genesis Host starting…</div></section>
+  <div class="foot">Only the GeForce NOW window is captured. Genesis Host does not intentionally stream the rest of your desktop.</div>
+</div>
+<script src="renderer.js"></script>
+</body>
+</html>
