@@ -13,9 +13,9 @@
     if(sub)statusSub.textContent=sub;
     statusDot.classList.toggle("live",!!live);
   }
-  function closePeer(){
+  function closePeer({keepPendingIce=false}={}){
     try{state.peer?.close()}catch{}
-    state.peer=null;state.pendingIce=[];state.connected=false;state.sessionId="";
+    state.peer=null;if(!keepPendingIce)state.pendingIce=[];state.connected=false;state.sessionId="";
   }
   function stopCapture(){
     if(state.stream){for(const track of state.stream.getTracks())try{track.stop()}catch{}}
@@ -60,12 +60,13 @@
         log("Rejected viewer: admin verification failed");
         return;
       }
+      closePeer();
+      state.sessionId=payload.sessionId;
       const gfn=await window.genesisHost.launchGeForce();
       if(!gfn?.ok)throw new Error(gfn?.error||"Could not launch GeForce NOW");
       await new Promise(resolve=>setTimeout(resolve,700));
       const stream=await ensureCapture();
-      closePeer();
-      state.sessionId=payload.sessionId;
+      const currentIce=state.pendingIce.splice(0);
       const pc=new RTCPeerConnection({iceServers:[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}],iceCandidatePoolSize:4,bundlePolicy:"max-bundle"});
       state.peer=pc;
       for(const track of stream.getTracks()){
@@ -93,7 +94,7 @@
         }else if(current==="closed")state.connected=false;
       };
       await pc.setRemoteDescription(payload.offer);
-      for(const candidate of state.pendingIce.splice(0)){try{await pc.addIceCandidate(candidate)}catch{}}
+      for(const candidate of currentIce.concat(state.pendingIce.splice(0))){try{await pc.addIceCandidate(candidate)}catch{}}
       const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await send("host-answer",{sessionId:state.sessionId,answer:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},host:{platform:navigator.platform,videoTracks:stream.getVideoTracks().length,audioTracks:stream.getAudioTracks().length},sentAt:new Date().toISOString()});
