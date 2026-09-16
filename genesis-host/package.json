@@ -1,0 +1,41 @@
+{
+  "name": "genesis-host",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows host app for streaming GeForce NOW into the Genesis VM app",
+  "main": "main.cjs",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "dist": "electron-builder --win portable"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.116.0"
+  },
+  "devDependencies": {
+    "electron": "^38.1.2",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "net.genesis.host",
+    "productName": "Genesis Host",
+    "files": [
+      "main.cjs",
+      "preload.cjs",
+      "renderer.html",
+      "renderer.js",
+      "input-helper.ps1",
+      "lib.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "Genesis-Host-${version}-Windows-x64.${ext}"
+    }
+  }
+}
