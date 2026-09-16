@@ -34,19 +34,49 @@ const browser=await chromium.launch({
   args:["--autoplay-policy=no-user-gesture-required"]
 });
 const page=await browser.newPage({viewport:{width:1440,height:900}});
+const announcementTopic=`genesis-announcements-e2e-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;
 const logs=[];
 page.on("console",message=>logs.push(message.type()+": "+message.text()));
 page.on("pageerror",error=>logs.push("pageerror: "+error.message));
 
 try{
-  await page.addInitScript(()=>{
+  await page.addInitScript(topic=>{
+    window.GENESIS_ANNOUNCEMENT_TOPIC=topic;
     localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
     localStorage.setItem("genesisDisplayId","527");
     localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
     localStorage.removeItem("genesisMessagesTutorialComplete");
-  });
+  },announcementTopic);
   await page.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
+
+  const receiver=await browser.newPage({viewport:{width:1200,height:760}});
+  receiver.on("console",message=>logs.push("receiver "+message.type()+": "+message.text()));
+  receiver.on("pageerror",error=>logs.push("receiver pageerror: "+error.message));
+  await receiver.addInitScript(topic=>{
+    window.GENESIS_ANNOUNCEMENT_TOPIC=topic;
+    localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
+    localStorage.setItem("genesisDisplayId","528");
+    localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
+  },announcementTopic);
+  await receiver.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
+  await Promise.all([
+    page.waitForFunction(()=>window.GenesisAnnouncements?.status?.()==="live",null,{timeout:30000}),
+    receiver.waitForFunction(()=>window.GenesisAnnouncements?.status?.()==="live",null,{timeout:30000})
+  ]);
+  const announcement={
+    id:`e2e-${Date.now()}`,
+    message:"Cross-client Genesis announcement",
+    duration_ms:8000,
+    sent_at:new Date().toISOString()
+  };
+  await page.evaluate(value=>window.GenesisAnnouncements.broadcast(value),announcement);
+  await receiver.waitForFunction(value=>{
+    const banner=document.getElementById("genesisGlobalAnnouncement");
+    return banner?.dataset.announcementId===value.id && banner.classList.contains("show") && banner.textContent===value.message;
+  },announcement,{timeout:15000});
+  await receiver.close();
+
   await page.evaluate(()=>openApp("messages"));
   await page.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:15000});
 
@@ -109,6 +139,7 @@ try{
   assert.equal(fatalGameLog,undefined,fatalGameLog||"Survival Race logged a fatal loading error");
 
   console.log(JSON.stringify({
+    announcements:{crossClientRealtime:true},
     messages:{animated:true,tutorialLine:true,savedContact:contactId},
     survivalRace:{document:true,unityLoader:true,mergedWasm:true},
     relevantLogs:logs.filter(line=>/FileMerger|Survival Race|Messages/i.test(line)).slice(-40)
