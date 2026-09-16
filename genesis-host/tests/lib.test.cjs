@@ -50,18 +50,14 @@ test('unknown control packets are rejected',()=>{
   assert.equal(normalizeControlMessage(null),null);
 });
 
-test('Host verifies the authenticated Genesis Admin email',()=>{
-  const source=fs.readFileSync(path.resolve(__dirname,'../main.cjs'),'utf8');
-  assert.match(source,/GENESIS_ADMIN_EMAIL='admin@genesisos\.lol'/);
-  assert.match(source,/email!==GENESIS_ADMIN_EMAIL/);
-  assert.match(source,/not authorized for Admin VM/);
-});
-
-test('website admin auth bridge supports refresh and interactive re-authentication',()=>{
-  const source=fs.readFileSync(path.resolve(__dirname,'../../genesis-admin-auth.js'),'utf8');
-  assert.match(source,/grant_type=/);
-  assert.match(source,/refresh_token/);
-  assert.match(source,/requestPassword/);
-  assert.match(source,/genesisAdminSession/);
-  assert.doesNotMatch(source,/R!ealm/);
+test('VM pairs with Host Key and does not ask for a second Admin authentication',()=>{
+  const root=path.resolve(__dirname,'../..');
+  const viewer=fs.readFileSync(path.join(root,'genesis-host-vm.js'),'utf8');
+  const host=fs.readFileSync(path.join(root,'genesis-host/renderer.js'),'utf8');
+  const config=fs.readFileSync(path.join(root,'supabase-config.js'),'utf8');
+  assert.match(viewer,/genesisVmHostKey/);
+  assert.doesNotMatch(viewer,/adminToken|genesisAdminSession/);
+  assert.doesNotMatch(host,/verifyAdmin|admin verification/i);
+  assert.doesNotMatch(config,/genesis-admin-auth\.js/);
+  assert.match(config,/Host Key/);
 });
