@@ -1,0 +1,72 @@
+name: Genesis Host Windows
+
+on:
+  pull_request:
+    paths:
+      - 'genesis-host/**'
+      - 'genesis-host-vm.js'
+      - 'supabase-config.js'
+      - '.github/workflows/genesis-host.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'genesis-host/**'
+      - 'genesis-host-vm.js'
+      - 'supabase-config.js'
+      - '.github/workflows/genesis-host.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: JavaScript syntax
+        shell: pwsh
+        run: |
+          node --check genesis-host-vm.js
+          node --check genesis-host/main.cjs
+          node --check genesis-host/preload.cjs
+          node --check genesis-host/renderer.js
+          node --check genesis-host/lib.cjs
+      - name: PowerShell syntax
+        shell: pwsh
+        run: |
+          $errors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path 'genesis-host/input-helper.ps1'), [ref]$null, [ref]$errors) | Out-Null
+          if ($errors.Count -gt 0) { $errors | Format-List | Out-String | Write-Error; exit 1 }
+      - name: Run host tests repeatedly
+        shell: pwsh
+        working-directory: genesis-host
+        run: |
+          for ($i=1; $i -le 10; $i++) {
+            Write-Host "Genesis Host test pass $i/10"
+            npm test
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+  build:
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: genesis-host/package.json
+      - name: Install dependencies
+        working-directory: genesis-host
+        run: npm install --no-audit --no-fund
+      - name: Build portable Windows app
+        working-directory: genesis-host
+        run: npm run dist
+      - name: Upload Genesis Host
+        uses: actions/upload-artifact@v4
+        with:
+          name: Genesis-Host-Windows
+          path: genesis-host/dist/Genesis-Host-*-Windows-x64.exe
+          if-no-files-found: error
