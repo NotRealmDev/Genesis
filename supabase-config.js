@@ -11,13 +11,16 @@ window.GENESIS_BACKEND = {
 /*
  Genesis GeForce NOW VM configuration.
 
- This no longer points at a third-party browser VM. The Genesis VM app is now
- intended to connect only to the self-hosted Genesis GFN VM appliance in
- /gfn-vm. The appliance runs GeForce NOW on the remote cloud machine and
+ The Genesis VM app connects only to the self-hosted Genesis GFN VM appliance
+ in /gfn-vm. The appliance runs GeForce NOW on the remote cloud machine and
  returns a short-lived authenticated viewer URL to Genesis Admin users.
 
  After deploying the appliance, set sessionEndpoint to its HTTPS endpoint:
    https://YOUR_VM_DOMAIN/api/session
+
+ Until a remote host is connected, the VM app stays open inside Genesis and
+ shows its setup/offline state instead of opening and immediately closing a
+ blank browser tab.
 
  Keep server credentials and SESSION_SECRET on the VM, never in this file.
 */
@@ -27,7 +30,7 @@ window.GENESIS_VM = window.GENESIS_VM || {
   viewerUrl: "",
   startupUrl: "https://play.geforcenow.com/",
   sessionMode: "persistent",
-  displayMode: "tab"
+  displayMode: "embed"
 };
 
 (function loadGenesisAdminVm(){
