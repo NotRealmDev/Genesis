@@ -5,8 +5,24 @@
 */
 window.GENESIS_BACKEND = {
   url: "https://yubpnkcsjuxuczrafmmj.supabase.co",
-  anonKey: "sb_publishable_JNxkxsQxxy5gwawUduiFbw_wHYsaQ5V"
+  anonKey: "sb_publishable_JNxkxsQxxy5gwawUduiFbw_wHYsaQ5V",
+  adminEmail: "admin@genesisos.lol"
 };
+
+/*
+ Secure Admin session bridge.
+ This runs on both the login page and Genesis OS. It makes the Admin login
+ obtain a real Supabase Auth session and can re-authenticate an already-open
+ Admin session when VM needs a fresh token.
+*/
+(function loadGenesisAdminAuth(){
+  if(document.querySelector('script[data-genesis-admin-auth]')) return;
+  const script=document.createElement("script");
+  script.src="genesis-admin-auth.js";
+  script.defer=true;
+  script.dataset.genesisAdminAuth="1";
+  document.head.appendChild(script);
+})();
 
 /*
  Genesis VM now supports the Windows Genesis Host app.
