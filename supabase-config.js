@@ -11,16 +11,20 @@ window.GENESIS_BACKEND = {
 /*
  Genesis VM configuration.
 
- To connect a real cloud computer, configure ONE of these:
+ Default provider:
+ - Switchboard Guest: free cloud OS, no credit card required.
+
+ You can replace it later with a dedicated VM provider by configuring:
  - sessionEndpoint: recommended. Genesis sends the authenticated admin token
    to this endpoint and expects JSON containing url/viewerUrl/sessionUrl.
- - viewerUrl: a fixed browser-based remote-desktop viewer URL.
+ - viewerUrl: a fixed browser-based remote-desktop/cloud-OS URL.
 
  Keep provider API keys and VM credentials on the server, never in this file.
 */
 window.GENESIS_VM = window.GENESIS_VM || {
+  provider: "Switchboard Free",
   sessionEndpoint: "",
-  viewerUrl: "",
+  viewerUrl: "https://os.switchboard.computer/",
   startupUrl: "https://play.geforcenow.com/",
   sessionMode: "persistent"
 };
