@@ -1,0 +1,49 @@
+name: Genesis GFN VM tests
+
+on:
+  push:
+    paths:
+      - "gfn-vm/**"
+      - "genesis-vm.js"
+      - "supabase-config.js"
+      - ".github/workflows/gfn-vm-tests.yml"
+  pull_request:
+    paths:
+      - "gfn-vm/**"
+      - "genesis-vm.js"
+      - "supabase-config.js"
+      - ".github/workflows/gfn-vm-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Shell syntax
+        run: |
+          bash -n gfn-vm/install.sh
+          bash -n gfn-vm/start-session.sh
+          bash -n gfn-vm/verify.sh
+      - name: JavaScript syntax
+        run: |
+          node --check gfn-vm/lib.mjs
+          node --check gfn-vm/server.mjs
+          node --check genesis-vm.js
+          node --check supabase-config.js
+      - name: Install gateway dependency
+        working-directory: gfn-vm
+        run: npm install --no-audit --no-fund
+      - name: Run unit tests repeatedly
+        working-directory: gfn-vm
+        run: |
+          for i in $(seq 1 10); do
+            echo "GFN VM test pass $i/10"
+            npm test
+          done
