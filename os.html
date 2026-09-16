@@ -594,9 +594,12 @@ button{color:inherit}
     <div class="desktop-icon" data-app="gameRequest" style="left:230px;top:145px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 8h8M8 12h5M8 16h4"/><path d="M15 14v5M12.5 16.5H17.5"/></svg></div><div class="app-name">Game Request</div>
     </div>
+    <div class="desktop-icon" data-app="messages" style="left:230px;top:260px">
+      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/></svg><span class="gm-app-badge" data-messages-badge></span></div><div class="app-name">Messages</div>
+    </div>
 
     <div class="desktop-icon admin-only-icon" data-admin-only="1" data-app="announcement" style="left:330px;top:30px">
-      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M4 11v2a2 2 0 0 0 2 2h2l3 4V5L8 9H6a2 2 0 0 0-2 2z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></svg></div><div class="app-name">Annoucement</div>
+      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M4 11v2a2 2 0 0 0 2 2h2l3 4V5L8 9H6a2 2 0 0 0-2 2z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></svg></div><div class="app-name">Announcements</div>
     </div>
     <div class="desktop-icon admin-only-icon" data-admin-only="1" data-app="deactivateOS" style="left:330px;top:145px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M7.2 5.8a8 8 0 1 0 9.6 0"/><path d="M8 16l8-8"/></svg></div><div class="app-name">DeactivateOS</div>
@@ -629,11 +632,14 @@ button{color:inherit}
   <div class="dock-wrap"><div class="dock">
     <button class="dock-app" data-dock-app="files" onclick="openApp('files')" title="Files"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg><span class="dock-dot"></span></button>
     <button class="dock-app" data-dock-app="browser" onclick="openApp('browser')" title="Browser"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9"/></svg><span class="dock-dot"></span></button>
+    <button class="dock-app" data-dock-app="messages" onclick="openApp('messages')" title="Messages"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/></svg><span class="gm-app-badge" data-messages-badge></span><span class="dock-dot"></span></button>
     <button class="dock-app" data-dock-app="settings" onclick="openApp('settings')" title="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span class="dock-dot"></span></button>
   </div></div>
 </div>
 
 <script src="games-c-s.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
+<script src="genesis-messages.js"></script>
 <script>
 const embeddedGamePayloads = {
   "drive-mad": "H4sIANi2pGoC/+1XS2/jNhC+51ewAuJTZEl2/FBipS22yK1ogbZngSJHEjc0qZK0E2+x/71D0ZYVJwV2u7eiQMLHzDcfR5wZkt58xzVzhw5I67by4WrjOyKpaooIVLyzkZcB5Q9XhGwqahFooC6i1rnO3iUJ42r60XKQYm+mClzStEktFJXCCbAJ31Ied/pJ/HCbVwtaLat8vaoX9byCxbrOOYVFzvIZrGuWUVrlVZpE/VJbcJSwlhoLroh2ro7XI4VfPYY/d2JfRB+0cqBc/Dt+RURYmBWRgxeX+K+5H2hGLE44CQ8/GbEH8jPlmyQIhgUU3UIRNVo3ckyqtDNUWUkdRJfgvYDnThs3gj8L7tqCw14wiPvJjVC4MVTGllEJRXazs2D6Ca1wrnSglUI9EQOyiKw7SLAtAPKGnX+GinZdUlPFKIcps/bSRqADb9B7L51iE9CWGdE5PyTkWSiun6fU2oZzUpC/eikhuAJYp80vRjRC2btBQUh6R4YUaPDz7dQHecr0NroZQNkINKiP2s8nmHdzhKvzxfIWbiGGeraIcVTFFV2uYlZlGc0Wq2VV8X6tuMHMQ8KEsaxiixWNYb5Ai2W+jPMVm8VpvqrqZbZeL9Nlgl8IL1OfDt8zvVPOHIo/fpvsjCxxeTAGTNF7cD3/8Xr2iH8nf3E4scJBKXgxnwiry744QE08okSGfzYEhU2D/9znWYylMGm1sK44gJ0orX4FY7UvlU/ACzVhUu+4pXvoNxQFNd0KeXg0AhSXB4/AvGs0zm2xWl/PPuRz3yyxyVI/nK9Wvs1TbG9T364DZJZ7TDbrodk8zG7T0GWhm4du1XfLMFsv+i4PyDwI89XEdsAwi0tMKY75rFWBu8KFaibed79XXxLHAN7jLiCDN/qSUE4wE3F1TMsiHXJN9xn6LWk0UHVGO820HMgGTautQ+m/p/YE/qz4JhJ/xCDBeU5deyT92lIYOCxQw1pk+L84/oPF0VLrYxtO3s/3/vRPzsf/8SYg1rAi6jPO8ie80qOHM2qThCfAptL8QNCXyA/CRcLFvpdsNcdv7qjBmy8K98qF7ngtHpV+5Y6qsV5qC2W1cw6vr4eJExjoe3QCUYPJidFfS1D6K698TU6YxHvsRCmUAuO/BO3ecuCzAMpaSPhKjmF4Hpw4GVV7astKG45GJyLYhp0EddJcbFAn6eHt8oJzCYShbLA42px4eYPvkLGk0i8XAknZ02CM5mLbhFgfXwZMY45NP3bNsG4vGZt0J03/SIrGz6buPRjduVYjw2N4ooxQYcPG7WVQ8PhtDFhbalP6XXnlx1H3Cji4LTX1RRaRPZU7fI+lEdnSlyLK0tRH74R/7crVpe8cQqiEz8HB83HwQ4jfhjYaJUBEHK36g7aI4swTBflF2BuDLvclMV7gpMUA+TfluW7eybtx8R4DavXOMExpoS6q+H14uA4u693Xd1/3/lfB3w98DZslDAAA",
@@ -671,6 +677,10 @@ function shouldConvertGameSourceToHTML(url){
 }
 
 function addGameBaseTag(htmlText, sourceUrl){
+  // Preserve a game's own asset base. The first <base> element wins, so
+  // injecting another one before a Unity/WebGL port breaks its Build files.
+  if(/<base\s[^>]*href\s*=/i.test(htmlText)) return htmlText;
+
   const baseHref = new URL(".", sourceUrl).href;
   const baseTag = `<base href="${baseHref.replace(/"/g,"&quot;")}">`;
 
@@ -1132,7 +1142,7 @@ function submitGameRequest(){
 
 function announcementHTML(){
   return `<div class="admin-panel">
-    <div class="heading">Annoucement</div>
+    <div class="heading">Announcements</div>
     <div class="muted" style="font-size:12px;line-height:1.6;margin-bottom:16px">
       Send a message to everyone currently using Genesis. Longer messages stay visible longer automatically.
     </div>
@@ -1143,6 +1153,13 @@ function announcementHTML(){
     </div>
     <div id="announcementStatus" class="admin-status"></div>
   </div>`;
+}
+
+function messagesHTML(){
+  if(window.GenesisMessages && typeof window.GenesisMessages.html === "function"){
+    return window.GenesisMessages.html();
+  }
+  return `<div class="section"><div class="heading">Messages</div><div class="muted">Messages is still loading. Close this window and open it again.</div></div>`;
 }
 
 function deactivateOSHTML(){
@@ -1369,9 +1386,10 @@ const apps = {
   </div>`},
   about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.0 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
   music:{title:"Music",content:musicHTML},
+  messages:{title:"Messages",content:messagesHTML},
   games:{title:"Games",content:gamesHTML},
   gameRequest:{title:"Game Request",content:gameRequestHTML},
-  announcement:{title:"Annoucement",adminOnly:true,content:announcementHTML},
+  announcement:{title:"Announcements",adminOnly:true,content:announcementHTML},
   deactivateOS:{title:"DeactivateOS",adminOnly:true,content:deactivateOSHTML}
 };
 
@@ -1410,6 +1428,7 @@ function openApp(appId){
   if(appId==="deactivateOS") setTimeout(refreshDeactivateOS,0);
   if(appId==="announcement") setTimeout(()=>document.getElementById("announcementText")?.focus(),0);
   if(appId==="music") setTimeout(initMusicPlayer,0);
+  if(appId==="messages") setTimeout(()=>window.GenesisMessages?.init?.(),0);
 
   win.querySelector(".close").onclick = e => {e.stopPropagation(); closeWindow(appId,win)};
   win.querySelector(".minimize").onclick = e => {e.stopPropagation(); win.classList.add("minimized")};
@@ -1427,6 +1446,7 @@ function openApp(appId){
 }
 
 function closeWindow(appId,win){
+  if(appId==="messages") window.GenesisMessages?.onWindowClose?.();
   if(appId==="browser"){
     captureBrowserLocation(win);
     persistBrowserState(false);
@@ -2739,9 +2759,9 @@ async function checkGenesisDevice(){
 let genesisAnnouncementTimer = null;
 let genesisLastAnnouncementId = null;
 
-function showGenesisAnnouncement(message, ms){
+function showGenesisAnnouncement(message, ms, id){
   if(window.GenesisAnnouncements && typeof window.GenesisAnnouncements.show === "function"){
-    window.GenesisAnnouncements.show(message, ms);
+    window.GenesisAnnouncements.show(message, ms, id);
     return;
   }
 
@@ -2792,7 +2812,7 @@ async function sendGenesisAnnouncement(){
   const duration = Math.min(22000, Math.max(5000, 3500 + (message.length * 55)));
 
   try{
-    await genesisRpc("genesis_send_announcement", {
+    const sentId = await genesisRpc("genesis_send_announcement", {
       p_message: message,
       p_duration_ms: duration
     });
@@ -2800,7 +2820,7 @@ async function sendGenesisAnnouncement(){
     input.value = "";
 
     // Always show it on the sender's screen immediately.
-    showGenesisAnnouncement(message, duration);
+    showGenesisAnnouncement(message, duration, Array.isArray(sentId) ? sentId[0] : sentId);
 
     // Then tell the shared poller to pick up the database copy for everybody else.
     setTimeout(pollGenesisAnnouncement, 250);
@@ -2909,7 +2929,9 @@ document.addEventListener("visibilitychange",()=>{
 showGenesisIdImmediately();
 setupGenesisAdminUI();
 startWelcomeFireworks();
-ensureGenesisDevice();
+Promise.resolve(ensureGenesisDevice())
+  .catch(error=>console.warn("Genesis device service:",error))
+  .finally(()=>window.GenesisMessages?.start?.());
 pollGenesisAnnouncement();
 setInterval(checkGenesisDevice,5000);
 setInterval(pollGenesisAnnouncement,3000);

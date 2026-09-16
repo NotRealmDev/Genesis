@@ -2,6 +2,7 @@
   const POLL_MS = 1000;
   let lastShownId = null;
   let hideTimer = null;
+  let polling = false;
 
   function backendReady(){
     const b = window.GENESIS_BACKEND || {};
@@ -87,6 +88,7 @@
       method:"POST",
       headers:{
         "apikey":b.anonKey,
+        "Authorization":`Bearer ${b.anonKey}`,
         "Content-Type":"application/json"
       },
       body:JSON.stringify(body),
@@ -101,12 +103,54 @@
     return response.json();
   }
 
-  async function poll(){
-    if(!backendReady()) return;
+  async function latestFromTable(){
+    const b = window.GENESIS_BACKEND;
+    const query = "genesis_announcements?select=id,message,duration_ms,created_at&order=created_at.desc&limit=1";
+    const response = await fetch(`${b.url}/rest/v1/${query}`, {
+      headers:{
+        "apikey":b.anonKey,
+        "Authorization":`Bearer ${b.anonKey}`,
+        "Accept":"application/json"
+      },
+      cache:"no-store"
+    });
+    if(!response.ok) throw new Error((await response.text()) || `HTTP ${response.status}`);
+    const rows = await response.json();
+    const latest = Array.isArray(rows) ? rows[0] : rows;
+    if(!latest) return null;
+    const created = new Date(latest.created_at).getTime();
+    const duration = Number(latest.duration_ms) || 0;
+    if(!Number.isFinite(created) || duration <= 0) return null;
+    return {
+      id:latest.id,
+      message:latest.message,
+      remaining_ms:Math.max(0,duration-Math.max(0,Date.now()-created))
+    };
+  }
 
+  async function activeAnnouncement(){
     try{
       const rows = await rpc("genesis_get_active_announcement");
-      const a = Array.isArray(rows) ? rows[0] : rows;
+      return Array.isArray(rows) ? rows[0] : rows;
+    }catch(rpcError){
+      // Older Genesis backends have the announcement table and sender RPC,
+      // but not the newer active-announcement RPC. Reading the newest row
+      // directly keeps announcements working without another SQL migration.
+      try{
+        return await latestFromTable();
+      }catch(tableError){
+        tableError.cause = rpcError;
+        throw tableError;
+      }
+    }
+  }
+
+  async function poll(){
+    if(!backendReady() || polling) return;
+    polling = true;
+
+    try{
+      const a = await activeAnnouncement();
 
       if(!a || !a.id || Number(a.remaining_ms) <= 0) return;
 
@@ -115,6 +159,8 @@
       }
     }catch(error){
       console.warn("Genesis global announcement poll failed:", error);
+    }finally{
+      polling = false;
     }
   }
 
@@ -125,6 +171,10 @@
     ensureBanner();
     poll();
     setInterval(poll, POLL_MS);
+    window.addEventListener("online",poll);
+    document.addEventListener("visibilitychange",()=>{
+      if(document.visibilityState === "visible") poll();
+    });
   }
 
   if(document.readyState === "loading"){
