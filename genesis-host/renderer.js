@@ -53,13 +53,7 @@
     if(!payload?.sessionId||!payload?.offer?.sdp)return;
     state.offerBusy=true;
     try{
-      setStatus("Admin connecting…","Verifying Genesis admin session and preparing the stream.");
-      const verified=await window.genesisHost.verifyAdmin(payload.adminToken||"");
-      if(!verified?.ok){
-        await send("host-error",{sessionId:payload.sessionId,message:verified?.error||"Admin verification failed"});
-        log("Rejected viewer: admin verification failed");
-        return;
-      }
+      setStatus("Viewer connecting…","Preparing GeForce NOW and the WebRTC stream.");
       closePeer();
       state.sessionId=payload.sessionId;
       const gfn=await window.genesisHost.launchGeForce();
@@ -86,7 +80,7 @@
       pc.onconnectionstatechange=()=>{
         const current=pc.connectionState;
         if(current==="connected"){
-          state.connected=true;setStatus("Connected","Genesis admin is viewing GeForce NOW.",true);gfnStatus.textContent="Streaming GeForce NOW";window.genesisHost.focusGeForce();log("WebRTC stream connected");
+          state.connected=true;setStatus("Connected","Genesis is viewing GeForce NOW.",true);gfnStatus.textContent="Streaming GeForce NOW";window.genesisHost.focusGeForce();log("WebRTC stream connected");
         }else if(current==="disconnected"){
           setStatus("Connection interrupted","Waiting for WebRTC to recover…");log("Viewer connection interrupted")
         }else if(current==="failed"){
@@ -124,7 +118,7 @@
     setStatus("Connecting signaling…","Genesis Host is connecting to the same realtime service used by Genesis Messages.");
     await window.genesisHost.connectSignal(state.config.hostKey);
     state.signalReady=true;
-    setStatus("Host online","Waiting for an admin to open VM in Genesis.",true);
+    setStatus("Host online","Waiting for Genesis VM to connect with this Host Key.",true);
     log("Signaling connected. Host is ready.");
   }
 
