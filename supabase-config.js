@@ -9,26 +9,22 @@ window.GENESIS_BACKEND = {
 };
 
 /*
- Genesis VM configuration.
+ Genesis GeForce NOW VM configuration.
 
- Default provider:
- - Switchboard Guest: free cloud OS, no credit card required.
- - Switchboard refuses iframe embedding, so Genesis launches it as a normal
-   top-level VM tab instead of placing it inside the VM iframe.
+ This no longer points at a third-party browser VM. The Genesis VM app is now
+ intended to connect only to the self-hosted Genesis GFN VM appliance in
+ /gfn-vm. The appliance runs GeForce NOW on the remote cloud machine and
+ returns a short-lived authenticated viewer URL to Genesis Admin users.
 
- You can replace it later with a dedicated VM provider by configuring:
- - sessionEndpoint: recommended. Genesis sends the authenticated admin token
-   to this endpoint and expects JSON containing url/viewerUrl/sessionUrl.
- - viewerUrl: a fixed browser-based remote-desktop/cloud-OS URL.
- - displayMode: "embed" for providers that permit iframe embedding, or "tab"
-   for providers that must run as a top-level browser page.
+ After deploying the appliance, set sessionEndpoint to its HTTPS endpoint:
+   https://YOUR_VM_DOMAIN/api/session
 
- Keep provider API keys and VM credentials on the server, never in this file.
+ Keep server credentials and SESSION_SECRET on the VM, never in this file.
 */
 window.GENESIS_VM = window.GENESIS_VM || {
-  provider: "Switchboard Free",
+  provider: "Genesis GFN VM",
   sessionEndpoint: "",
-  viewerUrl: "https://os.switchboard.computer/",
+  viewerUrl: "",
   startupUrl: "https://play.geforcenow.com/",
   sessionMode: "persistent",
   displayMode: "tab"
