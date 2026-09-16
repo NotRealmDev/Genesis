@@ -13,11 +13,15 @@ window.GENESIS_BACKEND = {
 
  Default provider:
  - Switchboard Guest: free cloud OS, no credit card required.
+ - Switchboard refuses iframe embedding, so Genesis launches it as a normal
+   top-level VM tab instead of placing it inside the VM iframe.
 
  You can replace it later with a dedicated VM provider by configuring:
  - sessionEndpoint: recommended. Genesis sends the authenticated admin token
    to this endpoint and expects JSON containing url/viewerUrl/sessionUrl.
  - viewerUrl: a fixed browser-based remote-desktop/cloud-OS URL.
+ - displayMode: "embed" for providers that permit iframe embedding, or "tab"
+   for providers that must run as a top-level browser page.
 
  Keep provider API keys and VM credentials on the server, never in this file.
 */
@@ -26,7 +30,8 @@ window.GENESIS_VM = window.GENESIS_VM || {
   sessionEndpoint: "",
   viewerUrl: "https://os.switchboard.computer/",
   startupUrl: "https://play.geforcenow.com/",
-  sessionMode: "persistent"
+  sessionMode: "persistent",
+  displayMode: "tab"
 };
 
 (function loadGenesisAdminVm(){
