@@ -213,12 +213,9 @@
       const pc=await createViewerPeer();
       const offer=await pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:true});
       await pc.setLocalDescription(offer);
-      let adminToken="";
-      try{if(typeof global.genesisAdminSession==="function")adminToken=await global.genesisAdminSession()}catch(error){throw new Error("Your Genesis admin session expired. Sign in again.")}
       await sendSignal("viewer-offer",{
         sessionId:state.sessionId,
         offer:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},
-        adminToken,
         viewer:{width:innerWidth,height:innerHeight,devicePixelRatio:devicePixelRatio||1},
         sentAt:new Date().toISOString()
       });
