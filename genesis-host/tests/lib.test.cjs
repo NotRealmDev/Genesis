@@ -1,6 +1,7 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const path=require('node:path');
+const fs=require('node:fs');
 const {createHostKey,validHostKey,findBrowser,browserArgs,normalizeControlMessage}=require('../lib.cjs');
 
 test('host keys are long, URL-safe, and unique',()=>{
@@ -47,4 +48,20 @@ test('control message normalization limits keyboard data',()=>{
 test('unknown control packets are rejected',()=>{
   assert.equal(normalizeControlMessage({type:'shell',command:'whoami'}),null);
   assert.equal(normalizeControlMessage(null),null);
+});
+
+test('Host verifies the authenticated Genesis Admin email',()=>{
+  const source=fs.readFileSync(path.resolve(__dirname,'../main.cjs'),'utf8');
+  assert.match(source,/GENESIS_ADMIN_EMAIL='admin@genesisos\.lol'/);
+  assert.match(source,/email!==GENESIS_ADMIN_EMAIL/);
+  assert.match(source,/not authorized for Admin VM/);
+});
+
+test('website admin auth bridge supports refresh and interactive re-authentication',()=>{
+  const source=fs.readFileSync(path.resolve(__dirname,'../../genesis-admin-auth.js'),'utf8');
+  assert.match(source,/grant_type=/);
+  assert.match(source,/refresh_token/);
+  assert.match(source,/requestPassword/);
+  assert.match(source,/genesisAdminSession/);
+  assert.doesNotMatch(source,/R!ealm/);
 });
