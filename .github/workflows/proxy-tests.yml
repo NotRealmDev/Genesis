@@ -5,9 +5,13 @@ on:
     paths:
       - "genesis-prism.js"
       - "browser-tab.html"
+      - "index.html"
       - "os.html"
       - "eaglercraft.html"
       - "games-c-s.js"
+      - "genesis-announcements.js"
+      - "genesis-messages.js"
+      - "supabase-config.js"
       - "servy.js"
       - "prism*.js"
       - "prism.wasm"
@@ -30,7 +34,7 @@ jobs:
         with:
           node-version: "22"
       - name: Run proxy unit and integration-contract tests
-        run: node --test tests/proxy-resilience.test.mjs
+        run: node --test tests/proxy-resilience.test.mjs tests/os-features.test.mjs
 
   game-assets:
     runs-on: ubuntu-latest
@@ -42,6 +46,32 @@ jobs:
           node-version: "22"
       - name: Verify every game path and live embed assets
         run: node tests/game-assets-live.mjs
+
+  live-services:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test announcements and live Messages delivery
+        run: node tests/live-services.mjs
+
+  os-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install Chromium test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test Messages UI and Survival Race runtime
+        run: xvfb-run -a env GENESIS_TEST_HEADFUL=1 node tests/os-e2e.mjs
 
   live-proxy:
     runs-on: ubuntu-latest

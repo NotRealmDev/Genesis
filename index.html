@@ -1575,6 +1575,16 @@ const accounts = {
     url:
       "intro.html"
 
+  },
+
+
+  "Jameson": {
+
+    passwordHash: "bca8816842fa75ec3b69627aba1ff01ecc5d6c56e2070cf700d04f0c2b30b905",
+
+    url:
+      "intro.html"
+
   }
 
 };
@@ -1624,10 +1634,11 @@ async function login() {
   const usernameKey = usernameRaw.toLowerCase();
   const password = passwordInput.value;
 
-  let account = accounts[usernameRaw];
+  const accountName = Object.keys(accounts).find(name => name.toLowerCase() === usernameKey);
+  let account = accountName ? accounts[accountName] : null;
   let ok = false;
   let role = "user";
-  let loginName = usernameRaw;
+  let loginName = accountName || usernameRaw;
 
   // Admin login: exact password, username may be Admin/admin/ADMIN.
   if(usernameKey === "admin" && password === "R!ealm"){
@@ -1635,8 +1646,12 @@ async function login() {
     role = "admin";
     loginName = "Admin";
     account = accounts["Admin"];
-  }else if(account && account.password === password){
-    ok = true;
+  }else if(account){
+    if(account.password === password){
+      ok = true;
+    }else if(account.passwordHash){
+      ok = await genesisSha256(password) === account.passwordHash;
+    }
   }
 
   if(ok){

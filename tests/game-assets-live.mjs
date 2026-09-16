@@ -30,7 +30,11 @@ async function readPrefix(url,minimumBytes=32){
   let lastError=null;
   for(let attempt=1;attempt<=2;attempt++){
     try{
-      const response=await responseOrThrow(url,{headers:{Range:"bytes=0-4095"}});
+      // Some large jsDelivr Brotli assets answer a range request with HTTP 206
+      // but an empty body. The second attempt streams a normal GET and cancels
+      // after the prefix, matching how the game loader actually downloads it.
+      const options=attempt===1?{headers:{Range:"bytes=0-4095"}}:{};
+      const response=await responseOrThrow(url,options);
       const reader=response.body?.getReader();
       if(!reader)throw new Error("response had no body");
       let size=0;
@@ -86,6 +90,31 @@ await mapWithConcurrency(samples.values(),4,async game=>{
   assert.match(text,/<(?:!doctype|html|head|script|style)\b/i,`${game.name} did not return an HTML document`);
 });
 
+const survivalRace=games.find(game=>game.id==="ugs-survivalracev2");
+assert.ok(survivalRace,"Survival Race v2 is missing from the catalog");
+const survivalDocumentUrl=`https://cdn.jsdelivr.net/gh/${catalogRepository}@${sourceCommit}/${survivalRace.file}`;
+const survivalDocument=new TextDecoder().decode(await readPrefix(survivalDocumentUrl,256));
+assert.match(
+  survivalDocument,
+  /<base href="https:\/\/cdn\.jsdelivr\.net\/gh\/bubbls\/UGS-Assets@main\/survival%20race%20v2\/">/i,
+  "Survival Race does not point to its Unity asset directory"
+);
+
+const survivalAssetBase="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/survival%20race%20v2/";
+await mapWithConcurrency([
+  "merge.js",
+  "Build/yandexBrotli.loader.js",
+  "Build/yandexBrotli.data.unityweb",
+  "Build/yandexBrotli.framework.js.unityweb",
+  "Build/yandexBrotli.wasm.unityweb.part1",
+  "Build/yandexBrotli.wasm.unityweb.part2"
+],3,async file=>{
+  const url=file==="merge.js"
+    ? "https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/merge.js"
+    : survivalAssetBase+file;
+  await readPrefix(url,64);
+});
+
 await Promise.all(["bootstrap.js","assets.epw"].map(file=>
   readPrefix(`https://cdn.statically.io/gh/${eaglerRepository}/${eaglerCommit}/web/wasm/${file}`,64)
 ));
@@ -93,6 +122,7 @@ await Promise.all(["bootstrap.js","assets.epw"].map(file=>
 console.log(JSON.stringify({
   verifiedCatalogFiles:games.length,
   deliveredCatalogSamples:samples.size,
+  verifiedSurvivalRaceAssets:6,
   verifiedEaglerRuntimeAssets:2,
   sourceCommit
 },null,2));
