@@ -5,6 +5,7 @@ on:
     paths:
       - 'genesis-host/**'
       - 'genesis-host-vm.js'
+      - 'genesis-admin-auth.js'
       - 'supabase-config.js'
       - '.github/workflows/genesis-host.yml'
   push:
@@ -12,6 +13,7 @@ on:
     paths:
       - 'genesis-host/**'
       - 'genesis-host-vm.js'
+      - 'genesis-admin-auth.js'
       - 'supabase-config.js'
       - '.github/workflows/genesis-host.yml'
   workflow_dispatch:
@@ -28,6 +30,8 @@ jobs:
         shell: pwsh
         run: |
           node --check genesis-host-vm.js
+          node --check genesis-admin-auth.js
+          node --check supabase-config.js
           node --check genesis-host/main.cjs
           node --check genesis-host/preload.cjs
           node --check genesis-host/renderer.js
