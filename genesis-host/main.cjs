@@ -7,6 +7,7 @@ const {createHostKey,validHostKey,findBrowser,browserArgs,normalizeControlMessag
 
 const SUPABASE_URL='https://yubpnkcsjuxuczrafmmj.supabase.co';
 const SUPABASE_ANON_KEY='sb_publishable_JNxkxsQxxy5gwawUduiFbw_wHYsaQ5V';
+const GENESIS_ADMIN_EMAIL='admin@genesisos.lol';
 const GFN_URL='https://play.geforcenow.com/';
 
 let mainWindow=null;
@@ -89,7 +90,9 @@ async function verifyAdminToken(token){
     if(!response.ok)return {ok:false,error:'Genesis admin authentication was rejected'};
     const user=await response.json();
     if(!user?.id)return {ok:false,error:'Genesis admin account was not found'};
-    return {ok:true,userId:user.id,email:String(user.email||'')};
+    const email=String(user.email||'').trim().toLowerCase();
+    if(email!==GENESIS_ADMIN_EMAIL)return {ok:false,error:'This Genesis account is not authorized for Admin VM'};
+    return {ok:true,userId:user.id,email};
   }catch(error){return {ok:false,error:'Could not verify Genesis admin session: '+error.message}}
 }
 
