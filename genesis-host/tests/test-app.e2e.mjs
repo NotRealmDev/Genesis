@@ -40,7 +40,7 @@ try{
   assert.equal(await pc.locator('.window[data-app="test"]').count(),0);
   assert.equal(await user.locator('[data-app="test"]').count(),0);
   await pc.evaluate(()=>openApp('test'));await viewer.evaluate(()=>openApp('test'));
-  await pc.click('#genesisTestShare');await pc.waitForFunction(()=>GenesisTest.state.key.length===64);
+  await pc.click('#genesisTestShare');await pc.waitForFunction(()=>document.getElementById('genesisTestKey').textContent.length===64);
   const key=await pc.locator('#genesisTestKey').innerText();await viewer.fill('#genesisTestInput',key);await viewer.click('#genesisTestConnect');
   await viewer.waitForFunction(()=>{const v=document.getElementById('genesisTestVideo');return v?.videoWidth===1280&&v.currentTime>0.1},null,{timeout:25000});
   await viewer.waitForFunction(()=>document.getElementById('genesisTestStatus').textContent.includes('decoded FPS'),null,{timeout:10000});
