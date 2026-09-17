@@ -55,6 +55,7 @@ Chrome/Edge is started with a dedicated profile under the Genesis Host app-data 
 
 ## Controls
 
+- Select **Fullscreen** in the VM toolbar to expand the viewer without reconnecting. Use **Exit fullscreen** or Escape to return; double-click pointer lock is retained.
 - Click the stream to focus it.
 - Double-click the stream for browser pointer lock (useful for relative-mouse games).
 - Keyboard and mouse are sent to the focused GeForce NOW window.

@@ -47,6 +47,7 @@ function harness(){
     localStorage:{getItem:()=> 'test-host-key-abcdefghijklmnopqrstuvwxyz',setItem(){}},
     crypto:{randomUUID:()=> 'current-session'},innerWidth:1280,innerHeight:720,devicePixelRatio:1,
     document:{getElementById:element,querySelector:selector=>selector.includes('stage')?element('stage'):null,
+      addEventListener(){},
       createElement:()=>element('genesisVmStream'),head:{appendChild(){}},pointerLockElement:null},
     GenesisVM:{isAdmin:()=>true},GENESIS_BACKEND:{url:'https://example.supabase.co',anonKey:'public-test-key-1234567890'},
     supabase:{createClient:()=>({channel:()=>channel,async removeChannel(){}})},
@@ -300,4 +301,32 @@ test('queued loading guards cannot overwrite a ready Host screen',async()=>{
   h.element('genesisVmStatus').textContent='Waiting for Host Key';
   h.context.GenesisVM.launch();await h.advance(0);
   assert.equal(h.element('genesisVmStatus').textContent,'Waiting for Host Key');
+});
+
+test('fullscreen expands the VM root and toggles back without reconnecting',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  let enters=0,exits=0;
+  const root=h.element('genesisVmRoot');
+  root.requestFullscreen=async()=>{enters++;h.context.document.fullscreenElement=root};
+  h.context.document.exitFullscreen=async()=>{exits++;h.context.document.fullscreenElement=null};
+  await h.context.GenesisHostVM.toggleFullscreen();
+  assert.equal(h.element('genesisVmFullscreen').textContent,'Exit fullscreen');
+  await h.context.GenesisHostVM.toggleFullscreen();
+  assert.equal(h.element('genesisVmFullscreen').textContent,'Fullscreen');
+  assert.equal(enters,1);assert.equal(exits,1);assert.equal(h.peers.length,0);
+});
+
+test('denied fullscreen reports a visible status without stopping the Host',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  h.element('genesisVmRoot').requestFullscreen=async()=>{throw new Error('Fullscreen denied')};
+  await h.context.GenesisHostVM.toggleFullscreen();
+  assert.match(h.element('genesisVmStatus').textContent,/Fullscreen denied/);
+});
+
+test('Escape is left to the browser instead of prevented or sent to the Host',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  await h.context.GenesisHostVM.connect();
+  h.context.GenesisHostVM.state.connected=true;
+  h.context.GenesisHostVM.state.control={readyState:'open',send(){throw new Error('Escape forwarded to Host')}};
+  for(const event of ['keydown','keyup'])h.element('genesisVmStream').fire(event,{key:'Escape',preventDefault(){throw new Error('Escape prevented')}});
 });
