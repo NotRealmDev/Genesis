@@ -1,6 +1,6 @@
 {
   "name": "genesis-host",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Windows host app for streaming GeForce NOW into the Genesis VM app",
   "main": "main.cjs",

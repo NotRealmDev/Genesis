@@ -3,7 +3,7 @@
 
   const HOST_KEY_STORAGE="genesisVmHostKey";
   const SDK_VERSION="2.116.0";
-  const state={client:null,channel:null,peer:null,control:null,sessionId:"",video:null,connected:false,connecting:false,answerTimer:null,gamepadTimer:null,gamepadKeys:new Set()};
+  const state={client:null,channel:null,peer:null,control:null,sessionId:"",video:null,connected:false,mediaReady:false,connecting:false,attempt:0,pendingIce:[],answerTimer:null,streamTimer:null,reconnectTimer:null,gamepadTimer:null,gamepadKeys:new Set()};
   const ICE_SERVERS=[
     {urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}
   ];
@@ -48,6 +48,7 @@
     showOverlay(`<div class="genesis-vm-spinner"></div><h2 style="font-size:20px">${escapeHTML(text)}</h2><p>The host PC must be awake with Genesis Host running and GeForce NOW open.</p><div class="genesis-vm-actions"><button type="button" class="genesis-vm-button" onclick="GenesisHostVM.disconnect();GenesisHostVM.pair()">Change Host</button></div>`);
   }
   function errorScreen(message){
+    closePeer();
     showOverlay(`<div class="genesis-vm-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M9 9h6"/></svg></div><h2>Host unavailable</h2><p>${escapeHTML(message)}</p><div class="genesis-vm-actions"><button type="button" class="genesis-vm-button" onclick="GenesisHostVM.connect(true)">Retry</button><button type="button" class="genesis-vm-button" onclick="GenesisHostVM.disconnect();GenesisHostVM.pair()">Change Host</button></div>`);
     setStatus("Host offline");
   }
@@ -70,25 +71,73 @@
       bindInput(video);
     }
     state.video=video;
+    if(!video.__genesisMediaBound){
+      video.__genesisMediaBound=true;
+      video.addEventListener("playing",finishMediaStartup);
+      video.addEventListener("loadeddata",finishMediaStartup);
+    }
+    let sound=document.getElementById("genesisVmSound");
+    if(!sound){
+      sound=document.createElement("button");
+      sound.id="genesisVmSound";sound.type="button";sound.className="genesis-vm-button";
+      sound.style.cssText="position:absolute;right:14px;bottom:14px;z-index:3;display:none;background:rgba(10,15,25,.9)";
+      sound.addEventListener("click",enableSound);
+      stage.insertBefore(sound,stage.firstChild);
+    }
+    sound.textContent="Enable sound";
     return video;
+  }
+
+  function finishMediaStartup(){
+    const video=state.video;
+    if(!state.connected||!video||video.readyState<2||!video.videoWidth||video.paused)return;
+    state.mediaReady=true;clearAnswerTimer();clearTimeout(state.streamTimer);state.streamTimer=null;
+    hideOverlay();video.style.display="block";setStatus("Connected · Genesis Host");
+    const sound=document.getElementById("genesisVmSound");
+    if(sound)sound.style.display=video.muted?"block":"none";
+    video.focus();startGamepad();
+  }
+
+  async function playStream(pc){
+    const video=state.video;
+    try{await video.play()}
+    catch(error){
+      if(state.peer!==pc)return;
+      if(error?.name!=="NotAllowedError"){errorScreen("Host video did not start: "+error.message);return}
+      // Browsers may refuse autoplay with audio after asynchronous pairing.
+      // Start silent video, then let an explicit click enable the audio.
+      video.muted=true;
+      try{await video.play()}catch(retryError){if(state.peer===pc)errorScreen("Host video did not start: "+retryError.message);return}
+    }
+    if(state.peer===pc)finishMediaStartup();
+  }
+
+  async function enableSound(){
+    if(!state.video?.srcObject)return;
+    state.video.muted=false;
+    try{await state.video.play();finishMediaStartup()}
+    catch{state.video.muted=true;setStatus("Video connected · click Enable sound to retry audio")}
   }
 
   function ensureSupabase(){
     if(global.supabase?.createClient)return Promise.resolve(global.supabase);
-    return new Promise((resolve,reject)=>{
+    if(state.sdkPromise)return state.sdkPromise;
+    state.sdkPromise=new Promise((resolve,reject)=>{
       const existing=document.querySelector("script[data-genesis-host-supabase]");
-      if(existing){
-        const timer=setInterval(()=>{if(global.supabase?.createClient){clearInterval(timer);resolve(global.supabase)}},80);
-        setTimeout(()=>{clearInterval(timer);if(!global.supabase?.createClient)reject(new Error("Supabase signaling library did not load."))},9000);
-        return;
-      }
+      if(existing)existing.remove();
       const script=document.createElement("script");
+      const timeout=setTimeout(()=>finish(new Error("Supabase signaling library did not load. Retry to download it again.")),9000);
+      function finish(error){
+        clearTimeout(timeout);script.onload=null;script.onerror=null;
+        if(error){script.remove();reject(error)}else resolve(global.supabase);
+      }
       script.src=`https://cdn.jsdelivr.net/npm/@supabase/supabase-js@${SDK_VERSION}/dist/umd/supabase.min.js`;
       script.dataset.genesisHostSupabase="1";
-      script.onload=()=>global.supabase?.createClient?resolve(global.supabase):reject(new Error("Supabase signaling library is unavailable."));
-      script.onerror=()=>reject(new Error("Genesis could not load its signaling library."));
+      script.onload=()=>finish(global.supabase?.createClient?null:new Error("Supabase signaling library is unavailable."));
+      script.onerror=()=>finish(new Error("Genesis could not load its signaling library."));
       document.head.appendChild(script);
-    });
+    }).finally(()=>{state.sdkPromise=null});
+    return state.sdkPromise;
   }
 
   async function sendSignal(event,payload){
@@ -106,32 +155,53 @@
   function clearAnswerTimer(){if(state.answerTimer)clearTimeout(state.answerTimer);state.answerTimer=null}
   function closePeer(){
     clearAnswerTimer();
-    try{state.control?.close()}catch{}
-    try{state.peer?.close()}catch{}
-    state.control=null;state.peer=null;state.connected=false;
+    clearTimeout(state.streamTimer);clearTimeout(state.reconnectTimer);state.streamTimer=null;state.reconnectTimer=null;
+    sendControl({type:"release-all"});stopGamepad();
+    const control=state.control,peer=state.peer;
+    state.control=null;state.peer=null;state.connected=false;state.mediaReady=false;state.pendingIce=[];
+    try{if(control){control.onopen=null;control.onclose=null;control.close()}}catch{}
+    try{if(peer){peer.onconnectionstatechange=null;peer.ontrack=null;peer.onicecandidate=null;peer.close()}}catch{}
     if(state.video){try{state.video.srcObject=null}catch{}state.video.style.display="none"}
-    stopGamepad();
+    const sound=document.getElementById("genesisVmSound");if(sound)sound.style.display="none";
   }
-  async function disconnect(){
+  async function disconnect(keepConnecting=false){
+    state.attempt++;
+    state.sessionId="";
     closePeer();
-    if(state.client&&state.channel){try{await state.client.removeChannel(state.channel)}catch{}}
-    state.channel=null;state.client=null;state.connecting=false;
+    const client=state.client,channel=state.channel;
+    state.channel=null;state.client=null;state.connecting=keepConnecting;
+    if(client&&channel){try{await client.removeChannel(channel)}catch{}}
   }
 
   function sessionMatches(payload){return payload&&payload.sessionId===state.sessionId}
   async function handleAnswer(packet){
     const payload=packet?.payload||packet;
     if(!sessionMatches(payload)||!state.peer||!payload.answer)return;
+    const pc=state.peer;
     try{
-      await state.peer.setRemoteDescription(payload.answer);
+      await pc.setRemoteDescription(payload.answer);
+      if(state.peer!==pc||!sessionMatches(payload))return;
+      for(const candidate of state.pendingIce.splice(0)){
+        try{await pc.addIceCandidate(candidate)}catch(error){console.warn("Host ICE candidate rejected:",error.message)}
+      }
       clearAnswerTimer();
       setStatus("Host answered · establishing stream…");
-    }catch(error){errorScreen("The Host answer could not be applied: "+error.message)}
+      if(!state.mediaReady){
+        clearTimeout(state.streamTimer);
+        state.streamTimer=setTimeout(()=>{
+          if(state.peer===pc&&!state.mediaReady)errorScreen("Host answered, but no video arrived. Check that the Host is capturing the GeForce NOW window, then retry.");
+        },30000);
+      }
+    }catch(error){if(state.peer===pc)errorScreen("The Host answer could not be applied: "+error.message)}
   }
   async function handleHostIce(packet){
     const payload=packet?.payload||packet;
     if(!sessionMatches(payload)||!state.peer||!payload.candidate)return;
-    try{await state.peer.addIceCandidate(payload.candidate)}catch{}
+    if(!state.peer.remoteDescription){
+      if(state.pendingIce.length<128)state.pendingIce.push(payload.candidate);
+      return;
+    }
+    try{await state.peer.addIceCandidate(payload.candidate)}catch(error){console.warn("Host ICE candidate rejected:",error.message)}
   }
   function handleHostError(packet){
     const payload=packet?.payload||packet;
@@ -141,13 +211,14 @@
   function handleHostStatus(packet){
     const payload=packet?.payload||packet;
     if(payload?.sessionId&&payload.sessionId!==state.sessionId)return;
-    if(payload?.status)setStatus(String(payload.status));
+    if(payload?.status&&state.peer&&!state.mediaReady)setStatus(String(payload.status));
   }
 
-  async function subscribe(key){
+  async function subscribe(key,attempt){
     const b=backend();
     if(!b)throw new Error("Genesis signaling is not configured.");
     const sdk=await ensureSupabase();
+    if(state.attempt!==attempt)return;
     state.client=sdk.createClient(b.url,b.anonKey,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:30}}});
     state.channel=state.client
       .channel("genesis-vm-"+key,{config:{broadcast:{self:false,ack:true}}})
@@ -174,24 +245,30 @@
     pc.addTransceiver("audio",{direction:"recvonly"});
     const control=pc.createDataChannel("genesis-control",{ordered:true});
     state.control=control;
-    control.onopen=()=>{setStatus("Connected · controls ready");startGamepad()};
+    control.onopen=()=>{if(state.peer!==pc)return;setStatus(state.mediaReady?"Connected · controls ready":"Host controls ready · waiting for video…");startGamepad()};
     control.onclose=()=>{if(state.connected)setStatus("Video connected · controls reconnecting")};
     pc.ontrack=event=>{
+      if(state.peer!==pc)return;
       let stream=event.streams?.[0];
       if(!stream){stream=video.srcObject instanceof MediaStream?video.srcObject:new MediaStream();stream.addTrack(event.track)}
       video.srcObject=stream;
       video.style.display="block";
-      video.play().catch(()=>{});
+      playStream(pc);
     };
     pc.onicecandidate=event=>{if(event.candidate)sendSignal("viewer-ice",{sessionId:state.sessionId,candidate:event.candidate.toJSON?.()||event.candidate}).catch(()=>{})};
     pc.onconnectionstatechange=()=>{
+      if(state.peer!==pc)return;
       const status=pc.connectionState;
       if(status==="connected"){
-        state.connected=true;clearAnswerTimer();hideOverlay();video.style.display="block";setStatus("Connected · Genesis Host");video.focus();startGamepad();
+        state.connected=true;clearTimeout(state.reconnectTimer);state.reconnectTimer=null;
+        setStatus("Host connected · waiting for video…");finishMediaStartup();
       }else if(status==="failed"){
         state.connected=false;errorScreen("The direct WebRTC connection failed. Retry first; some networks may require a TURN relay.");
       }else if(status==="disconnected"){
+        state.connected=false;
         setStatus("Host connection interrupted · reconnecting…");
+        clearTimeout(state.reconnectTimer);
+        state.reconnectTimer=setTimeout(()=>{if(state.peer===pc&&pc.connectionState==="disconnected")connect(true)},5000);
       }else if(status==="closed")state.connected=false;
     };
     return pc;
@@ -201,32 +278,40 @@
     if(!isAdmin()){errorScreen("This app is available only to Genesis administrators.");return}
     const key=hostKey();
     if(!validHostKey(key)){pairScreen();return}
-    if(state.connecting)return;
+    if(state.connecting&&!force)return;
+    if(state.peer&&!force)return;
     state.connecting=true;
     waitingScreen(force?"Reconnecting to Genesis Host…":"Looking for Genesis Host…");
     setStatus("Connecting to Host…");
+    const cleanup=disconnect(true),attempt=state.attempt;
     try{
-      await disconnect();
-      state.connecting=true;
-      await subscribe(key);
+      await cleanup;
+      if(state.attempt!==attempt)return;
+      await subscribe(key,attempt);
+      if(state.attempt!==attempt)return;
       state.sessionId=global.crypto?.randomUUID?.()||Date.now().toString(36)+Math.random().toString(36).slice(2);
       const pc=await createViewerPeer();
       const offer=await pc.createOffer({offerToReceiveAudio:true,offerToReceiveVideo:true});
+      if(state.attempt!==attempt)return;
       await pc.setLocalDescription(offer);
+      if(state.attempt!==attempt)return;
+      // Arm before sending: a fast answer can arrive before send resolves.
+      state.answerTimer=setTimeout(()=>{
+        if(state.peer===pc&&!pc.remoteDescription)errorScreen("Genesis Host did not answer. Make sure the Windows Host app is running, GeForce NOW is open, and this Host Key matches the one shown in the app.");
+      },35000);
       await sendSignal("viewer-offer",{
         sessionId:state.sessionId,
         offer:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},
         viewer:{width:innerWidth,height:innerHeight,devicePixelRatio:devicePixelRatio||1},
         sentAt:new Date().toISOString()
       });
+      if(state.attempt!==attempt)return;
       await sendSignal("viewer-ping",{sessionId:state.sessionId,sentAt:Date.now()}).catch(()=>{});
-      state.answerTimer=setTimeout(()=>{
-        if(!state.connected)errorScreen("Genesis Host did not answer. Make sure the Windows Host app is running, GeForce NOW is open, and this Host Key matches the one shown in the app.");
-      },14000);
     }catch(error){
+      if(state.attempt!==attempt)return;
       console.error("Genesis Host connection failed:",error);
       errorScreen(error?.message||String(error));
-    }finally{state.connecting=false}
+    }finally{if(state.attempt===attempt)state.connecting=false}
   }
 
   function sendControl(payload){
@@ -320,7 +405,7 @@
     return true;
   }
 
-  global.GenesisHostVM={connect,disconnect,pair,saveAndConnect,state,patch:patchGenesisVm};
+  global.GenesisHostVM={connect,disconnect,pair,saveAndConnect,enableSound,state,patch:patchGenesisVm};
   if(!patchGenesisVm()){
     const timer=setInterval(()=>{if(patchGenesisVm())clearInterval(timer)},60);
     setTimeout(()=>clearInterval(timer),8000);

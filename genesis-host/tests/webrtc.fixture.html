@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<title>Genesis Host connection test</title>
+<style>
+body{font:15px system-ui;background:#080d18;color:#e8efff;margin:24px}button{padding:10px 18px;margin:0 8px 12px 0;border-radius:10px;cursor:pointer}iframe{width:46%;height:570px;border:1px solid #43516e;border-radius:14px}#result{white-space:pre-wrap;color:#97f2bf}
+</style>
+<h1>Genesis Host connection test</h1>
+<p>Synthetic capture and local signaling; real WebRTC video and controls. No NVIDIA account, desktop capture, or production Host Key is used.</p>
+<button id="start" disabled>Start test</button><button id="reconnect" disabled>Reconnect test</button><button id="stop" disabled>Stop test</button>
+<p id="status">Preparing fixture…</p><p id="control">No controls received</p><pre id="result"></pre>
+<iframe id="host" title="Synthetic Genesis Host"></iframe><iframe id="viewer" title="Genesis Host viewer"></iframe>
+<script src="webrtc.fixture.js"></script>
+</html>
