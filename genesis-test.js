@@ -176,10 +176,12 @@
     if(!isAdmin())return;
     const root=document.getElementById('genesisTestRoot');if(!root||root.__mounted)return;
     root.__mounted=true;state.root=root;
+    root.insertAdjacentHTML('beforeend', '<style>#genesisTestExit{display:none;position:absolute;top:14px;right:14px;z-index:10;padding:10px 18px;border:1px solid #526079;border-radius:12px;background:rgba(15,23,38,.85);color:#fff;font:600 14px system-ui;cursor:pointer}#genesisTestRoot:fullscreen{width:100vw!important;height:100vh!important;background:#000!important;position:relative}#genesisTestRoot:fullscreen>div{display:none!important}#genesisTestRoot:fullscreen #genesisTestVideo{width:100%;height:100%;max-height:100vh;flex:1;object-fit:contain}#genesisTestRoot:fullscreen #genesisTestExit{display:block}</style><button type="button" id="genesisTestExit" aria-label="Exit fullscreen">Exit</button>');
     el('Share').onclick=share;el('Connect').onclick=connect;
     el('Stop').onclick=()=>{if(state.host)send('closed').catch(()=>{});stop()};
     el('Copy').onclick=async()=>{try{if(!state.key||!state.host)throw new Error('Share a screen on the PC first.');await navigator.clipboard.writeText(state.key);status('Test key copied. Paste it in Test on your Chromebook.')}catch(error){status(error.message+' You can select and copy the key manually.')}};
     el('Full').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen();else await root.requestFullscreen()}catch(error){status('Fullscreen unavailable: '+error.message)}};
+    el('Exit').onclick=async()=>{try{if(document.fullscreenElement)await document.exitFullscreen()}catch(error){status('Could not exit fullscreen: '+error.message)}};
     state.observer?.disconnect();clearInterval(state.watch);
     const check=()=>{if(root.isConnected&&isAdmin()&&!root.closest('.window')?.classList.contains('closing'))return;state.observer?.disconnect();clearInterval(state.watch);state.watch=null;stop()};
     state.observer=new MutationObserver(check);state.observer.observe(document.getElementById('os')||document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});state.watch=setInterval(check,500);

@@ -10,6 +10,9 @@ Realtime service for signaling. Video is sent directly via WebRTC.
 3. Copy the Test key. Keep the Test window and PC browser running.
 4. Sign into Genesis as admin on the Chromebook. Open **Test**, paste the key,
    and click **Connect**. Select **Fullscreen** if desired.
+   Fullscreen shows only the mirrored display and a floating **Exit** button.
+   Click **Exit** (or press Escape) to restore the mirror settings without
+   disconnecting the stream.
 5. Use **Stop** on the PC to end capture. Closing Test, logging out, losing the
    admin role, or leaving the page also stops capture.
 

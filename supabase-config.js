@@ -166,7 +166,7 @@ window.GENESIS_VM = {
     try{admin=typeof genesisRole==='function'&&genesisRole()==='admin'}catch{}
     if(!admin||window.GenesisTest||document.querySelector('script[data-genesis-test]'))return;
     const script=document.createElement('script');script.setAttribute('data-genesis-test','1');
-    script.src='genesis-test.js?build=test-webrtc-r1';
+    script.src='genesis-test.js?build=test-webrtc-r2';
     script.onload=()=>window.GenesisTest?.install?.();
     script.onerror=()=>{script.remove();console.error('Genesis Test app failed to load. Refresh to retry.')};
     document.head.appendChild(script);
