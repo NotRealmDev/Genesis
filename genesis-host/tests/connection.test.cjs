@@ -106,6 +106,58 @@ test('blocked autoplay recovers muted video and offers an explicit sound action'
   assert.match(h.element('genesisVmSound').textContent,/sound/i);
 });
 
+test('audio/video track delivery assigns a shared source only once',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  await h.context.GenesisHostVM.connect();
+  const video=h.element('genesisVmStream');let source=null,assignments=0;
+  Object.defineProperty(video,'srcObject',{get:()=>source,set(value){source=value;assignments++}});
+  const pc=h.peers[0];
+  pc.ontrack({streams:[h.stream],track:{kind:'video'}});
+  pc.ontrack({streams:[h.stream],track:{kind:'audio'}});await settle();
+  assert.equal(assignments,1);assert.equal(h.context.GenesisHostVM.state.peer,pc);
+});
+
+test('a superseded play rejection cannot disconnect the newer playback attempt',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  await h.context.GenesisHostVM.connect();
+  const video=h.element('genesisVmStream'),play=video.play;let reject;
+  video.play=()=>new Promise((resolve,no)=>{reject=no});
+  const pc=h.peers[0];pc.ontrack({streams:[h.stream],track:{kind:'video'}});
+  video.play=play;pc.ontrack({streams:[h.stream],track:{kind:'audio'}});
+  reject(Object.assign(new Error('interrupted by a new load request'),{name:'AbortError'}));await settle();
+  assert.equal(h.context.GenesisHostVM.state.peer,pc);
+  assert.doesNotMatch(h.element('genesisVmCard').innerHTML,/Host unavailable/);
+});
+
+test('an interrupted current playback retries instead of reporting Host unavailable',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  await h.context.GenesisHostVM.connect();
+  const video=h.element('genesisVmStream'),play=video.play;let calls=0;
+  video.play=async()=>{if(++calls===1)throw Object.assign(new Error('new load'),{name:'AbortError'});return play()};
+  const pc=h.peers[0];pc.ontrack({streams:[h.stream],track:{kind:'video'}});await settle();await h.advance(120);
+  assert.equal(calls,2);assert.equal(h.context.GenesisHostVM.state.peer,pc);
+});
+
+test('persistent playback aborts stop after three retries with a visible error',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  await h.context.GenesisHostVM.connect();
+  const video=h.element('genesisVmStream');let calls=0;
+  video.play=async()=>{calls++;throw Object.assign(new Error('persistent interruption'),{name:'AbortError'})};
+  h.peers[0].ontrack({streams:[h.stream],track:{kind:'video'}});await settle();
+  for(let i=0;i<4;i++)await h.advance(120);
+  assert.equal(calls,4);assert.equal(h.context.GenesisHostVM.state.peer,null);
+  assert.match(h.element('genesisVmCard').innerHTML,/persistent interruption/);
+});
+
+test('a queued playback retry cannot restart a disconnected session',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  await h.context.GenesisHostVM.connect();let calls=0;
+  h.element('genesisVmStream').play=async()=>{calls++;throw Object.assign(new Error('interrupted'),{name:'AbortError'})};
+  h.peers[0].ontrack({streams:[h.stream],track:{kind:'video'}});await settle();
+  await h.context.GenesisHostVM.disconnect();await h.advance(120);
+  assert.equal(calls,1);assert.equal(h.context.GenesisHostVM.state.peer,null);
+});
+
 test('host preserves early ICE for the matching offer and excludes old sessions',async()=>{
   const h=harness();vm.runInContext(hostSource,h.context);await settle();
   await h.context.hostSignal({event:'viewer-ice',payload:{sessionId:'current-session',candidate:{candidate:'early'}}});

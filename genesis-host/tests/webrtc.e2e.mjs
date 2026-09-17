@@ -26,6 +26,7 @@ try{
   await page.waitForFunction(()=>document.getElementById('status').textContent==='PASS run 1',null,{timeout:45000});
   const first=JSON.parse(await page.locator('#result').innerText());
   assert.ok(first.framesDecoded>=3);assert.equal(first.width,640);
+  assert.equal(first.audioTracks,1);assert.equal(first.sourceAssignments,1,'track delivery reset the media source');
   assert.ok(first.earlyHostIce>0,'fixture did not exercise ICE before the Host answer');
   assert.ok(first.earlyViewerIce>0,'fixture did not exercise ICE before the viewer offer');
   await page.frameLocator('#viewer').locator('#genesisVmStream').press('w');
@@ -33,6 +34,7 @@ try{
   await page.click('#reconnect');
   await page.waitForFunction(()=>document.getElementById('status').textContent==='PASS run 2',null,{timeout:45000});
   const second=JSON.parse(await page.locator('#result').innerText());
+  assert.equal(second.audioTracks,1);assert.equal(second.sourceAssignments,2,'reconnect assigned more than one source per attempt');
   await page.click('#stop');
   await page.waitForFunction(()=>document.getElementById('viewer').contentWindow.GenesisHostVM.state.peer===null);
   assert.deepEqual(errors,[]);
