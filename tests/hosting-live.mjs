@@ -1,8 +1,11 @@
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-const domain=readFileSync(new URL('../CNAME',import.meta.url),'utf8').trim();
-const base=process.env.GENESIS_HOSTING_URL||`https://${domain}/`;
+let base=process.env.GENESIS_HOSTING_URL;
+if(!base){
+  let domain='';try{domain=readFileSync(new URL('../CNAME',import.meta.url),'utf8').trim()}catch(error){if(error.code!=='ENOENT')throw error}
+  base=domain?`https://${domain}/`:'https://notrealmdev.github.io/Genesis/';
+}
 const results=[];
 for(const [path,marker,type] of [
   ['',/Genesis/i,/text\/html/],

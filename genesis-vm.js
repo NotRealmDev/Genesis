@@ -17,8 +17,8 @@
     try{if(typeof genesisRole==="function")return String(genesisRole()||"").toLowerCase()}catch{}
     try{
       const login=JSON.parse(localStorage.getItem("genesisLogin")||"null");
-      return String(login?.role||sessionStorage.getItem("genesisRole")||"user").toLowerCase();
-    }catch{return String(sessionStorage.getItem("genesisRole")||"user").toLowerCase()}
+      return String(login && login.expires > Date.now() ? login.role || "user" : "user").toLowerCase();
+    }catch{return "user"}
   }
   function isAdmin(){return role()==="admin"}
   function escapeHTML(value){return String(value==null?"":value).replace(/[&<>"']/g,ch=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]))}
@@ -26,6 +26,7 @@
   function config(){
     const raw=global.GENESIS_VM||{};
     return {
+      mode:String(raw.mode||"host").trim().toLowerCase(),
       provider:String(raw.provider||"Genesis VM").trim()||"Genesis VM",
       viewerUrl:String(raw.viewerUrl||"").trim(),
       sessionEndpoint:String(raw.sessionEndpoint||"").trim(),
@@ -34,8 +35,9 @@
       displayMode:String(raw.displayMode||"embed").trim().toLowerCase()
     };
   }
+  function usesHostStream(){return config().mode==="host"}
   function usesTopLevelWindow(){
-    return ["tab","top-level","external","window"].includes(config().displayMode);
+    return !usesHostStream() && ["tab","top-level","external","window"].includes(config().displayMode);
   }
 
   function injectStyles(){
@@ -76,8 +78,18 @@
   }
   function showLaunched(){
     const cfg=config();
-    showOverlay(`<div class="genesis-vm-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 9h10M7 12h6"/></svg></div><h2>VM opened</h2><p>${escapeHTML(cfg.provider)} is running in its own browser tab because the provider does not allow iframe embedding. The actual desktop runs remotely.</p><div class="genesis-vm-actions"><button type="button" class="genesis-vm-button" onclick="GenesisVM.focusVm()">Focus VM</button><button type="button" class="genesis-vm-button" onclick="GenesisVM.launch(true)">Reconnect</button></div>`);
-    setStatus("Connected · remote VM tab");
+    showOverlay(`<div class="genesis-vm-icon"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8M12 17v4M7 9h10M7 12h6"/></svg></div><h2>Viewer tab launched</h2><p>${escapeHTML(cfg.provider)} was sent to a separate browser tab. Genesis cannot verify whether the remote desktop connected there.</p><div class="genesis-vm-actions"><button type="button" class="genesis-vm-button" onclick="GenesisVM.focusVm()">Focus viewer</button><button type="button" class="genesis-vm-button" onclick="GenesisVM.launch(true)">Reconnect</button></div>`);
+    setStatus("Viewer tab launched · connection unverified");
+  }
+
+  function waitForHost(force=false){
+    if(!document.getElementById("genesisVmRoot"))return;
+    const frame=document.getElementById("genesisVmFrame");
+    if(frame){frame.onload=null;frame.onerror=null;frame.style.display="none";frame.removeAttribute("src")}
+    if(global.GenesisHostVM?.connect)return global.GenesisHostVM.connect(force);
+    loading("Loading Genesis Host…");setStatus("Loading Genesis Host module…");
+    if(global.GenesisHostLoader?.retry)global.GenesisHostLoader.retry();
+    else{error("The Genesis Host module is missing. Refresh Genesis to load the current build.");setStatus("Genesis Host module unavailable")}
   }
 
   function currentIdentity(){
@@ -129,6 +141,9 @@
 
   async function connect(force=false,popup=null){
     if(!isAdmin()){error("This app is available only to Genesis administrators.");return}
+    // Host mode is guarded inside the base app, before the dynamic Host patch
+    // can load. Never launch a tab/iframe or call its load event a connection.
+    if(usesHostStream())return waitForHost(force);
     if(state.connecting)return;
     state.connecting=true;
     const button=document.getElementById("genesisVmReconnect");if(button)button.disabled=true;
@@ -153,7 +168,7 @@
 
       const frame=document.getElementById("genesisVmFrame");if(!frame)throw new Error("The VM display is not available.");
       let settled=false;const timeout=setTimeout(()=>{if(!settled)setStatus("VM is taking longer than expected…")},12000);
-      frame.onload=()=>{settled=true;clearTimeout(timeout);hideOverlay();setStatus(state.sessionId?`Connected · session ${state.sessionId}`:"Connected · virtual computer")};
+      frame.onload=()=>{settled=true;clearTimeout(timeout);hideOverlay();setStatus("Viewer loaded · connection unverified")};
       frame.onerror=()=>{settled=true;clearTimeout(timeout);error("The virtual-computer viewer could not be loaded inside Genesis.");setStatus("VM connection failed")};
       frame.src=url;
     }catch(err){
@@ -166,6 +181,10 @@
   }
 
   function focusVm(){
+    if(usesHostStream()){
+      try{if(typeof openApp==="function")openApp(APP_ID)}catch{}
+      return !!document.getElementById("genesisVmRoot");
+    }
     if(state.externalWindow && !state.externalWindow.closed){try{state.externalWindow.focus()}catch{};return true}
     showLauncher("The previous VM tab is no longer open. Select Open Virtual Computer to reconnect.");
     return false;
@@ -191,7 +210,13 @@
 
   function attachIconDrag(icon){
     const desktop=document.getElementById("desktop");if(!desktop)return;
-    const saved=localStorage.getItem("realmOsIcon_"+APP_ID);if(saved){try{const p=JSON.parse(saved);icon.style.left=p.x+"px";icon.style.top=p.y+"px"}catch{}}
+    try{const saved=localStorage.getItem("realmOsIcon_"+APP_ID);if(saved){const p=JSON.parse(saved);if(Number.isFinite(p.x)&&Number.isFinite(p.y)){icon.style.left=p.x+"px";icon.style.top=p.y+"px"}}}catch{}
+    function keepVisible(){
+      if(!desktop.clientWidth||!desktop.clientHeight)return;
+      icon.style.left=Math.max(0,Math.min(desktop.clientWidth-(icon.offsetWidth||82),parseFloat(icon.style.left)||0))+"px";
+      icon.style.top=Math.max(0,Math.min(desktop.clientHeight-(icon.offsetHeight||90),parseFloat(icon.style.top)||0))+"px";
+    }
+    keepVisible();global.addEventListener("resize",keepVisible);
     let dragging=false,moved=false,sx=0,sy=0,bx=0,by=0;
     icon.addEventListener("pointerdown",event=>{document.querySelectorAll(".desktop-icon").forEach(item=>item.classList.remove("selected"));icon.classList.add("selected");dragging=true;moved=false;sx=event.clientX;sy=event.clientY;bx=parseFloat(icon.style.left)||0;by=parseFloat(icon.style.top)||0;icon.classList.add("dragging");try{icon.setPointerCapture(event.pointerId)}catch{}});
     icon.addEventListener("pointermove",event=>{if(!dragging)return;const dx=event.clientX-sx,dy=event.clientY-sy;if(Math.abs(dx)>3||Math.abs(dy)>3)moved=true;icon.style.left=Math.max(0,Math.min(desktop.clientWidth-icon.offsetWidth,bx+dx))+"px";icon.style.top=Math.max(0,Math.min(desktop.clientHeight-icon.offsetHeight,by+dy))+"px"});
@@ -208,6 +233,7 @@
   function mount(){
     if(!isAdmin())return;injectStyles();
     try{if(typeof openWindows==="object"&&openWindows.vm)openWindows.vm.classList.add("maximized")}catch{}
+    if(usesHostStream()){waitForHost();return}
     if(usesTopLevelWindow()){
       const pending=state.pendingWindow;state.pendingWindow=null;
       if(pending)connect(false,pending);else if(state.externalWindow&&!state.externalWindow.closed)showLaunched();else showLauncher();

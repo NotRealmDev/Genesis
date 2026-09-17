@@ -159,11 +159,14 @@ test('Enable stream starts capture within the click, before asynchronous work',a
 });
 
 const configSource=fs.readFileSync(path.join(__dirname,'../../supabase-config.js'),'utf8');
-function loaderHarness({fail=false,hang=false}={}){
+function loaderHarness({fail=false,hang=false,readyState='complete',role='admin'}={}){
   const h=harness();let resumed=0;
+  const events=new Map();
+  h.context.genesisRole=()=>role;
   h.context.sessionStorage={getItem:()=> 'admin'};
   h.context.location={pathname:'/os.html'};
-  h.context.document.readyState='complete';
+  h.context.document.readyState=readyState;
+  h.context.document.addEventListener=(name,fn)=>events.set(name,fn);
   h.context.GenesisVM.mount=()=>{throw new Error('generic iframe must not mount')};
   h.context.document.head.appendChild=script=>{
     if(script.src.startsWith('genesis-host-vm')){
@@ -178,7 +181,7 @@ function loaderHarness({fail=false,hang=false}={}){
     queueMicrotask(()=>script.onload());
   };
   vm.runInContext(configSource,h.context);
-  return {...h,resumed:()=>resumed};
+  return {...h,resumed:()=>resumed,events};
 }
 
 test('Host loader resumes VM opened while the Host module was downloading',async()=>{
@@ -196,4 +199,44 @@ test('Host loader failure displays an actionable retry instead of a spinner',asy
 test('a stalled Host script download times out visibly',async()=>{
   const h=loaderHarness({hang:true});await settle();await h.advance(12000);
   assert.match(h.element('genesisVmCard').innerHTML,/Host module unavailable/);
+});
+
+test('VM loader starts after DOM parsing without waiting for window load',async()=>{
+  const h=loaderHarness({readyState:'loading'});
+  assert.equal(h.resumed(),0);
+  assert.equal(h.events.has('DOMContentLoaded'),true);
+  h.events.get('DOMContentLoaded')();await settle();
+  assert.equal(h.resumed(),1);
+});
+
+test('a non-Admin cannot load VM through a stale Admin sessionStorage role',async()=>{
+  const h=loaderHarness({role:'user'});await settle();
+  assert.equal(h.resumed(),0);
+  assert.notEqual(h.context.GenesisVM.__hostPatched,true);
+});
+
+test('retry after a successful load does not remount or reconnect automatically',async()=>{
+  const h=loaderHarness();await settle();
+  await h.context.GenesisHostLoader.retry();
+  assert.equal(h.resumed(),1);
+});
+
+test('a late connect callback cannot create a peer after the VM window is gone',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  const get=h.context.document.getElementById;
+  h.context.document.getElementById=id=>id==='genesisVmRoot'?null:get(id);
+  await h.context.GenesisHostVM.connect();
+  assert.equal(h.peers.length,0);
+  assert.equal(h.signals.length,0);
+});
+
+test('closing the VM window tears down its existing Host connection',async()=>{
+  const h=harness();vm.runInContext(viewerSource,h.context);
+  const close=h.element('close');
+  h.element('genesisVmRoot').closest=()=>({querySelector:()=>close});
+  h.context.GenesisVM.mount();await settle();
+  assert.equal(h.peers.length,1);
+  await close.fire('click');
+  assert.equal(h.context.GenesisHostVM.state.peer,null);
+  assert.equal(h.context.GenesisHostVM.state.channel,null);
 });

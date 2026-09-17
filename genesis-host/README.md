@@ -31,7 +31,9 @@ The first version uses public STUN servers and a direct peer-to-peer WebRTC conn
 
 Version 1.0.1 fixes early ICE candidate loss, slow browser startup, capture activation, and muted-autoplay recovery. Genesis waits for decoded video before hiding its loading overlay, and shows a retryable error if a Host answer produces no video. Interrupted connections get one reconnect attempt after five seconds.
 
-Automated tests cover signaling order, canceled attempts, playback, and a synthetic WebRTC video/control round trip. They do not replace testing a real GeForce NOW session on the host PC.
+Frontend `host-webrtc-r5` installs VM after DOM parsing without waiting for every image/frame. Host mode cannot use the old external-tab/blank-iframe success path, even while its module is downloading. Closing VM releases the viewer connection; reopening starts a fresh viewer. The Host Key remains saved locally. If no Host Key is paired, VM shows **Connect Genesis Host**, not a blank "opened" screen. Installing or retrying the loader never opens VM automatically.
+
+Automated tests cover signaling order, canceled attempts, playback, a synthetic WebRTC video/control round trip, and the real Genesis shell on a GitHub Pages-style `/Genesis/os.html` path with delayed module loading/close/reopen. They do not replace testing a real GeForce NOW session on the host PC.
 
 ```powershell
 cd genesis-host

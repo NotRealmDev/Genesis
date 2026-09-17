@@ -66,7 +66,7 @@ test('Host mode cannot fall back to the generic blank iframe VM',()=>{
   const root=path.resolve(__dirname,'../..');
   const config=fs.readFileSync(path.join(root,'supabase-config.js'),'utf8');
   assert.match(config,/mode:\s*"host"/);
-  assert.match(config,/host-webrtc-r4/);
+  assert.match(config,/host-webrtc-r5/);
   assert.match(config,/installHostGuard/);
   assert.match(config,/Never let host mode fall back to the generic iframe VM/);
   assert.match(config,/genesis-host-vm\.js/);

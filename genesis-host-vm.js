@@ -275,6 +275,8 @@
   }
 
   async function connect(force=false){
+    // Late loader/timer callbacks must not connect after the VM was closed.
+    if(!document.getElementById("genesisVmRoot"))return;
     if(!isAdmin()){errorScreen("This app is available only to Genesis administrators.");return}
     const key=hostKey();
     if(!validHostKey(key)){pairScreen();return}
@@ -389,23 +391,29 @@
     vm.__hostPatched=true;
     vm.connect=connect;
     vm.launch=function(force=false){
+      if(!isAdmin())return;
       try{
-        if(typeof openApp==="function"&&!(typeof openWindows==="object"&&openWindows.vm))openApp("vm");
-        else if(typeof openWindows==="object"&&openWindows.vm)focusWindow?.(openWindows.vm);
+        if(typeof openApp==="function")openApp("vm");
       }catch{}
       setTimeout(()=>connect(force),0);
     };
     vm.focusVm=function(){try{if(typeof openWindows==="object"&&openWindows.vm){focusWindow?.(openWindows.vm);return true}}catch{}return false};
     vm.mount=function(){
-      if(!isAdmin())return;
+      const root=document.getElementById("genesisVmRoot");
+      if(!isAdmin()||!root)return;
       try{if(typeof openWindows==="object"&&openWindows.vm)openWindows.vm.classList.add("maximized")}catch{}
-      ensureVideo();
-      connect(false);
+      const close=root.closest?.('.window')?.querySelector('.window-control.close');
+      if(close&&!close.__genesisHostCloseBound){
+        close.__genesisHostCloseBound=true;close.addEventListener("click",()=>disconnect());
+      }
+      const previous=state.video;ensureVideo();
+      connect(!!state.peer&&previous!==state.video);
     };
     return true;
   }
 
   global.GenesisHostVM={connect,disconnect,pair,saveAndConnect,enableSound,state,patch:patchGenesisVm};
+  global.addEventListener("pagehide",()=>disconnect());
   if(!patchGenesisVm()){
     const timer=setInterval(()=>{if(patchGenesisVm())clearInterval(timer)},60);
     setTimeout(()=>clearInterval(timer),8000);
