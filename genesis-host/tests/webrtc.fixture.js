@@ -42,7 +42,7 @@
     for(const report of stats.values())if(report.type==='inbound-rtp'&&report.kind==='video')framesDecoded+=report.framesDecoded||0;
     if(framesDecoded<3)return;
     done=true;document.getElementById('status').textContent='PASS run '+run;
-    document.getElementById('result').textContent=JSON.stringify({run,framesDecoded,width:state.video.videoWidth,height:state.video.videoHeight,earlyHostIce:counts.earlyHostIce,earlyViewerIce:counts.earlyViewerIce},null,2);
+    document.getElementById('result').textContent=JSON.stringify({run,framesDecoded,width:state.video.videoWidth,height:state.video.videoHeight,audioTracks:state.video.srcObject.getAudioTracks().length,sourceAssignments:viewer.contentWindow.__fixtureSourceAssignments,earlyHostIce:counts.earlyHostIce,earlyViewerIce:counts.earlyViewerIce},null,2);
   },150);
   const hostHTML=await (await fetch('../renderer.html')).text();
   host.srcdoc=hostHTML.replace('<head>','<head><base href="/genesis-host/">').replace('<script src="renderer.js"></script>','<script src="tests/host.fixture.js"></script><script src="renderer.js"></script>');

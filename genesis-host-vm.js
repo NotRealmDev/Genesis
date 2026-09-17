@@ -98,18 +98,31 @@
     video.focus();startGamepad();
   }
 
-  async function playStream(pc){
+  async function playStream(pc,retries=0){
     const video=state.video;
+    const stream=video.srcObject;
+    const generation=video.__genesisPlayGeneration=(video.__genesisPlayGeneration||0)+1;
+    const current=()=>state.peer===pc&&state.video===video&&video.srcObject===stream&&video.__genesisPlayGeneration===generation;
     try{await video.play()}
     catch(error){
-      if(state.peer!==pc)return;
+      if(!current())return;
+      if(error?.name==="AbortError"&&retries<3){
+        // Track delivery can supersede a pending play() request. It is not a
+        // dead Host: retry the current source, never tear down a newer attempt.
+        setTimeout(()=>{if(current())playStream(pc,retries+1)},120);
+        return;
+      }
       if(error?.name!=="NotAllowedError"){errorScreen("Host video did not start: "+error.message);return}
       // Browsers may refuse autoplay with audio after asynchronous pairing.
       // Start silent video, then let an explicit click enable the audio.
       video.muted=true;
-      try{await video.play()}catch(retryError){if(state.peer===pc)errorScreen("Host video did not start: "+retryError.message);return}
+      try{await video.play()}catch(retryError){
+        if(!current())return;
+        if(retryError?.name==="AbortError"&&retries<3){setTimeout(()=>{if(current())playStream(pc,retries+1)},120);return}
+        errorScreen("Host video did not start: "+retryError.message);return;
+      }
     }
-    if(state.peer===pc)finishMediaStartup();
+    if(current())finishMediaStartup();
   }
 
   async function enableSound(){
@@ -249,9 +262,16 @@
     control.onclose=()=>{if(state.connected)setStatus("Video connected · controls reconnecting")};
     pc.ontrack=event=>{
       if(state.peer!==pc)return;
-      let stream=event.streams?.[0];
-      if(!stream){stream=video.srcObject instanceof MediaStream?video.srcObject:new MediaStream();stream.addTrack(event.track)}
-      video.srcObject=stream;
+      const incoming=event.streams?.[0];
+      let stream=video.srcObject||incoming||new MediaStream();
+      // Audio/video ontrack events commonly share a stream. Reassigning that
+      // same srcObject resets playback and aborts the first play() promise.
+      if(stream!==incoming){
+        for(const track of incoming?.getTracks?.()||[event.track]){
+          if(track&&!stream.getTracks().includes(track))stream.addTrack(track);
+        }
+      }
+      if(video.srcObject!==stream)video.srcObject=stream;
       video.style.display="block";
       playStream(pc);
     };

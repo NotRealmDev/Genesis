@@ -1,6 +1,14 @@
 (()=>{
   const handlers=new Map();
   const origin=parent.location.origin;
+  const sourceDescriptor=Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype,'srcObject');
+  window.__fixtureSourceAssignments=0;
+  Object.defineProperty(HTMLMediaElement.prototype,'srcObject',{
+    ...sourceDescriptor,set(value){
+      if(this.id==='genesisVmStream'&&value)window.__fixtureSourceAssignments++;
+      sourceDescriptor.set.call(this,value);
+    }
+  });
   window.GENESIS_BACKEND={url:'https://fixture.supabase.co',anonKey:'synthetic-public-key-for-local-tests'};
   localStorage.setItem('genesisVmHostKey','synthetic-host-key-not-a-production-credential');
   window.GenesisVM={isAdmin:()=>true};

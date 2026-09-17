@@ -28,11 +28,11 @@ window.GENESIS_VM = {
   startupUrl: "https://play.geforcenow.com/",
   sessionMode: "persistent",
   displayMode: "embed",
-  build: "host-webrtc-r5"
+  build: "host-webrtc-r6"
 };
 
 (function loadGenesisAdminVm(){
-  const BUILD = "host-webrtc-r5";
+  const BUILD = "host-webrtc-r6";
   let loading=false;
   let ready=false;
 
@@ -124,9 +124,9 @@ window.GENESIS_VM = {
       // Always request the current build instead of trusting a previously
       // cached VM script. GitHub Pages/browser caches were leaving some users
       // on the old generic iframe implementation after an update.
-      if(!window.GenesisVM)await addFreshScript("genesis-vm.js","genesis-vm-host-r5");
+      if(!window.GenesisVM)await addFreshScript("genesis-vm.js","genesis-vm-host-r6");
       installHostGuard();
-      await addFreshScript("genesis-host-vm.js","genesis-host-vm-host-r5");
+      await addFreshScript("genesis-host-vm.js","genesis-host-vm-host-r6");
 
       const patched=await waitForHostPatch();
       if(!patched) throw new Error("Genesis Host WebRTC module did not attach to VM.");

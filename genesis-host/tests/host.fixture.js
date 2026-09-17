@@ -13,7 +13,13 @@
     const canvas=document.createElement('canvas');canvas.width=640;canvas.height=360;
     const ctx=canvas.getContext('2d');let frame=0;
     setInterval(()=>{ctx.fillStyle=`hsl(${frame++%360} 65% 30%)`;ctx.fillRect(0,0,640,360);ctx.fillStyle='#fff';ctx.font='28px system-ui';ctx.fillText('Genesis synthetic frame '+frame,35,180)},33);
-    stream=canvas.captureStream(30);return stream;
+    stream=canvas.captureStream(30);
+    // Exercise separate audio/video ontrack events, not just canvas video.
+    const audio=new AudioContext(),destination=audio.createMediaStreamDestination();
+    const oscillator=audio.createOscillator(),gain=audio.createGain();gain.gain.value=0;
+    oscillator.connect(gain).connect(destination);oscillator.start();
+    for(const track of destination.stream.getAudioTracks())stream.addTrack(track);
+    return stream;
   };
   window.addEventListener('message',event=>{if(event.source===parent&&event.origin===origin&&event.data?.type==='signal')listener?.(event.data)});
 })();
