@@ -276,7 +276,8 @@
 
   async function connect(force=false){
     // Late loader/timer callbacks must not connect after the VM was closed.
-    if(!document.getElementById("genesisVmRoot"))return;
+    const root=document.getElementById("genesisVmRoot");
+    if(!root||root.__genesisHostClosed||root.closest?.('.window')?.classList?.contains?.('closing'))return;
     if(!isAdmin()){errorScreen("This app is available only to Genesis administrators.");return}
     const key=hostKey();
     if(!validHostKey(key)){pairScreen();return}
@@ -400,11 +401,11 @@
     vm.focusVm=function(){try{if(typeof openWindows==="object"&&openWindows.vm){focusWindow?.(openWindows.vm);return true}}catch{}return false};
     vm.mount=function(){
       const root=document.getElementById("genesisVmRoot");
-      if(!isAdmin()||!root)return;
+      if(!isAdmin()||!root||root.__genesisHostClosed||root.closest?.('.window')?.classList?.contains?.('closing'))return;
       try{if(typeof openWindows==="object"&&openWindows.vm)openWindows.vm.classList.add("maximized")}catch{}
       const close=root.closest?.('.window')?.querySelector('.window-control.close');
       if(close&&!close.__genesisHostCloseBound){
-        close.__genesisHostCloseBound=true;close.addEventListener("click",()=>disconnect());
+        close.__genesisHostCloseBound=true;close.addEventListener("click",()=>{root.__genesisHostClosed=true;disconnect()});
       }
       const previous=state.video;ensureVideo();
       connect(!!state.peer&&previous!==state.video);

@@ -29,7 +29,7 @@ async function fixture(role='admin'){
     localStorage.setItem('genesisLogin',JSON.stringify({user:'Local VM test',role,expires:Date.now()+3600000}));
     localStorage.removeItem('genesisVmHostKey');
     localStorage.setItem('realmOsIcon_vm',JSON.stringify({x:99999,y:-500}));
-    localStorage.setItem('genesisBrowserSession',JSON.stringify({restoreOnStartup:false}));
+    localStorage.setItem('genesisBrowserStateV2',JSON.stringify({open:false}));
     window.__vmTestLoadFired=false;
     window.addEventListener('load',()=>{window.__vmTestLoadFired=true});
     document.addEventListener('DOMContentLoaded',()=>{

@@ -239,4 +239,13 @@ test('closing the VM window tears down its existing Host connection',async()=>{
   await close.fire('click');
   assert.equal(h.context.GenesisHostVM.state.peer,null);
   assert.equal(h.context.GenesisHostVM.state.channel,null);
+  h.context.GenesisVM.mount();await h.context.GenesisHostVM.connect();
+  assert.equal(h.peers.length,1,'a callback reconnected during the close animation');
+});
+
+test('queued loading guards cannot overwrite a ready Host screen',async()=>{
+  const h=loaderHarness();await settle();
+  h.element('genesisVmStatus').textContent='Waiting for Host Key';
+  h.context.GenesisVM.launch();await h.advance(0);
+  assert.equal(h.element('genesisVmStatus').textContent,'Waiting for Host Key');
 });
