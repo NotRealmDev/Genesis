@@ -28,18 +28,21 @@ window.GENESIS_VM = {
   startupUrl: "https://play.geforcenow.com/",
   sessionMode: "persistent",
   displayMode: "embed",
-  build: "host-webrtc-r3"
+  build: "host-webrtc-r5"
 };
 
 (function loadGenesisAdminVm(){
-  const BUILD = "host-webrtc-r3";
+  const BUILD = "host-webrtc-r5";
+  let loading=false;
+  let ready=false;
 
   function currentRole(){
+    try{if(typeof genesisRole==="function")return String(genesisRole()||"user").toLowerCase()}catch{}
     try{
       const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
       if(login && login.expires > Date.now()) return String(login.role || "user").toLowerCase();
     }catch{}
-    return String(sessionStorage.getItem("genesisRole") || "user").toLowerCase();
+    return "user";
   }
 
   function addFreshScript(src, marker){
@@ -48,17 +51,27 @@ window.GENESIS_VM = {
       if(old) old.remove();
 
       const script = document.createElement("script");
+      let settled=false;
+      const timeout=setTimeout(()=>finish(new Error(`Loading ${src} timed out.`)),12000);
+      function finish(error){
+        if(settled)return;settled=true;
+        clearTimeout(timeout);script.onload=null;script.onerror=null;
+        if(error){script.remove();reject(error)}else resolve();
+      }
       const separator = src.includes("?") ? "&" : "?";
       script.src = `${src}${separator}build=${encodeURIComponent(BUILD)}`;
       script.async = false;
       script.setAttribute(`data-${marker}`, "1");
-      script.onload = ()=>resolve();
-      script.onerror = ()=>reject(new Error(`Could not load ${src}`));
+      script.onload = ()=>finish();
+      script.onerror = ()=>finish(new Error(`Could not load ${src}`));
       document.head.appendChild(script);
     });
   }
 
   function showHostLoading(){
+    // A queued guard callback must not overwrite the pairing/stream screen
+    // after the real Host module has already attached.
+    if(window.GenesisVM?.__hostPatched)return;
     const status=document.getElementById("genesisVmStatus");
     if(status) status.textContent="Loading Genesis Host…";
     const overlay=document.getElementById("genesisVmOverlay");
@@ -103,27 +116,44 @@ window.GENESIS_VM = {
   async function load(){
     if(!/(?:^|\/)os\.html$/i.test(location.pathname)) return;
     if(currentRole() !== "admin") return;
+    if(ready&&window.GenesisVM?.__hostPatched){window.GenesisVM.install?.();return}
+    if(loading)return;
+    loading=true;
 
     try{
       // Always request the current build instead of trusting a previously
       // cached VM script. GitHub Pages/browser caches were leaving some users
       // on the old generic iframe implementation after an update.
-      await addFreshScript("genesis-vm.js","genesis-vm-host-r3");
+      if(!window.GenesisVM)await addFreshScript("genesis-vm.js","genesis-vm-host-r5");
       installHostGuard();
-      await addFreshScript("genesis-host-vm.js","genesis-host-vm-host-r3");
+      await addFreshScript("genesis-host-vm.js","genesis-host-vm-host-r5");
 
       const patched=await waitForHostPatch();
       if(!patched) throw new Error("Genesis Host WebRTC module did not attach to VM.");
 
       window.GenesisVM?.install?.();
+      ready=true;
+      // A user may open VM while the Host script is still downloading. Resume
+      // that already-open window instead of leaving its loading guard forever.
+      if(document.getElementById("genesisVmRoot"))window.GenesisVM?.mount?.();
       console.info("Genesis VM ready:",BUILD,"Host WebRTC attached");
     }catch(error){
       console.error("Genesis VM could not load:",error);
       const status=document.getElementById("genesisVmStatus");
       if(status) status.textContent="Genesis Host module failed to load";
+      const card=document.getElementById("genesisVmCard"),overlay=document.getElementById("genesisVmOverlay");
+      if(card&&overlay){
+        card.innerHTML='<h2>Host module unavailable</h2><p>Genesis could not load the Host connection. Retry to download it again.</p><button type="button" class="genesis-vm-button" onclick="GenesisHostLoader.retry()">Retry loading</button>';
+        overlay.classList.remove("hidden");
+      }
+    }finally{
+      loading=false;
     }
   }
 
-  if(document.readyState === "complete") load();
-  else window.addEventListener("load",load,{once:true});
+  window.GenesisHostLoader={retry:load,build:BUILD};
+  // The OS app table exists after parsing. Waiting for window.load also waits
+  // for every image/frame and could leave VM absent when one resource stalls.
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",load,{once:true});
+  else load();
 })();

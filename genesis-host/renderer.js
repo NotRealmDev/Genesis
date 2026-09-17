@@ -1,7 +1,7 @@
 (()=>{
   "use strict";
 
-  const state={config:null,peer:null,stream:null,sessionId:"",pendingIce:[],connected:false,offerBusy:false,signalReady:false};
+  const state={config:null,peer:null,stream:null,capturePromise:null,sessionId:"",pendingIce:new Map(),connected:false,offerBusy:false,signalReady:false};
   const statusText=document.getElementById("statusText"),statusSub=document.getElementById("statusSub"),statusDot=document.getElementById("statusDot"),hostKeyInput=document.getElementById("hostKey"),copyKey=document.getElementById("copyKey"),newKey=document.getElementById("newKey"),launchGfn=document.getElementById("launchGfn"),focusGfn=document.getElementById("focusGfn"),gfnStatus=document.getElementById("gfnStatus"),autoLaunch=document.getElementById("autoLaunch"),logEl=document.getElementById("log");
 
   function log(message){
@@ -14,25 +14,53 @@
     statusDot.classList.toggle("live",!!live);
   }
   function closePeer({keepPendingIce=false}={}){
-    try{state.peer?.close()}catch{}
-    state.peer=null;if(!keepPendingIce)state.pendingIce=[];state.connected=false;state.sessionId="";
+    const peer=state.peer;state.peer=null;
+    if(!keepPendingIce)state.pendingIce.clear();state.connected=false;state.sessionId="";
+    try{if(peer){peer.onconnectionstatechange=null;peer.onicecandidate=null;peer.close()}}catch{}
+    window.genesisHost.sendInput({type:"release-all"});
   }
   function stopCapture(){
     if(state.stream){for(const track of state.stream.getTracks())try{track.stop()}catch{}}
     state.stream=null;
+    const button=document.getElementById("prepareStream");if(button)button.textContent="Enable stream";
+  }
+  function beginCapture(){
+    if(state.capturePromise)return state.capturePromise;
+    // Call getDisplayMedia synchronously from the Enable stream click. Waiting
+    // for an incoming offer first loses the user activation browsers require.
+    const request=navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:60,max:60},width:{ideal:1920},height:{ideal:1080}},audio:true});
+    state.capturePromise=Promise.resolve(request).then(stream=>{
+      const video=stream.getVideoTracks()[0];
+      if(!video){for(const track of stream.getTracks())track.stop();throw new Error("GeForce NOW video capture did not start.")}
+      video.contentHint="motion";
+      video.onended=()=>{
+        const sessionId=state.sessionId;
+        stopCapture();closePeer();log("GeForce NOW capture ended");
+        setStatus("Capture stopped","Click Enable stream, then reconnect Genesis.");
+        if(sessionId)send("host-error",{sessionId,message:"Host capture stopped. Click Enable stream in Genesis Host, then retry."}).catch(()=>{});
+      };
+      for(const audio of stream.getAudioTracks())audio.contentHint="music";
+      state.stream=stream;
+      const button=document.getElementById("prepareStream");if(button)button.textContent="Stop stream";
+      return stream;
+    }).catch(error=>{
+      if(error.name==="InvalidStateError"||error.name==="NotAllowedError")throw new Error("Click Enable stream in Genesis Host while GeForce NOW is open, then reconnect Genesis.");
+      throw error;
+    }).finally(()=>{state.capturePromise=null});
+    return state.capturePromise;
   }
   async function ensureCapture(){
     if(state.stream&&state.stream.getVideoTracks().some(track=>track.readyState==="live"))return state.stream;
-    const ready=await window.genesisHost.captureReady();
+    let ready;
+    // Chrome/Edge may take several seconds to create the correctly titled
+    // GFN window. A fixed 700ms pause was too short on slower host PCs.
+    for(let attempt=0;attempt<60;attempt++){
+      ready=await window.genesisHost.captureReady();
+      if(ready?.found)break;
+      await new Promise(resolve=>setTimeout(resolve,300));
+    }
     if(!ready?.found)throw new Error("GeForce NOW window was not found. Open GeForce NOW first.");
-    const stream=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:{ideal:60,max:60},width:{ideal:1920},height:{ideal:1080}},audio:true});
-    const video=stream.getVideoTracks()[0];
-    if(!video)throw new Error("GeForce NOW video capture did not start.");
-    video.contentHint="motion";
-    video.onended=()=>{state.stream=null;log("GeForce NOW capture ended")};
-    for(const audio of stream.getAudioTracks())audio.contentHint="music";
-    state.stream=stream;
-    return stream;
+    return beginCapture();
   }
   async function tuneSender(sender){
     if(sender.track?.kind!=="video")return;
@@ -49,25 +77,29 @@
     try{return await window.genesisHost.sendSignal(event,payload)}catch(error){log("Signal send failed: "+error.message);throw error}
   }
   async function answerOffer(payload){
-    if(state.offerBusy)return;
+    if(state.offerBusy){
+      if(payload?.sessionId&&payload.sessionId!==state.sessionId)send("host-error",{sessionId:payload.sessionId,message:"Host is preparing another connection. Retry in a few seconds."}).catch(()=>{});
+      return;
+    }
     if(!payload?.sessionId||!payload?.offer?.sdp)return;
     state.offerBusy=true;
     try{
       setStatus("Viewer connecting…","Preparing GeForce NOW and the WebRTC stream.");
-      closePeer();
+      closePeer({keepPendingIce:true});
       state.sessionId=payload.sessionId;
+      for(const key of state.pendingIce.keys())if(key!==state.sessionId)state.pendingIce.delete(key);
+      const sessionId=payload.sessionId;
       const gfn=await window.genesisHost.launchGeForce();
       if(!gfn?.ok)throw new Error(gfn?.error||"Could not launch GeForce NOW");
       await new Promise(resolve=>setTimeout(resolve,700));
       const stream=await ensureCapture();
-      const currentIce=state.pendingIce.splice(0);
       const pc=new RTCPeerConnection({iceServers:[{urls:["stun:stun.l.google.com:19302","stun:stun1.l.google.com:19302"]}],iceCandidatePoolSize:4,bundlePolicy:"max-bundle"});
       state.peer=pc;
       for(const track of stream.getTracks()){
         const sender=pc.addTrack(track,stream);
         tuneSender(sender);
       }
-      pc.onicecandidate=event=>{if(event.candidate)send("host-ice",{sessionId:state.sessionId,candidate:event.candidate.toJSON?.()||event.candidate}).catch(()=>{})};
+      pc.onicecandidate=event=>{if(event.candidate&&state.peer===pc)send("host-ice",{sessionId,candidate:event.candidate.toJSON?.()||event.candidate}).catch(()=>{})};
       pc.ondatachannel=event=>{
         const channel=event.channel;
         if(channel.label!=="genesis-control")return;
@@ -78,6 +110,7 @@
         channel.onclose=()=>window.genesisHost.sendInput({type:"release-all"});
       };
       pc.onconnectionstatechange=()=>{
+        if(state.peer!==pc)return;
         const current=pc.connectionState;
         if(current==="connected"){
           state.connected=true;setStatus("Connected","Genesis is viewing GeForce NOW.",true);gfnStatus.textContent="Streaming GeForce NOW";window.genesisHost.focusGeForce();log("WebRTC stream connected");
@@ -88,7 +121,8 @@
         }else if(current==="closed")state.connected=false;
       };
       await pc.setRemoteDescription(payload.offer);
-      for(const candidate of currentIce.concat(state.pendingIce.splice(0))){try{await pc.addIceCandidate(candidate)}catch{}}
+      const currentIce=state.pendingIce.get(sessionId)||[];state.pendingIce.delete(sessionId);
+      for(const candidate of currentIce){try{await pc.addIceCandidate(candidate)}catch(error){log("Viewer ICE candidate rejected: "+error.message)}}
       const answer=await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await send("host-answer",{sessionId:state.sessionId,answer:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},host:{platform:navigator.platform,videoTracks:stream.getVideoTracks().length,audioTracks:stream.getAudioTracks().length},sentAt:new Date().toISOString()});
@@ -101,9 +135,18 @@
     }finally{state.offerBusy=false}
   }
   async function addViewerIce(payload){
-    if(!payload?.candidate)return;
-    if(payload.sessionId!==state.sessionId||!state.peer){state.pendingIce.push(payload.candidate);return}
-    try{await state.peer.addIceCandidate(payload.candidate)}catch{}
+    if(!payload?.candidate||typeof payload.sessionId!=="string"||payload.sessionId.length>128)return;
+    if(state.sessionId&&payload.sessionId!==state.sessionId)return;
+    if(!state.peer?.remoteDescription){
+      if(!state.pendingIce.has(payload.sessionId)){
+        if(state.pendingIce.size>=4)state.pendingIce.delete(state.pendingIce.keys().next().value);
+        state.pendingIce.set(payload.sessionId,[]);
+      }
+      const queue=state.pendingIce.get(payload.sessionId);
+      if(queue.length<128)queue.push(payload.candidate);
+      return;
+    }
+    try{await state.peer.addIceCandidate(payload.candidate)}catch(error){log("Viewer ICE candidate rejected: "+error.message)}
   }
   async function handleSignal(packet){
     const payload=packet?.payload||{};
@@ -145,6 +188,18 @@
   });
   launchGfn.addEventListener("click",async()=>{gfnStatus.textContent="Opening GeForce NOW…";const result=await window.genesisHost.launchGeForce();gfnStatus.textContent=result?.ok?"GeForce NOW is open":result?.error||"Could not open GeForce NOW";if(result?.ok)log("GeForce NOW opened")});
   focusGfn.addEventListener("click",()=>window.genesisHost.focusGeForce());
+  document.getElementById("prepareStream")?.addEventListener("click",async()=>{
+    const button=document.getElementById("prepareStream");
+    if(state.stream){
+      const sessionId=state.sessionId;closePeer();stopCapture();setStatus("Host online","Stream stopped. Your GeForce NOW login remains saved.",true);
+      if(sessionId)send("host-error",{sessionId,message:"Streaming was stopped in Genesis Host."}).catch(()=>{});
+      return;
+    }
+    button.disabled=true;
+    try{await beginCapture();setStatus("Stream ready","Reconnect Genesis VM with this Host Key.",true);log("GeForce NOW capture prepared")}
+    catch(error){setStatus("Capture unavailable",error.message);log("Capture failed: "+error.message)}
+    finally{button.disabled=false}
+  });
   autoLaunch.addEventListener("change",()=>window.genesisHost.setAutoLaunch(autoLaunch.checked));
   window.addEventListener("beforeunload",()=>{window.genesisHost.sendInput({type:"release-all"});closePeer();stopCapture()});
 

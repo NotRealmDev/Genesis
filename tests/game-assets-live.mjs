@@ -3,12 +3,12 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 
 const catalogSource=readFileSync(new URL("../games-c-s.js",import.meta.url),"utf8");
-const context={};
+const context={URL};
 context.globalThis=context;
 vm.createContext(context);
 vm.runInContext(catalogSource,context,{filename:"games-c-s.js"});
 
-const {sourceCommit,games}=context.GENESIS_GAME_CATALOG;
+const {sourceCommit,games,installRuntimeFixes}=context.GENESIS_GAME_CATALOG;
 const catalogRepository="seanstonator-lang/UGS-Web-Hub";
 const eaglerRepository="JessePinkman27/eaglercraft-1.12.2";
 const eaglerCommit="d9e759ec21fdb807742201b11de8835e34ccd48a";
@@ -17,6 +17,16 @@ const requestHeaders={
   "User-Agent":"Genesis-catalog-integrity-test",
   "X-GitHub-Api-Version":"2022-11-28"
 };
+
+const amazingSpiderUrl="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/amazing-strange-rope-police-vice-spider/index.html";
+context.location={href:"https://notrealmdev.github.io/Genesis/os.html"};
+context.shouldConvertGameSourceToHTML=()=>false;
+context.addGameBaseTag=html=>html;
+assert.equal(installRuntimeFixes(),true,"Amazing Spider runtime fix did not install");
+assert.equal(context.shouldConvertGameSourceToHTML(amazingSpiderUrl),true,"Amazing Spider HTML was not routed through the executable Blob converter");
+const enhancedSpiderHTML=context.addGameBaseTag("<html><head><title>old elderly unity game</title></head><body></body></html>",amazingSpiderUrl);
+assert.match(enhancedSpiderHTML,/<title>Amazing Strange Rope Police<\/title>/);
+assert.match(enhancedSpiderHTML,/id="loading-text"/);
 
 async function responseOrThrow(url,options={}){
   const response=await fetch(url,{...options,signal:AbortSignal.timeout(75000)});
@@ -115,6 +125,23 @@ await mapWithConcurrency([
   await readPrefix(url,64);
 });
 
+const amazingSpiderBase="https://cdn.jsdelivr.net/gh/bubbls/UGS-Assets@main/amazing-strange-rope-police-vice-spider/";
+const amazingSpiderDocument=new TextDecoder().decode(await readPrefix(amazingSpiderBase+"index.html",512));
+assert.match(amazingSpiderDocument,/mergeFiles\(/,"Amazing Spider does not merge its split Unity runtime");
+assert.match(amazingSpiderDocument,/Build\/spider\.data\.unityweb/,"Amazing Spider data parts are not configured");
+await mapWithConcurrency([
+  "Build/UnityLoader-v3.js",
+  "Build/spider.json",
+  "Build/spider.asm.code.unityweb.part1",
+  "Build/spider.asm.code.unityweb.part2",
+  "Build/spider.asm.memory.unityweb.part1",
+  "Build/spider.asm.framework.unityweb.part1",
+  "Build/spider.data.unityweb.part1",
+  "Build/spider.data.unityweb.part2",
+  "Build/spider.data.unityweb.part3",
+  "Build/spider.data.unityweb.part4"
+],3,file=>readPrefix(amazingSpiderBase+file,64));
+
 await Promise.all(["bootstrap.js","assets.epw"].map(file=>
   readPrefix(`https://cdn.statically.io/gh/${eaglerRepository}/${eaglerCommit}/web/wasm/${file}`,64)
 ));
@@ -123,6 +150,7 @@ console.log(JSON.stringify({
   verifiedCatalogFiles:games.length,
   deliveredCatalogSamples:samples.size,
   verifiedSurvivalRaceAssets:6,
+  verifiedAmazingSpiderAssets:10,
   verifiedEaglerRuntimeAssets:2,
   sourceCommit
 },null,2));

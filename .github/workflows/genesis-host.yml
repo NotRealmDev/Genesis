@@ -5,20 +5,54 @@ on:
     paths:
       - 'genesis-host/**'
       - 'genesis-host-vm.js'
+      - 'genesis-vm.js'
       - 'genesis-admin-auth.js'
       - 'supabase-config.js'
+      - 'tests/hosting-live.mjs'
       - '.github/workflows/genesis-host.yml'
   push:
     branches: [main]
     paths:
       - 'genesis-host/**'
       - 'genesis-host-vm.js'
+      - 'genesis-vm.js'
       - 'genesis-admin-auth.js'
       - 'supabase-config.js'
+      - 'tests/hosting-live.mjs'
       - '.github/workflows/genesis-host.yml'
   workflow_dispatch:
 
 jobs:
+  hosting-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify live Genesis hosting and Host module assets
+        env:
+          GENESIS_HOSTING_URL: https://notrealmdev.github.io/Genesis/
+        run: node tests/hosting-live.mjs
+
+  connection-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser test runtime
+        run: |
+          npm install --no-save --no-package-lock playwright@1.55.0
+          npx playwright install --with-deps chromium
+      - name: Test decoded WebRTC video, keyboard input, and reconnect
+        run: node genesis-host/tests/webrtc.e2e.mjs
+      - name: Test VM startup, late module loading, and reopen on the Genesis project path
+        run: node genesis-host/tests/vm-ui.e2e.mjs
+
   test:
     runs-on: windows-latest
     steps:
@@ -30,6 +64,7 @@ jobs:
         shell: pwsh
         run: |
           node --check genesis-host-vm.js
+          node --check genesis-vm.js
           node --check genesis-admin-auth.js
           node --check supabase-config.js
           node --check genesis-host/main.cjs

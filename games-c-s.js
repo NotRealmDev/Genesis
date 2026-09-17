@@ -1341,6 +1341,45 @@
     {"id":"ugs-hacx","name":"Hacx","file":"games/clhacx.html","section":"H"},
     {"id":"ugs-heretic","name":"Heretic","file":"games/clheretic.html","section":"H"},
   ]);
-  global.GENESIS_GAME_CATALOG=Object.freeze({sourceCommit,games});
-})(globalThis);
+  const amazingSpiderPath=/^\/gh\/bubbls\/UGS-Assets@[^/]+\/amazing-strange-rope-police-vice-spider\/index\.html$/i;
 
+  function isAmazingSpiderSource(value){
+    try{
+      const url=new URL(value,global.location?.href||"https://genesis.invalid/");
+      return url.hostname==="cdn.jsdelivr.net"&&amazingSpiderPath.test(url.pathname);
+    }catch{
+      return false;
+    }
+  }
+
+  function installRuntimeFixes(){
+    const originalConverter=global.shouldConvertGameSourceToHTML;
+    const originalBaseTagger=global.addGameBaseTag;
+    if(typeof originalConverter!=="function"||typeof originalBaseTagger!=="function")return false;
+    if(originalConverter.genesisAmazingSpiderFix===true)return true;
+
+    function patchedConverter(value){
+      return isAmazingSpiderSource(value)||originalConverter.call(this,value);
+    }
+    Object.defineProperty(patchedConverter,"genesisAmazingSpiderFix",{value:true});
+    global.shouldConvertGameSourceToHTML=patchedConverter;
+
+    global.addGameBaseTag=function(htmlText,sourceUrl){
+      let html=originalBaseTagger.call(this,htmlText,sourceUrl);
+      if(!isAmazingSpiderSource(sourceUrl))return html;
+      html=html.replace(/<title>old elderly unity game<\/title>/i,"<title>Amazing Strange Rope Police</title>");
+      if(!/id=["']loading-text["']/i.test(html)){
+        const loading='<div id="loading-text" style="position:fixed;inset:0;z-index:999999;display:grid;place-items:center;background:#05070c;color:#fff;font:600 15px/1.6 system-ui,sans-serif;text-align:center;padding:24px">Loading Amazing Spider Rope Police…<br>This is a large game and may take a minute.</div>';
+        html=html.replace(/<body([^>]*)>/i,match=>match+loading);
+      }
+      return html;
+    };
+    return true;
+  }
+
+  if(typeof global.addEventListener==="function"){
+    global.addEventListener("DOMContentLoaded",installRuntimeFixes,{once:true});
+  }
+
+  global.GENESIS_GAME_CATALOG=Object.freeze({sourceCommit,games,isAmazingSpiderSource,installRuntimeFixes});
+})(globalThis);
