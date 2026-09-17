@@ -61,3 +61,15 @@ test('VM pairs with Host Key and does not ask for a second Admin authentication'
   assert.doesNotMatch(config,/genesis-admin-auth\.js/);
   assert.match(config,/Host Key/);
 });
+
+test('Host mode cannot fall back to the generic blank iframe VM',()=>{
+  const root=path.resolve(__dirname,'../..');
+  const config=fs.readFileSync(path.join(root,'supabase-config.js'),'utf8');
+  assert.match(config,/mode:\s*"host"/);
+  assert.match(config,/host-webrtc-r3/);
+  assert.match(config,/installHostGuard/);
+  assert.match(config,/Never let host mode fall back to the generic iframe VM/);
+  assert.match(config,/genesis-host-vm\.js/);
+  assert.match(config,/__hostPatched/);
+  assert.match(config,/build=/);
+});
