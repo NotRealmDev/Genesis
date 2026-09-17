@@ -6,7 +6,7 @@ const {webcrypto}=require('node:crypto');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../../genesis-test.js'),'utf8');
 function fixture(role='admin'){
   const elements={};const icons=[];const peers=[];const sent=[];let callback;
-  const element=id=>elements[id]||(elements[id]={textContent:'',value:'',hidden:false,isConnected:true,closest:()=>({classList:{contains:()=>false}})});
+  const element=id=>elements[id]||(elements[id]={textContent:'',value:'',hidden:false,isConnected:true,insertAdjacentHTML(){},closest:()=>({classList:{contains:()=>false}})});
   const desktop={querySelector:()=>null,appendChild:icon=>icons.push(icon)};
   const track={kind:'video',stopped:false,applyConstraints:async function(value){this.constraints=value},stop(){this.stopped=true}};
   const stream={active:true,getTracks:()=>[track],getVideoTracks:()=>[track]};
@@ -73,4 +73,14 @@ test('Stop during an open picker prevents late capture from restarting',async()=
   const starting=f.app.share();await f.flush();await f.app.stop();
   resolve({active:true,getTracks:()=>[f.track],getVideoTracks:()=>[f.track]});await starting;
   assert.equal(f.track.stopped,true);assert.equal(f.app.state.stream,null);
+});
+test('Fullscreen uses the display container and Exit restores native mode without disconnecting',async()=>{
+  const f=fixture();f.context.MutationObserver=class{observe(){}disconnect(){}};
+  const root=f.element('genesisTestRoot');let requested=0,exited=0;
+  root.requestFullscreen=async()=>{requested++;f.context.document.fullscreenElement=root};
+  f.context.document.exitFullscreen=async()=>{exited++;f.context.document.fullscreenElement=null};
+  f.app.mount();
+  await f.element('genesisTestFull').onclick();assert.equal(requested,1);
+  await f.element('genesisTestExit').onclick();assert.equal(exited,1);assert.equal(f.context.document.fullscreenElement,null);
+  f.app.state.observer.disconnect();clearInterval(f.app.state.watch);await f.app.stop();
 });

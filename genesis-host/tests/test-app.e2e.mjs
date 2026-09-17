@@ -45,7 +45,14 @@ try{
   await viewer.waitForFunction(()=>{const v=document.getElementById('genesisTestVideo');return v?.videoWidth===1280&&v.currentTime>0.1},null,{timeout:25000});
   await viewer.waitForFunction(()=>document.getElementById('genesisTestStatus').textContent.includes('decoded FPS'),null,{timeout:10000});
   console.log('Synthetic WebRTC:',await viewer.locator('#genesisTestStatus').innerText());
-  await viewer.click('#genesisTestFull');await viewer.waitForFunction(()=>document.fullscreenElement?.id==='genesisTestRoot');await viewer.evaluate(()=>document.exitFullscreen());
+  await viewer.click('#genesisTestFull');await viewer.waitForFunction(()=>document.fullscreenElement?.id==='genesisTestRoot');
+  assert.equal(await viewer.locator('#genesisTestShare').isVisible(),false,'fullscreen left PC settings visible');
+  assert.equal(await viewer.locator('#genesisTestInput').isVisible(),false,'fullscreen left pairing settings visible');
+  await viewer.locator('#genesisTestExit').waitFor({state:'visible'});
+  const bounds=await viewer.locator('#genesisTestVideo').boundingBox();assert.ok(bounds.width>=1439&&bounds.height>=899,'display does not fill fullscreen');
+  await viewer.click('#genesisTestExit');await viewer.waitForFunction(()=>document.fullscreenElement===null);
+  assert.equal(await viewer.locator('#genesisTestShare').isVisible(),true,'Exit did not restore settings');
+  assert.equal(await viewer.locator('#genesisTestExit').isVisible(),false);
   await viewer.click('#genesisTestStop');assert.equal(await viewer.evaluate(()=>GenesisTest.state.peer),null);
   await viewer.fill('#genesisTestInput',key);await viewer.click('#genesisTestConnect');
   await viewer.waitForFunction(()=>document.getElementById('genesisTestVideo').currentTime>0.1&&GenesisTest.state.peer?.connectionState==='connected',null,{timeout:25000});
