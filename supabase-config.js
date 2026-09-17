@@ -157,3 +157,19 @@ window.GENESIS_VM = {
   if(document.readyState === "loading") document.addEventListener("DOMContentLoaded",load,{once:true});
   else load();
 })();
+
+// Separate experimental app. Never replaces VM or auto-opens a stream.
+(function loadAdminTest(){
+  function load(){
+    if(!/(?:^|\/)os\.html$/i.test(location.pathname))return;
+    let admin=false;
+    try{admin=typeof genesisRole==='function'&&genesisRole()==='admin'}catch{}
+    if(!admin||window.GenesisTest||document.querySelector('script[data-genesis-test]'))return;
+    const script=document.createElement('script');script.setAttribute('data-genesis-test','1');
+    script.src='genesis-test.js?build=test-webrtc-r1';
+    script.onload=()=>window.GenesisTest?.install?.();
+    script.onerror=()=>{script.remove();console.error('Genesis Test app failed to load. Refresh to retry.')};
+    document.head.appendChild(script);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
+})();

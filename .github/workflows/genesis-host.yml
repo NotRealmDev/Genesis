@@ -5,6 +5,7 @@ on:
     paths:
       - 'genesis-host/**'
       - 'genesis-host-vm.js'
+      - 'genesis-test.js'
       - 'genesis-vm.js'
       - 'genesis-admin-auth.js'
       - 'supabase-config.js'
@@ -15,6 +16,7 @@ on:
     paths:
       - 'genesis-host/**'
       - 'genesis-host-vm.js'
+      - 'genesis-test.js'
       - 'genesis-vm.js'
       - 'genesis-admin-auth.js'
       - 'supabase-config.js'
@@ -52,6 +54,8 @@ jobs:
         run: node genesis-host/tests/webrtc.e2e.mjs
       - name: Test VM startup, late module loading, and reopen on the Genesis project path
         run: node genesis-host/tests/vm-ui.e2e.mjs
+      - name: Test admin Test app mirroring and capture cleanup
+        run: node genesis-host/tests/test-app.e2e.mjs
 
   test:
     runs-on: windows-latest
@@ -64,6 +68,7 @@ jobs:
         shell: pwsh
         run: |
           node --check genesis-host-vm.js
+          node --check genesis-test.js
           node --check genesis-vm.js
           node --check genesis-admin-auth.js
           node --check supabase-config.js

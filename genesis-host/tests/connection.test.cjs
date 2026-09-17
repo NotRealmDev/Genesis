@@ -213,12 +213,17 @@ test('Enable stream starts capture within the click, before asynchronous work',a
 const configSource=fs.readFileSync(path.join(__dirname,'../../supabase-config.js'),'utf8');
 function loaderHarness({fail=false,hang=false,readyState='complete',role='admin'}={}){
   const h=harness();let resumed=0;
+  let nextScript=0;
+  // Each concurrent loader gets its own script element, as in a real DOM.
+  h.context.document.createElement=()=>h.element('loader-script-'+(++nextScript));
   const events=new Map();
   h.context.genesisRole=()=>role;
   h.context.sessionStorage={getItem:()=> 'admin'};
   h.context.location={pathname:'/os.html'};
   h.context.document.readyState=readyState;
-  h.context.document.addEventListener=(name,fn)=>events.set(name,fn);
+  h.context.document.addEventListener=(name,fn)=>{
+    const previous=events.get(name);events.set(name,()=>{previous?.();fn()});
+  };
   h.context.GenesisVM.mount=()=>{throw new Error('generic iframe must not mount')};
   h.context.document.head.appendChild=script=>{
     if(script.src.startsWith('genesis-host-vm')){
