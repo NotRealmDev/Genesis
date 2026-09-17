@@ -54,3 +54,23 @@ test('Host preserves ICE that arrives before the viewer offer',async()=>{
 test('Revoked admin role cannot start a viewer',async()=>{
   const f=fixture('user');f.element('genesisTestInput').value='a'.repeat(64);await f.app.connect();assert.equal(f.peers.length,0);
 });
+test('Closing Test stops screen capture before the closing animation finishes',async()=>{
+  const f=fixture();let check;
+  f.context.MutationObserver=class{constructor(callback){check=callback}observe(){}disconnect(){}};
+  f.app.mount();await f.app.share();
+  f.element('genesisTestRoot').closest=()=>({classList:{contains:()=>true}});
+  check();await f.flush();assert.equal(f.track.stopped,true);assert.equal(f.app.state.watch,null);
+});
+test('Role revocation ends a live screen capture',async()=>{
+  const f=fixture();let check;
+  f.context.MutationObserver=class{constructor(callback){check=callback}observe(){}disconnect(){}};
+  f.app.mount();await f.app.share();f.context.genesisRole=()=> 'user';check();await f.flush();
+  assert.equal(f.track.stopped,true);assert.equal(f.app.state.stream,null);assert.equal(f.app.state.peer,null);
+});
+test('Stop during an open picker prevents late capture from restarting',async()=>{
+  const f=fixture();let resolve;
+  f.context.navigator.mediaDevices.getDisplayMedia=()=>new Promise(done=>{resolve=done});
+  const starting=f.app.share();await f.flush();await f.app.stop();
+  resolve({active:true,getTracks:()=>[f.track],getVideoTracks:()=>[f.track]});await starting;
+  assert.equal(f.track.stopped,true);assert.equal(f.app.state.stream,null);
+});
