@@ -158,6 +158,15 @@ window.GENESIS_VM = {
   else load();
 })();
 
+(function(){
+  function load(){
+    if(!/(?:^|\/)os\.html$/i.test(location.pathname))return;
+    const script=document.createElement('script');script.src='genesis-browser-extras.js?build=browser-extras-r1';
+    script.onload=()=>{};script.onerror=()=>console.error('Browser extras did not load. Refresh to retry.');document.head.appendChild(script);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
+})();
+
 // Separate experimental app. Never replaces VM or auto-opens a stream.
 (function loadAdminTest(){
   function load(){

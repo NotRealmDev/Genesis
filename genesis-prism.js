@@ -7,7 +7,7 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-15-youtube-player-r15";
+  const BUILD_ID = "2026-09-18-wisp-startup-r16";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
 
   const currentScript = document.currentScript;
@@ -104,7 +104,9 @@
   }
 
   async function probeWispEndpoint(websocket){
-    const official=await loadOfficialWispClient();
+    // A stalled CDN import must not block every endpoint before its handshake
+    // timeout has even started. Libcurl can initialize without this extra probe.
+    const official=await withTimeout(loadOfficialWispClient(),5000,"Optional Wisp probe library timed out.").catch(()=>null);
     if(!official) return {ok:true,verified:false};
 
     return new Promise(resolve=>{
@@ -405,6 +407,7 @@
       // This is the same constructor shape used by Scramjet's official
       // bootstrap. Libcurl supplies HTTP, media and WebSocket traffic over Wisp.
       const client=new this.Transport({wisp:websocket});
+      try{
       await withTimeout(client.init(),18000,"The Genesis Wisp transport could not start at "+websocket);
 
       if(verifyRoute){
@@ -419,6 +422,12 @@
       }
 
       return {client,verified:!!probe.verified};
+      }catch(error){
+        // Dispose rejected clients instead of retaining their socket/worker
+        // while the next endpoint is being initialized.
+        await withTimeout(disposeTransport(client),3000,"Rejected Wisp client cleanup timed out.").catch(()=>{});
+        throw error;
+      }
     }
 
     async init(){

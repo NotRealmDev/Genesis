@@ -48,7 +48,6 @@
     {"id":"ugs-cotlk","name":"Curse of the Lich King","file":"games/clcotlk.html","section":"C"},
     {"id":"ugs-cuttherope","name":"Cut the Rope","file":"games/clcuttherope.html","section":"C"},
     {"id":"ugs-cyberbungracing","name":"Cyberbung Racing","file":"games/clcyberbungracing.html","section":"C"},
-    {"id":"ugs-dandysworldclicker","name":"Dandy's World Clicker","file":"games/cldandysworldclicker.html","section":"D"},
     {"id":"ugs-danktomb","name":"Dank Tomb","file":"games/cldanktomb.html","section":"D"},
     {"id":"ugs-deadestate","name":"Dead Estate","file":"games/cldeadestate.html","section":"D"},
     {"id":"ugs-deadplate","name":"Dead Plate","file":"games/cldeadplate.html","section":"D"},

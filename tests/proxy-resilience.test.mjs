@@ -129,7 +129,7 @@ test("complete C through S game catalog is present and uniquely addressable",()=
   vm.runInContext(gameCatalogSource,context,{filename:"games-c-s.js"});
   const catalog=context.GENESIS_GAME_CATALOG;
   assert.equal(catalog.sourceCommit,"6f043306b7ae6dc9de5dd6c06b0574952cb2e88e");
-  assert.equal(catalog.games.length,1338);
+  assert.equal(catalog.games.length,1337);
   const counts={};
   const ids=new Set();
   for(const game of catalog.games){
@@ -139,7 +139,7 @@ test("complete C through S game catalog is present and uniquely addressable",()=
     assert.ok(!ids.has(game.id),"duplicate game id: "+game.id);
     ids.add(game.id);
   }
-  assert.deepEqual(counts,{C:108,D:105,E:39,F:142,G:69,H:53,I:22,J:20,K:25,L:29,M:140,N:43,O:19,P:189,Q:6,R:82,S:247});
+  assert.deepEqual(counts,{C:108,D:104,E:39,F:142,G:69,H:53,I:22,J:20,K:25,L:29,M:140,N:43,O:19,P:189,Q:6,R:82,S:247});
   assert.match(os,/GENESIS_GAME_CATALOG\?\.games/);
   assert.match(os,/Eaglercraft 1\.12\.2/);
   assert.match(eaglercraft,/worldsDB:"worlds"/);
