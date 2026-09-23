@@ -20,6 +20,9 @@ test('Browser-only sounds are optional and synthesized without audio files',()=>
   assert.match(source,/genesisBrowserSoundsV1/);assert.match(source,/createOscillator\(\)/);assert.match(source,/id='genesisBrowserSound'/);
   assert.doesNotMatch(source,/new Audio\(/);
 });
+test('Browser has a quick fullscreen control with a visible exit state',()=>{
+  assert.match(source,/id='genesisBrowserFullscreen'/);assert.match(source,/requestFullscreen/);assert.match(source,/exitFullscreen/);assert.match(source,/active\?'×':'⛶'/);
+});
 test('Published C–S Games catalog contains no dandy entries',()=>{
   const catalog=readFileSync(new URL('../games-c-s.js',import.meta.url),'utf8');assert.doesNotMatch(catalog,/dandy/i);
 });
