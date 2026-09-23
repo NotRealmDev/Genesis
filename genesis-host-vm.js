@@ -53,6 +53,34 @@
     setStatus("Host offline");
   }
 
+  function updateFullscreenButton(){
+    const root=document.getElementById("genesisVmRoot"),button=document.getElementById("genesisVmFullscreen");
+    if(!button)return;
+    const active=(document.fullscreenElement||document.webkitFullscreenElement)===root||!!state.video?.webkitDisplayingFullscreen;
+    button.textContent=active?"Exit fullscreen":"Fullscreen";
+    button.setAttribute("aria-pressed",String(active));
+    button.title=active?"Exit fullscreen (Esc)":"Expand VM to fullscreen";
+  }
+
+  async function toggleFullscreen(){
+    const root=document.getElementById("genesisVmRoot");
+    if(!isAdmin()||!root||root.__genesisHostClosed)return;
+    try{
+      const active=document.fullscreenElement||document.webkitFullscreenElement;
+      if(state.video?.webkitDisplayingFullscreen&&state.video.webkitExitFullscreen)state.video.webkitExitFullscreen();
+      else if(active===root){
+        const exit=document.exitFullscreen||document.webkitExitFullscreen;
+        await exit?.call(document);
+      }else{
+        const enter=root.requestFullscreen||root.webkitRequestFullscreen;
+        if(enter)await enter.call(root);
+        else if(state.video?.webkitEnterFullscreen)state.video.webkitEnterFullscreen();
+        else throw new Error("Fullscreen is not supported by this browser.");
+      }
+      updateFullscreenButton();
+    }catch(error){setStatus("Could not enter fullscreen: "+error.message)}
+  }
+
   function ensureVideo(){
     const stage=document.querySelector("#genesisVmRoot .genesis-vm-stage");
     const oldFrame=document.getElementById("genesisVmFrame");
@@ -75,6 +103,8 @@
       video.__genesisMediaBound=true;
       video.addEventListener("playing",finishMediaStartup);
       video.addEventListener("loadeddata",finishMediaStartup);
+      video.addEventListener("webkitbeginfullscreen",updateFullscreenButton);
+      video.addEventListener("webkitendfullscreen",updateFullscreenButton);
     }
     let sound=document.getElementById("genesisVmSound");
     if(!sound){
@@ -85,6 +115,21 @@
       stage.insertBefore(sound,stage.firstChild);
     }
     sound.textContent="Enable sound";
+    let fullscreen=document.getElementById("genesisVmFullscreen");
+    if(!fullscreen){
+      fullscreen=document.createElement("button");fullscreen.id="genesisVmFullscreen";
+      fullscreen.type="button";fullscreen.className="genesis-vm-button";
+      fullscreen.addEventListener("click",toggleFullscreen);
+      const bar=document.querySelector("#genesisVmRoot .genesis-vm-bar");
+      if(bar)bar.appendChild(fullscreen);
+      else{fullscreen.style.cssText="position:absolute;left:14px;top:14px;z-index:5";stage.insertBefore(fullscreen,stage.firstChild)}
+      if(!document.getElementById("genesisVmFullscreenStyles")){
+        const style=document.createElement("style");style.id="genesisVmFullscreenStyles";
+        style.textContent='#genesisVmRoot:fullscreen{width:100vw;height:100vh;margin:0;background:#05070c;display:flex;flex-direction:column}#genesisVmRoot:-webkit-full-screen{width:100vw;height:100vh;margin:0;background:#05070c;display:flex;flex-direction:column}';
+        document.head.appendChild(style);
+      }
+    }
+    updateFullscreenButton();
     return video;
   }
 
@@ -365,8 +410,8 @@
     video.addEventListener("pointermove",event=>{if(!state.connected)return;const p=pointerPayload(event,"move");if(p)sendControl(p)});
     video.addEventListener("wheel",event=>{event.preventDefault();const p=pointerPayload(event,"wheel");if(p)sendControl(p)},{passive:false});
     video.addEventListener("dblclick",()=>{video.requestPointerLock?.()});
-    video.addEventListener("keydown",event=>{if(!state.connected)return;if(!["F5","F12"].includes(event.key))event.preventDefault();sendControl(keyPayload(event,"down"))});
-    video.addEventListener("keyup",event=>{if(!state.connected)return;if(!["F5","F12"].includes(event.key))event.preventDefault();sendControl(keyPayload(event,"up"))});
+    video.addEventListener("keydown",event=>{if(!state.connected||event.key==="Escape")return;if(!["F5","F12"].includes(event.key))event.preventDefault();sendControl(keyPayload(event,"down"))});
+    video.addEventListener("keyup",event=>{if(!state.connected||event.key==="Escape")return;if(!["F5","F12"].includes(event.key))event.preventDefault();sendControl(keyPayload(event,"up"))});
     video.addEventListener("blur",()=>sendControl({type:"release-all"}));
   }
 
@@ -433,7 +478,8 @@
     return true;
   }
 
-  global.GenesisHostVM={connect,disconnect,pair,saveAndConnect,enableSound,state,patch:patchGenesisVm};
+  global.GenesisHostVM={connect,disconnect,pair,saveAndConnect,enableSound,toggleFullscreen,state,patch:patchGenesisVm};
+  for(const event of ["fullscreenchange","webkitfullscreenchange"])document.addEventListener(event,()=>{updateFullscreenButton();sendControl({type:"release-all"})});
   global.addEventListener("pagehide",()=>disconnect());
   if(!patchGenesisVm()){
     const timer=setInterval(()=>{if(patchGenesisVm())clearInterval(timer)},60);

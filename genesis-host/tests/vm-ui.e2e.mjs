@@ -82,6 +82,14 @@ try{
   assert.match(await f.page.locator('#genesisVmCard').innerText(),/Connect Genesis Host/);
   assert.equal(await f.page.locator('#genesisVmOverlay').isVisible(),true);
   assert.equal(await f.page.locator('#genesisVmFrame').isVisible(),false);
+  await f.page.locator('#genesisVmFullscreen').click();
+  await f.page.waitForFunction(()=>document.fullscreenElement===document.getElementById('genesisVmRoot'));
+  assert.equal(await f.page.locator('#genesisVmFullscreen').innerText(),'Exit fullscreen');
+  const fullscreenBounds=await f.page.locator('#genesisVmRoot').boundingBox();
+  assert.equal(Math.round(fullscreenBounds.width),1440);assert.equal(Math.round(fullscreenBounds.height),900);
+  await f.page.locator('#genesisVmFullscreen').click();
+  await f.page.waitForFunction(()=>!document.fullscreenElement);
+  assert.equal(await f.page.locator('#genesisVmFullscreen').innerText(),'Fullscreen');
   await f.page.locator('.window[data-app="vm"] .window-control.close').click();
   await f.page.locator('.window[data-app="vm"]').waitFor({state:'detached'});
   await f.page.locator('#desktop [data-app="vm"]').dblclick();
