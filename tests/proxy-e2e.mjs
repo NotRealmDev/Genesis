@@ -34,6 +34,20 @@ const browser=await chromium.launch({
 });
 const page=await browser.newPage();
 const logs=[];
+let liveStage="browser startup";
+function markStage(message){
+  liveStage=message;
+  console.log("[proxy-e2e] "+message);
+}
+const watchdog=setTimeout(async()=>{
+  console.error("[proxy-e2e] hard timeout during "+liveStage);
+  await mkdir(join(root,"test-output"),{recursive:true}).catch(()=>{});
+  await Promise.race([
+    page.screenshot({path:join(root,"test-output","proxy-timeout.png"),fullPage:true}).catch(()=>{}),
+    new Promise(resolve=>setTimeout(resolve,5000))
+  ]);
+  process.exit(1);
+},6*60*1000);
 page.on("console",message=>logs.push(message.type()+": "+message.text()));
 page.on("pageerror",error=>logs.push("pageerror: "+error.message));
 
@@ -264,7 +278,7 @@ async function frameSnapshot(){
 }
 
 try{
-  console.log("[proxy-e2e] starting harness");
+  markStage("starting harness");
   await page.goto("http://127.0.0.1:4173/tests/proxy-harness.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>window.proxyHarnessLoaded===true,null,{timeout:30000});
 
@@ -272,7 +286,7 @@ try{
   assert.equal(health.ok,true);
   assert.ok(health.status>=200&&health.status<500);
 
-  console.log("[proxy-e2e] checking example.com through Scramjet");
+  markStage("checking example.com through Scramjet");
   await page.evaluate(()=>window.proxyHarness.go("https://example.com/"));
   await page.waitForFunction(()=>{
     const text=document.getElementById("target")?.contentDocument?.body?.innerText||"";
@@ -283,7 +297,7 @@ try{
   assert.equal(exampleSnapshot.globals.scramjet,"object","Scramjet core was not injected into the proxied document");
   assert.notEqual(exampleSnapshot.globals.prop,"undefined","Scramjet property hooks were not installed");
 
-  console.log("[proxy-e2e] checking YouTube results");
+  markStage("checking YouTube results");
   await navigateWithRepair("https://www.youtube.com/results?search_query=lofi",youtubeHasContent);
   const youtube=await frameSnapshot();
   assert.match(youtube.title,/YouTube/i);
@@ -291,7 +305,7 @@ try{
   // YouTube's own IFrame API documentation uses this public video as its
   // reference embed, making it a stable target for a player-health test.
   const watchUrl="https://www.youtube.com/watch?v=M7lc1UVf-VE";
-  console.log("[proxy-e2e] checking real YouTube media progress");
+  markStage("checking real YouTube media progress");
   await page.evaluate(target=>window.proxyHarness.go(target),watchUrl);
   let youtubePlayback=null;
   let youtubePlaybackMode="scramjet";
@@ -330,7 +344,7 @@ try{
   }
   assert.equal(mediaStats.youtubeMediaInvalidPartialResponses,0,"A 206 media response was missing Content-Range");
 
-  console.log("[proxy-e2e] checking TikTok content");
+  markStage("checking TikTok content");
   if(youtubePlaybackMode==="scramjet"){
     await navigateWithRepair("https://www.tiktok.com/explore",waitForTikTokContent);
   }else{
@@ -340,14 +354,14 @@ try{
   const tiktok=await frameSnapshot();
   assert.match(tiktok.href,/tiktok\.com/i);
 
-  console.log("[proxy-e2e] checking GeForce NOW shell");
+  markStage("checking GeForce NOW shell");
   await navigateWithRepair("https://play.geforcenow.com/mall/",waitForGeforceContent);
   const geforceNow=await frameSnapshot();
   assert.match(geforceNow.href,/geforcenow\.com/i);
 
   const report=await page.evaluate(()=>window.proxyHarness.report());
   assert.ok(report.diagnostics.healthy);
-  console.log("[proxy-e2e] all live checks passed");
+  markStage("all live checks passed");
   console.log(JSON.stringify({
     health,
     diagnostics:report.diagnostics,
@@ -367,6 +381,7 @@ try{
   console.error(JSON.stringify({error:error.message,report,frame,video,directYouTube,logs:logs.slice(-160)},null,2));
   throw error;
 }finally{
+  clearTimeout(watchdog);
   await browser.close();
   await new Promise(resolve=>server.close(resolve));
 }
