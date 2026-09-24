@@ -54,6 +54,8 @@ button{color:inherit}
 .date{font-size:13px;line-height:1.5;color:var(--muted);margin-top:3px}.divider{height:1px;background:rgba(255,255,255,.09);margin:20px 0}.side-title{font-size:10px;text-transform:uppercase;letter-spacing:1.6px;color:rgba(255,255,255,.40);margin-bottom:10px}
 .quick-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.quick{height:58px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.055);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;cursor:pointer;transition:.18s}.quick:hover{transform:translateY(-2px);background:rgba(255,255,255,.11)}.quick.active{background:hsla(var(--accent),80%,55%,.44)}.quick.blank-quick{grid-column:1/-1;height:48px;flex-direction:row}.quick small{font-size:9px;color:rgba(255,255,255,.7)}
 .system-card{padding:12px 13px;border-radius:16px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07)}.system-row{display:flex;justify-content:space-between;font-size:11px;margin:8px 0}.system-row span:first-child{color:var(--muted)}
+.account-area{position:relative;margin-top:14px}.account-button{width:100%;height:46px;padding:0 11px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.055);display:flex;align-items:center;gap:9px;color:#fff;cursor:pointer}.account-button:hover{background:rgba(255,255,255,.11);transform:translateY(-1px)}.account-button svg{width:21px;height:21px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}.account-button span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11px;font-weight:650}.account-chevron{margin-left:auto;width:14px!important;height:14px!important;transition:transform .25s cubic-bezier(.2,.8,.2,1)}.account-button[aria-expanded="true"] .account-chevron{transform:rotate(180deg)}
+.account-popover{position:absolute;left:0;right:0;bottom:54px;padding:9px;border:1px solid rgba(255,255,255,.13);border-radius:17px;background:rgba(10,15,25,.94);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 20px 55px rgba(0,0,0,.45);opacity:0;transform:translateY(10px) scale(.96);pointer-events:none;transition:opacity .24s,transform .28s cubic-bezier(.2,.85,.2,1.08)}.account-popover.open{opacity:1;transform:none;pointer-events:auto}.account-summary{display:flex;align-items:center;gap:9px;padding:7px 7px 10px}.account-avatar{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:hsla(var(--accent),75%,55%,.2);border:1px solid hsla(var(--accent),75%,70%,.2);font-size:12px;font-weight:750}.account-name{font-size:11px;font-weight:650;overflow:hidden;text-overflow:ellipsis}.account-role{font-size:9px;color:var(--muted);margin-top:2px}.account-logout{width:100%;height:38px;border:0;border-radius:11px;background:rgba(255,95,87,.1);color:#ffaaa5;display:flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;font-size:11px;font-weight:650}.account-logout:hover{background:rgba(255,95,87,.18)}.account-logout svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}#os.logging-out{opacity:0;transform:scale(.985);filter:blur(7px);transition:opacity .24s,transform .24s,filter .24s}
 
 .dock-wrap{position:absolute;left:calc(50% - 105px);bottom:18px;transform:translateX(-50%);z-index:100}
 .dock{height:68px;display:flex;align-items:center;gap:9px;padding:9px 12px;border-radius:25px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(145deg,rgba(255,255,255,.14),rgba(255,255,255,.045));backdrop-filter:blur(28px) saturate(160%);-webkit-backdrop-filter:blur(28px) saturate(160%);box-shadow:inset 0 1px rgba(255,255,255,.12),0 15px 45px rgba(0,0,0,.32)}
@@ -625,6 +627,13 @@ button{color:inherit}
       <div class="system-row"><span>Status</span><span>Online</span></div>
       <div class="system-row"><span>OS</span><span>1.232</span></div>
       <div class="system-row"><span>Battery</span><span id="battery">100%</span></div>
+    </div>
+    <div class="account-area">
+      <div class="account-popover" id="genesisAccountPopover" role="menu">
+        <div class="account-summary"><div class="account-avatar" id="genesisAccountAvatar">G</div><div><div class="account-name" id="genesisAccountName">Genesis User</div><div class="account-role" id="genesisAccountRole">Account</div></div></div>
+        <button type="button" class="account-logout" id="genesisLogout" role="menuitem"><svg viewBox="0 0 24 24"><path d="M10 5H5v14h5M14 8l4 4-4 4M9 12h9"/></svg>Log Out</button>
+      </div>
+      <button type="button" class="account-button" id="genesisAccountButton" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4.5 20c.8-4 3.3-6 7.5-6s6.7 2 7.5 6"/></svg><span id="genesisAccountLabel">Account</span><svg class="account-chevron" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5"/></svg></button>
     </div>
   </aside>
 
@@ -2779,6 +2788,36 @@ function validateGenesis12HourSession(){
   }
 }
 
+function initGenesisAccountMenu(){
+  const button=document.getElementById("genesisAccountButton"),popover=document.getElementById("genesisAccountPopover"),logout=document.getElementById("genesisLogout");
+  if(!button||!popover||!logout)return;
+  let login=null;try{login=JSON.parse(localStorage.getItem("genesisLogin")||"null")}catch{}
+  const name=String(login?.user||"Genesis User"),role=String(login?.role||"user");
+  document.getElementById("genesisAccountLabel").textContent=name;
+  document.getElementById("genesisAccountName").textContent=name;
+  document.getElementById("genesisAccountRole").textContent=role==="admin"?"Administrator":"Genesis account";
+  document.getElementById("genesisAccountAvatar").textContent=(name.trim()[0]||"G").toUpperCase();
+  const setOpen=open=>{popover.classList.toggle("open",open);button.setAttribute("aria-expanded",String(open));popover.setAttribute("aria-hidden",String(!open))};
+  button.onclick=event=>{event.stopPropagation();setOpen(!popover.classList.contains("open"))};
+  popover.onclick=event=>event.stopPropagation();
+  document.addEventListener("click",()=>setOpen(false));
+  document.addEventListener("keydown",event=>{if(event.key==="Escape")setOpen(false)});
+  logout.onclick=genesisLogout;
+  setOpen(false);
+}
+
+function genesisLogout(){
+  flushGenesisBrowserSession();
+  try{genesisMusicAudio?.pause()}catch{}
+  localStorage.removeItem("genesisLogin");
+  localStorage.removeItem("genesisAdminSession");
+  sessionStorage.removeItem("realmAuth");
+  sessionStorage.removeItem("realmUser");
+  sessionStorage.removeItem("genesisRole");
+  document.getElementById("os")?.classList.add("logging-out");
+  setTimeout(()=>location.replace("index.html"),240);
+}
+
 function flushGenesisBrowserSession(){
   if(openWindows.browser){
     captureBrowserLocation(openWindows.browser);
@@ -2794,6 +2833,7 @@ document.addEventListener("visibilitychange",()=>{
 
 showGenesisIdImmediately();
 setupGenesisAdminUI();
+initGenesisAccountMenu();
 startWelcomeFireworks();
 Promise.resolve(ensureGenesisDevice())
   .catch(error=>console.warn("Genesis device service:",error))

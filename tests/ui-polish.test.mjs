@@ -30,3 +30,13 @@ test('Browser keeps primary actions visible and moves secondary actions into one
   assert.doesNotMatch(os,/id="browserProfile"/);
   assert.doesNotMatch(os,/Open Genesis Tab|browserOpenDirect|openGenesisTab/);
 });
+
+test('Sidebar account menu animates and logout closes the OS session',()=>{
+  assert.match(os,/id="genesisAccountButton"/);
+  assert.match(os,/id="genesisAccountPopover"/);
+  assert.match(os,/function initGenesisAccountMenu\(/);
+  assert.match(os,/function genesisLogout\(/);
+  assert.match(os,/localStorage\.removeItem\("genesisLogin"\)/);
+  assert.match(os,/setTimeout\(\(\)=>location\.replace\("index\.html"\),240\)/);
+  assert.match(os,/\.account-popover\.open\{opacity:1;transform:none;pointer-events:auto\}/);
+});
