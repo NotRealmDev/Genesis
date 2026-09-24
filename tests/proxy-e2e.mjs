@@ -43,7 +43,7 @@ async function youtubeHasContent(){
     if(!doc)return false;
     const selectors='a#video-title,ytd-video-renderer #video-title,yt-lockup-view-model h3,yt-lockup-view-model a[href*="/watch"]';
     return [...doc.querySelectorAll(selectors)].some(node=>(node.textContent||"").trim().length>1);
-  },null,{timeout:90000});
+  },null,{timeout:60000});
 }
 
 async function acceptYouTubeConsent(){
@@ -211,7 +211,7 @@ async function waitForTikTokContent(){
     const videoLinks=doc.querySelectorAll('a[href*="/video/"],[scramjet-attr-href*="/video/"]');
     const playable=[...doc.querySelectorAll("video")].some(video=>video.currentSrc||video.src);
     return videoLinks.length>=2 || playable;
-  },null,{timeout:90000});
+  },null,{timeout:60000});
 }
 
 async function waitForGeforceContent(){
@@ -222,7 +222,7 @@ async function waitForGeforceContent(){
     if(!doc || typeof win?.$scramjet$prop==="undefined") return false;
     const text=(doc.body?.innerText||"").replace(/\s+/g," ").trim();
     return text.length>80 && /geforce\s*now|log\s*in|sign\s*in|join|games/i.test(text);
-  },null,{timeout:90000});
+  },null,{timeout:60000});
 }
 
 async function navigateWithRepair(url,ready){
@@ -264,6 +264,7 @@ async function frameSnapshot(){
 }
 
 try{
+  console.log("[proxy-e2e] starting harness");
   await page.goto("http://127.0.0.1:4173/tests/proxy-harness.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>window.proxyHarnessLoaded===true,null,{timeout:30000});
 
@@ -271,6 +272,7 @@ try{
   assert.equal(health.ok,true);
   assert.ok(health.status>=200&&health.status<500);
 
+  console.log("[proxy-e2e] checking example.com through Scramjet");
   await page.evaluate(()=>window.proxyHarness.go("https://example.com/"));
   await page.waitForFunction(()=>{
     const text=document.getElementById("target")?.contentDocument?.body?.innerText||"";
@@ -281,6 +283,7 @@ try{
   assert.equal(exampleSnapshot.globals.scramjet,"object","Scramjet core was not injected into the proxied document");
   assert.notEqual(exampleSnapshot.globals.prop,"undefined","Scramjet property hooks were not installed");
 
+  console.log("[proxy-e2e] checking YouTube results");
   await navigateWithRepair("https://www.youtube.com/results?search_query=lofi",youtubeHasContent);
   const youtube=await frameSnapshot();
   assert.match(youtube.title,/YouTube/i);
@@ -288,6 +291,7 @@ try{
   // YouTube's own IFrame API documentation uses this public video as its
   // reference embed, making it a stable target for a player-health test.
   const watchUrl="https://www.youtube.com/watch?v=M7lc1UVf-VE";
+  console.log("[proxy-e2e] checking real YouTube media progress");
   await page.evaluate(target=>window.proxyHarness.go(target),watchUrl);
   let youtubePlayback=null;
   let youtubePlaybackMode="scramjet";
@@ -303,7 +307,7 @@ try{
     for(let index=0;index<fallbacks.length;index++){
       try{
         await page.evaluate(({target,index})=>window.proxyHarness.openYouTubeFallback(target,index),{target:watchUrl,index});
-        youtubePlayback=await waitForYouTubePlayback(65000);
+        youtubePlayback=await waitForYouTubePlayback(45000);
         youtubePlaybackMode=index===0?"official-youtube-nocookie":"official-youtube";
         fallbackError=null;
         break;
@@ -326,6 +330,7 @@ try{
   }
   assert.equal(mediaStats.youtubeMediaInvalidPartialResponses,0,"A 206 media response was missing Content-Range");
 
+  console.log("[proxy-e2e] checking TikTok content");
   if(youtubePlaybackMode==="scramjet"){
     await navigateWithRepair("https://www.tiktok.com/explore",waitForTikTokContent);
   }else{
@@ -335,12 +340,14 @@ try{
   const tiktok=await frameSnapshot();
   assert.match(tiktok.href,/tiktok\.com/i);
 
+  console.log("[proxy-e2e] checking GeForce NOW shell");
   await navigateWithRepair("https://play.geforcenow.com/mall/",waitForGeforceContent);
   const geforceNow=await frameSnapshot();
   assert.match(geforceNow.href,/geforcenow\.com/i);
 
   const report=await page.evaluate(()=>window.proxyHarness.report());
   assert.ok(report.diagnostics.healthy);
+  console.log("[proxy-e2e] all live checks passed");
   console.log(JSON.stringify({
     health,
     diagnostics:report.diagnostics,
