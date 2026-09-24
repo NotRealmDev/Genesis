@@ -11,8 +11,10 @@ window.GENESIS_BACKEND = {
 (function(){
   function load(){
     if(!/(?:^|\/)os\.html$/i.test(location.pathname))return;
-    const script=document.createElement('script');script.src='genesis-browser-extras.js?build=browser-extras-r2';
-    script.onload=()=>{};script.onerror=()=>console.error('Browser extras did not load. Refresh to retry.');document.head.appendChild(script);
+    for(const [src,label] of [['genesis-browser-extras.js?build=browser-extras-r3','Browser extras'],['genesis-ui-polish.js?build=ui-polish-r1','Genesis UI polish']]){
+      const script=document.createElement('script');script.src=src;script.defer=true;
+      script.onerror=()=>console.error(label+' did not load. Refresh to retry.');document.head.appendChild(script);
+    }
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',load,{once:true});else load();
 })();

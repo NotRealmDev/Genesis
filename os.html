@@ -456,8 +456,7 @@ button{color:inherit}
   .browser-go{top:4px}
 }
 @media (max-width:520px){
-  #browserForward,#browserHomeBtn,#browserProfile{display:none}
-  .browser-mode{margin-left:auto}
+  .browser-toolbar{padding:6px}
   .browser-open-card{padding:20px}
   .browser-open-card h3{font-size:20px}
 }
@@ -1248,12 +1247,13 @@ function genesisGetMusicAudio(){
   if(genesisMusicAudio) return genesisMusicAudio;
 
   const audio = new Audio(GENESIS_MUSIC_TRACK.file);
-  audio.preload = "metadata";
+  audio.preload = "auto";
+  audio.loop = true;
 
   const storedVolume = Number(localStorage.getItem("genesisMusicVolume"));
   audio.volume = Number.isFinite(storedVolume)
     ? Math.max(0, Math.min(1, storedVolume))
-    : 0.75;
+    : 0.32;
 
   audio.addEventListener("play", genesisUpdateMusicUI);
   audio.addEventListener("pause", genesisUpdateMusicUI);
@@ -1666,18 +1666,21 @@ function fullscreenGame(){
 function browserHTML(){
   return `<div class="browser">
     <div class="browser-toolbar">
-      <button class="nav-btn" id="browserBack" title="Back">←</button>
-      <button class="nav-btn" id="browserForward" title="Forward">→</button>
-      <button class="nav-btn" id="browserReload" title="Reload">↻</button>
-      <button class="nav-btn" id="browserHomeBtn" title="Home">⌂</button>
+      <button class="nav-btn" id="browserBack" title="Back" aria-label="Back"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <button class="nav-btn" id="browserReload" title="Reload" aria-label="Reload"><svg viewBox="0 0 24 24"><path d="M20 7v5h-5"/><path d="M19 12a7 7 0 1 0-2 5"/></svg></button>
       <div class="address-wrap">
         <input id="browserAddress" class="browser-address" value="os://home" spellcheck="false" autocomplete="off" placeholder="Search or enter a website">
-        <button class="browser-go" id="browserGo" title="Go">→</button>
+        <button class="browser-go" id="browserGo" title="Go" aria-label="Go"><svg viewBox="0 0 24 24"><path d="M5 12h13M13 7l5 5-5 5"/></svg></button>
       </div>
-      <div class="browser-profile browser-profile-fixed" id="browserProfile" title="Brave Search">Brave</div>
-      <button class="browser-mode embed" id="browserMode" title="Switch browsing mode">Inside OS</button>
-      <button class="nav-btn" id="browserAboutBlank" title="Open Genesis in About Blank">□</button>
-      <button class="nav-btn" id="browserExternal" title="Open current page in a Genesis tab">↗</button>
+      <button class="nav-btn" id="browserMore" title="More browser actions" aria-label="More browser actions" aria-expanded="false"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1" fill="currentColor" stroke="none"/></svg></button>
+      <div class="browser-menu" id="browserMenu">
+        <button type="button" id="browserHomeBtn">Home</button>
+        <button type="button" id="browserForward">Forward</button>
+        <div class="menu-divider"></div>
+        <button type="button" class="browser-mode embed" id="browserMode">Browsing mode · Inside OS</button>
+        <button type="button" id="browserAboutBlank">Open Genesis in About Blank</button>
+        <button type="button" id="browserExternal">Open page in a Genesis tab</button>
+      </div>
     </div>
 
     <div class="browser-status" id="browserStatus">Starting browser…</div>
@@ -1847,14 +1850,14 @@ function initBrowser(win){
   const external=win.querySelector("#browserExternal");
   const aboutBlank=win.querySelector("#browserAboutBlank");
   const mode=win.querySelector("#browserMode");
-  const profile=win.querySelector("#browserProfile");
+  const more=win.querySelector("#browserMore");
+  const menu=win.querySelector("#browserMenu");
   const openDirect=win.querySelector("#browserOpenDirect");
   const tryInside=win.querySelector("#browserTryInside");
   const frame=win.querySelector("#browserFrame");
   const officialFrame=win.querySelector("#browserOfficialFrame");
   const status=win.querySelector("#browserStatus");
 
-  if(profile) profile.textContent="Brave";
   const restoredAddress=browserState.history[browserState.index]||"os://home";
   address.value=restoredAddress;
 
@@ -1883,6 +1886,9 @@ function initBrowser(win){
   reload.onclick=()=>browserReload();
   home.onclick=()=>browserNavigate("os://home",true,false);
 
+  more.onclick=event=>{event.stopPropagation();const open=menu.classList.toggle("open");more.setAttribute("aria-expanded",String(open))};
+  win.addEventListener("click",event=>{if(!event.target.closest("#browserMenu,#browserMore")){menu.classList.remove("open");more.setAttribute("aria-expanded","false")}else if(event.target.closest("#browserMenu button")){menu.classList.remove("open");more.setAttribute("aria-expanded","false")}});
+
   external.onclick=()=>{
     const current=browserState.history[browserState.index];
     if(current && current!=="os://home") openGenesisTab(current);
@@ -1897,7 +1903,7 @@ function initBrowser(win){
 
   mode.onclick=()=>{
     browserState.mode=browserState.mode==="tab"?"proxy":"tab";
-    mode.textContent=browserState.mode==="tab"?"Genesis Tab":"Inside OS";
+    mode.textContent=browserState.mode==="tab"?"Browsing mode · Genesis Tab":"Browsing mode · Inside OS";
     mode.classList.toggle("embed",browserState.mode==="proxy");
     status.textContent=browserState.mode==="tab"
       ?"Genesis Tab mode · websites open in a dedicated proxy tab"
@@ -1925,7 +1931,7 @@ function initBrowser(win){
     const current=browserState.history[browserState.index];
     if(current && current!=="os://home"){
       browserState.mode="proxy";
-      mode.textContent="Inside OS";
+      mode.textContent="Browsing mode · Inside OS";
       mode.classList.add("embed");
       browserNavigate(current,false,true,{forceProxy:true});
     }
