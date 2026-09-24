@@ -19,6 +19,7 @@ test('Music starts automatically when allowed and retries on first interaction',
   assert.match(ui,/await player\.play\(\)/);
   assert.match(os,/audio\.preload = "auto"/);
   assert.match(os,/audio\.loop = true/);
+  assert.match(os,/: 0\.07;/);
 });
 
 test('Browser keeps primary actions visible and moves secondary actions into one menu',()=>{
@@ -27,4 +28,5 @@ test('Browser keeps primary actions visible and moves secondary actions into one
   assert.match(os,/class="browser-menu"/);
   assert.match(os,/More browser actions/);
   assert.doesNotMatch(os,/id="browserProfile"/);
+  assert.doesNotMatch(os,/Open Genesis Tab|browserOpenDirect|openGenesisTab/);
 });

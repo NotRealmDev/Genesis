@@ -1253,7 +1253,7 @@ function genesisGetMusicAudio(){
   const storedVolume = Number(localStorage.getItem("genesisMusicVolume"));
   audio.volume = Number.isFinite(storedVolume)
     ? Math.max(0, Math.min(1, storedVolume))
-    : 0.32;
+    : 0.07;
 
   audio.addEventListener("play", genesisUpdateMusicUI);
   audio.addEventListener("pause", genesisUpdateMusicUI);
@@ -1454,7 +1454,6 @@ function closeWindow(appId,win){
     if(browserState.loadTimer) clearTimeout(browserState.loadTimer);
     if(browserState.settleTimer) clearTimeout(browserState.settleTimer);
     Object.assign(browserState,{
-      currentPopout:"",
       prismFrame:null,
       prismError:"",
       loadTimer:null,
@@ -1676,10 +1675,7 @@ function browserHTML(){
       <div class="browser-menu" id="browserMenu">
         <button type="button" id="browserHomeBtn">Home</button>
         <button type="button" id="browserForward">Forward</button>
-        <div class="menu-divider"></div>
-        <button type="button" class="browser-mode embed" id="browserMode">Browsing mode · Inside OS</button>
         <button type="button" id="browserAboutBlank">Open Genesis in About Blank</button>
-        <button type="button" id="browserExternal">Open page in a Genesis tab</button>
       </div>
     </div>
 
@@ -1721,11 +1717,10 @@ function browserHTML(){
       <div class="browser-open-card" id="browserOpenCard">
         <div class="inner">
           <div class="globe">◎</div>
-          <h3 id="browserOpenTitle">Opened in Genesis tab</h3>
+          <h3 id="browserOpenTitle">Repairing Genesis Browser</h3>
           <p id="browserOpenText"></p>
           <div class="browser-open-actions">
-            <a id="browserOpenDirect" href="#" target="_blank" rel="noopener">Open Genesis Tab</a>
-            <button id="browserTryInside" type="button">Try Inside OS</button>
+            <button id="browserTryInside" type="button">Retry Proxy</button>
           </div>
         </div>
       </div>
@@ -1759,9 +1754,7 @@ const savedBrowserState=loadSavedBrowserState();
 const browserState={
   history:savedBrowserState.history,
   index:savedBrowserState.index,
-  mode:"proxy",
   profile:"brave",
-  currentPopout:"",
   prismFrame:null,
   prismError:"",
   loadTimer:null,
@@ -1818,6 +1811,37 @@ function captureBrowserLocation(win=openWindows.browser){
   return value;
 }
 
+let genesisPrismRuntimePromise=null;
+function genesisPrismRuntimeReady(){return !!(window.$scramjet&&window.$scramjetController?.Controller&&window.LibcurlTransport&&typeof window.GenesisPrism?.createFrame==="function")}
+function waitForGenesisPrismRuntime(timeoutMs=1800){
+  const started=Date.now();return new Promise(resolve=>{const check=()=>{if(genesisPrismRuntimeReady())return resolve(true);if(Date.now()-started>=timeoutMs)return resolve(false);setTimeout(check,40)};check()});
+}
+function loadGenesisRuntimeScript(src,build){
+  return new Promise((resolve,reject)=>{
+    const script=document.createElement("script"),timer=setTimeout(()=>finish(new Error(src+" timed out")),12000);let settled=false;
+    function finish(error){if(settled)return;settled=true;clearTimeout(timer);script.onload=null;script.onerror=null;if(error){script.remove();reject(error)}else resolve()}
+    const url=new URL(src,location.href);url.searchParams.set("build",build);script.src=url.href;script.async=false;script.onload=()=>finish();script.onerror=()=>finish(new Error("Could not reload "+src));document.head.appendChild(script);
+  });
+}
+async function ensureGenesisPrismRuntime(status){
+  if(genesisPrismRuntimeReady())return window.GenesisPrism;
+  if(genesisPrismRuntimePromise)return genesisPrismRuntimePromise;
+  genesisPrismRuntimePromise=(async()=>{
+    if(status)status.textContent="Preparing Genesis proxy runtime…";
+    if(await waitForGenesisPrismRuntime())return window.GenesisPrism;
+    const dependencies=[
+      [()=>window.$scramjet,"prism.js"],
+      [()=>window.$scramjetController?.Controller,"prism.api.js"],
+      [()=>window.LibcurlTransport,"libby.js"],
+      [()=>window.GenesisPrism?.createFrame,"genesis-prism.js"]
+    ];
+    for(const [ready,src] of dependencies){if(!ready())await loadGenesisRuntimeScript(src,"inside-os-r18")}
+    if(!genesisPrismRuntimeReady())throw new Error("Genesis proxy runtime did not initialize after reload.");
+    return window.GenesisPrism;
+  })().catch(error=>{genesisPrismRuntimePromise=null;throw error});
+  return genesisPrismRuntimePromise;
+}
+
 async function ensureGenesisPrism(win){
   if(browserState.prismFrame) return browserState.prismFrame;
   const status=win?.querySelector("#browserStatus");
@@ -1826,7 +1850,8 @@ async function ensureGenesisPrism(win){
   if(openWindows.browser!==win) throw new Error("Browser window was closed.");
   try{
     if(status) status.textContent="Starting Scramjet + Wisp proxy…";
-    const prismFrame=await window.GenesisPrism.createFrame(frame);
+    const runtime=await ensureGenesisPrismRuntime(status);
+    const prismFrame=await runtime.createFrame(frame);
     if(openWindows.browser!==win) throw new Error("Browser window was closed.");
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
@@ -1847,12 +1872,9 @@ function initBrowser(win){
   const forward=win.querySelector("#browserForward");
   const reload=win.querySelector("#browserReload");
   const home=win.querySelector("#browserHomeBtn");
-  const external=win.querySelector("#browserExternal");
   const aboutBlank=win.querySelector("#browserAboutBlank");
-  const mode=win.querySelector("#browserMode");
   const more=win.querySelector("#browserMore");
   const menu=win.querySelector("#browserMenu");
-  const openDirect=win.querySelector("#browserOpenDirect");
   const tryInside=win.querySelector("#browserTryInside");
   const frame=win.querySelector("#browserFrame");
   const officialFrame=win.querySelector("#browserOfficialFrame");
@@ -1889,11 +1911,6 @@ function initBrowser(win){
   more.onclick=event=>{event.stopPropagation();const open=menu.classList.toggle("open");more.setAttribute("aria-expanded",String(open))};
   win.addEventListener("click",event=>{if(!event.target.closest("#browserMenu,#browserMore")){menu.classList.remove("open");more.setAttribute("aria-expanded","false")}else if(event.target.closest("#browserMenu button")){menu.classList.remove("open");more.setAttribute("aria-expanded","false")}});
 
-  external.onclick=()=>{
-    const current=browserState.history[browserState.index];
-    if(current && current!=="os://home") openGenesisTab(current);
-  };
-
   aboutBlank.onclick=()=>{
     const opened=openAboutBlankShell(new URL("os.html",location.href).href,"Genesis");
     status.textContent=opened
@@ -1901,38 +1918,11 @@ function initBrowser(win){
       :"About Blank was blocked · allow this popup and try again";
   };
 
-  mode.onclick=()=>{
-    browserState.mode=browserState.mode==="tab"?"proxy":"tab";
-    mode.textContent=browserState.mode==="tab"?"Browsing mode · Genesis Tab":"Browsing mode · Inside OS";
-    mode.classList.toggle("embed",browserState.mode==="proxy");
-    status.textContent=browserState.mode==="tab"
-      ?"Genesis Tab mode · websites open in a dedicated proxy tab"
-      :(browserState.prismError?"Embedded browser unavailable · "+browserState.prismError:"Inside OS mode · ready");
-  };
-
-  openDirect.addEventListener("click",event=>{
-    const current=browserState.history[browserState.index];
-    if(!current || current==="os://home") return;
-    try{
-      const launchUrl=createGenesisTabLaunch(current);
-      openDirect.href=launchUrl;
-      const opened=openAboutBlankShell(launchUrl,"Genesis Browser");
-      if(opened){
-        event.preventDefault();
-        status.textContent="Opened website in About Blank";
-      }
-    }catch(err){
-      event.preventDefault();
-      status.textContent="Could not prepare a Genesis browser tab";
-    }
-  });
-
   tryInside.onclick=()=>{
     const current=browserState.history[browserState.index];
     if(current && current!=="os://home"){
-      browserState.mode="proxy";
-      mode.textContent="Browsing mode · Inside OS";
-      mode.classList.add("embed");
+      browserState.prismFrame=null;
+      browserState.prismError="";
       browserNavigate(current,false,true,{forceProxy:true});
     }
   };
@@ -1993,9 +1983,7 @@ function normalizeURL(raw){
 function getCompatibilityRoute(url){
   let label="website";
   try{label=new URL(url).hostname.replace(/^www\./,"")||"website";}catch{}
-  // Every normal address follows the same Scramjet + Wisp pipeline. The
-  // dedicated Genesis Tab button remains available when a full-size view is
-  // better, but site-specific direct embeds no longer bypass Scramjet.
+  // Every normal address follows the same embedded Scramjet + Wisp pipeline.
   return{kind:"proxy",label,transport:"wisp"};
 }
 
@@ -2074,8 +2062,6 @@ function loadOfficialEmbed(win,url,route){
   status.textContent="Opening "+route.label+" player inside Genesis…";
 }
 
-const GENESIS_BROWSER_LAUNCH_PREFIX="genesisBrowserLaunch:";
-
 function openAboutBlankShell(destination,title="Genesis"){
   let opened=null;
   try{
@@ -2109,98 +2095,6 @@ function openAboutBlankShell(destination,title="Genesis"){
     console.error("Genesis could not create the About Blank shell.",err);
     return null;
   }
-}
-
-function createGenesisTabLaunch(url){
-  const now=Date.now();
-  try{
-    for(let i=localStorage.length-1;i>=0;i--){
-      const key=localStorage.key(i);
-      if(!key?.startsWith(GENESIS_BROWSER_LAUNCH_PREFIX)) continue;
-      let entry=null;
-      try{entry=JSON.parse(localStorage.getItem(key)||"null");}catch{}
-      if(!entry?.expires || entry.expires<=now) localStorage.removeItem(key);
-    }
-  }catch{}
-
-  let token="";
-  try{
-    token=crypto.randomUUID?.()||"";
-    if(!token){
-      const bytes=new Uint8Array(16);
-      crypto.getRandomValues(bytes);
-      token=[...bytes].map(value=>value.toString(16).padStart(2,"0")).join("");
-    }
-  }catch{
-    token=Date.now().toString(36)+Math.random().toString(36).slice(2);
-  }
-
-  localStorage.setItem(GENESIS_BROWSER_LAUNCH_PREFIX+token,JSON.stringify({
-    url,
-    expires:now+15*60*1000
-  }));
-
-  const launch=new URL("browser-tab.html",location.href);
-  launch.hash=token;
-  return launch.href;
-}
-
-function openGenesisTab(url,route={}){
-  const win=openWindows.browser;
-  const status=win?.querySelector("#browserStatus");
-  let launchUrl="";
-  try{
-    launchUrl=createGenesisTabLaunch(url);
-  }catch(err){
-    if(status) status.textContent="Could not prepare a Genesis browser tab";
-    showBrowserOpenCard(url,true,{
-      ...route,
-      title:"Could not prepare Genesis Tab",
-      message:err?.message||"Browser storage is unavailable."
-    },"");
-    return;
-  }
-
-  let opened=null;
-  try{
-    opened=openAboutBlankShell(launchUrl,"Genesis Browser");
-  }catch{}
-
-  if(opened){
-    browserState.currentPopout=url;
-    if(status)status.textContent="Opened "+(route.label||"website")+" in About Blank";
-    showBrowserOpenCard(url,false,route,launchUrl);
-  }else{
-    if(status)status.textContent="Select Open Genesis Tab to continue";
-    showBrowserOpenCard(url,true,route,launchUrl);
-  }
-}
-
-function showBrowserOpenCard(url,blocked=false,route={},launchUrl=""){
-  const win=openWindows.browser;if(!win)return;
-  const frame=win.querySelector("#browserFrame");
-  const officialFrame=win.querySelector("#browserOfficialFrame");
-  const home=win.querySelector("#browserHome");
-  const card=win.querySelector("#browserOpenCard");
-  const title=win.querySelector("#browserOpenTitle");
-  const text=win.querySelector("#browserOpenText");
-  const direct=win.querySelector("#browserOpenDirect");
-  const tryInside=win.querySelector("#browserTryInside");
-
-  browserState.frameMode="popout";
-  browserState.currentRoute={...route,launchUrl};
-  frame.style.display="none";
-  if(officialFrame)officialFrame.style.display="none";
-  home.classList.add("hidden");
-  card.classList.add("show");
-  title.textContent=route.title || (blocked?"Open Genesis Tab":"Opened in Genesis tab");
-  text.textContent=route.message || (blocked
-    ?"Select Open Genesis Tab to open this address in the dedicated proxy browser."
-    :"The website is open in a clean About Blank Genesis tab.");
-  direct.href=launchUrl||"os.html";
-  direct.style.display=launchUrl?"":"none";
-  direct.textContent=route.label?"Open "+route.label+" in Genesis Tab":"Open Genesis Tab";
-  tryInside.style.display=route.canTryInside===false?"none":"";
 }
 
 function repairEmbeddedPage(win){
@@ -2288,20 +2182,8 @@ function showPrismError(message){
   card.classList.add("show");
   browserState.frameMode="error";
   title.textContent="Scramjet browser could not start";
-  text.textContent=message+" Open it in a Genesis Tab, or select Try Inside OS to retry.";
-  const current=browserState.history[browserState.index];
-  const direct=win.querySelector("#browserOpenDirect");
+  text.textContent=message+" Genesis will reload the proxy runtime when you retry.";
   const tryInside=win.querySelector("#browserTryInside");
-  if(direct && current && current!=="os://home"){
-    try{
-      direct.href=createGenesisTabLaunch(current);
-      direct.style.display="";
-    }catch{
-      direct.href="os.html";
-      direct.style.display="none";
-    }
-    direct.textContent="Open Genesis Tab";
-  }
   if(tryInside) tryInside.style.display="";
   status.textContent="Embedded browser unavailable";
 }
@@ -2346,12 +2228,6 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
     return;
   }
 
-  if(browserState.mode==="tab"){
-    openGenesisTab(url,{label:"website",canTryInside:true});
-    updateBrowserButtons();
-    return;
-  }
-
   const route=options.forceProxy?{kind:"proxy",label:"website"}:getCompatibilityRoute(url);
   browserState.currentRoute=route;
   if(route.kind==="official"){
@@ -2359,12 +2235,6 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
     updateBrowserButtons();
     return;
   }
-  if(route.kind==="popout"){
-    openGenesisTab(url,route);
-    updateBrowserButtons();
-    return;
-  }
-
   try{
     const prismFrame=await ensureGenesisPrism(win);
     if(navigationId!==browserState.navigationId || openWindows.browser!==win) return;
@@ -2398,11 +2268,6 @@ async function browserReload(){
     return;
   }
 
-  if(browserState.mode==="tab"){
-    openGenesisTab(current);
-    return;
-  }
-
   if(browserState.frameMode==="official" && browserState.currentRoute?.src){
     const route=browserState.currentRoute;
     const fallbacks=Array.isArray(route.fallbacks)?route.fallbacks:[];
@@ -2417,11 +2282,6 @@ async function browserReload(){
     }else{
       loadOfficialEmbed(win,current,route);
     }
-    return;
-  }
-
-  if(browserState.frameMode==="popout"){
-    openGenesisTab(current,browserState.currentRoute||{});
     return;
   }
 

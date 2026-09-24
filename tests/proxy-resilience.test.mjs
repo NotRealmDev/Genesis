@@ -80,6 +80,13 @@ test("all ordinary addresses use the Scramjet + Wisp route",()=>{
   assert.match(os,/loads every website through the same <b>Scramjet \+ Wisp<\/b> browser/);
 });
 
+test("Inside OS repairs missing proxy runtime files instead of offering a separate tab",()=>{
+  assert.match(os,/function ensureGenesisPrismRuntime\(/);
+  assert.match(os,/loadGenesisRuntimeScript\(src,"inside-os-r18"\)/);
+  assert.match(os,/Genesis proxy runtime did not initialize after reload/);
+  assert.doesNotMatch(os,/Open Genesis Tab|openGenesisTab|browserOpenDirect/);
+});
+
 test("transport keeps one Wisp route for signed media and retries safely",()=>{
   assert.match(prismSource,/new this\.Transport\(\{wisp:websocket\}\)/);
   assert.match(prismSource,/class ResilientWispTransport/);
