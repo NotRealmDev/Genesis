@@ -4,10 +4,9 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 const source=readFileSync(new URL('../genesis-browser-extras.js',import.meta.url),'utf8');
 function fixture(){const context={URL,console,location:{pathname:'/test'},document:{readyState:'complete'},localStorage:{getItem:()=>null}};context.window=context;vm.createContext(context);vm.runInContext(source,context);return context.GenesisBrowserExtras}
-test('Roblox routes separately to the supplied now.gg player',()=>{
-  const api=fixture();for(const input of ['roblox','roblox.com','https://www.roblox.com/games/123'])assert.equal(api.routeRoblox(input),'https://now.gg/apps/a/19900/b.html');
-  assert.equal(api.routeRoblox('https://play.geforcenow.com/'),'https://play.geforcenow.com/');
-  assert.equal(api.routeRoblox('https://roblox.com.example.com/'),'https://roblox.com.example.com/');
+test('Browser no longer rewrites Roblox addresses or installs a now.gg shortcut',()=>{
+  assert.doesNotMatch(source,/now\.gg|routeRoblox|textContent='Roblox'/i);
+  assert.match(source,/navigate\.call\(this,url,/);
 });
 test('Bookmarks reject executable schemes, deduplicate and cap saved entries',()=>{
   const api=fixture();assert.equal(api.validUrl('javascript:alert(1)'), '');assert.equal(api.validUrl('data:text/html,test'),'');
@@ -16,6 +15,13 @@ test('Bookmarks reject executable schemes, deduplicate and cap saved entries',()
 });
 test('Aurora customization is clamped and survives malformed storage',()=>{
   const api=fixture();const value=api.cleanTheme({enabled:false,hue:999,second:-20,brightness:900,speed:NaN});assert.equal(value.enabled,false);assert.equal(value.hue,360);assert.equal(value.second,0);assert.equal(value.brightness,100);assert.equal(value.speed,35);assert.equal(api.cleanTheme(null).enabled,true);
+});
+test('Browser-only sounds are optional and synthesized without audio files',()=>{
+  assert.match(source,/genesisBrowserSoundsV1/);assert.match(source,/createOscillator\(\)/);assert.match(source,/id='genesisBrowserSound'/);
+  assert.doesNotMatch(source,/new Audio\(/);
+});
+test('Browser has a quick fullscreen control with a visible exit state',()=>{
+  assert.match(source,/id='genesisBrowserFullscreen'/);assert.match(source,/requestFullscreen/);assert.match(source,/exitFullscreen/);assert.match(source,/active\?'×':'⛶'/);
 });
 test('Published C–S Games catalog contains no dandy entries',()=>{
   const catalog=readFileSync(new URL('../games-c-s.js',import.meta.url),'utf8');assert.doesNotMatch(catalog,/dandy/i);

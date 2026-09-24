@@ -63,3 +63,11 @@ test("announcements can read directly when the optional RPC is absent",()=>{
   assert.match(announcements,/return await latestFromTable\(\)/);
   assert.match(os,/Announcements/);
 });
+
+test("retired VM and Test apps are not loaded and About OS reports 1.232",()=>{
+  const config=readFileSync(new URL("../supabase-config.js",import.meta.url),"utf8");
+  assert.doesNotMatch(config,/genesis-vm\.js|genesis-test\.js|loadGenesisAdminVm|loadAdminTest/);
+  assert.doesNotMatch(os,/data-app="(?:vm|test)"/i);
+  assert.match(os,/Version 1\.232 · Glass Desktop Environment/);
+  assert.match(os,/<span>OS<\/span><span>1\.232<\/span>/);
+});

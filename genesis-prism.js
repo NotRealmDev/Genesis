@@ -7,7 +7,8 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-18-wisp-startup-r16";
+  const BUILD_ID = "2026-09-23-wisp-preference-r17";
+  const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
 
   const currentScript = document.currentScript;
@@ -56,14 +57,22 @@
 
   function getWispUrls(){
     const urls=[];
+    let custom="";
     try{
-      const custom=normalizeWispUrl(localStorage.getItem("genesisWispUrl"));
+      custom=normalizeWispUrl(localStorage.getItem("genesisWispUrl"));
       if(custom) urls.push(custom);
     }catch{}
     for(const value of DEFAULT_WISP_URLS){
       const normalized=normalizeWispUrl(value);
       if(normalized && !urls.includes(normalized)) urls.push(normalized);
     }
+    // Start with the endpoint that actually worked on this device last time.
+    // Different networks often have very different WebSocket routing latency.
+    try{
+      const previous=normalizeWispUrl(localStorage.getItem(LAST_WISP_KEY));
+      const index=urls.indexOf(previous);
+      if(index>0 && !custom)urls.splice(0,0,urls.splice(index,1)[0]);
+    }catch{}
     return urls;
   }
 
@@ -440,6 +449,7 @@
           this.activeIndex=index;
           this.officialVerified=result.verified;
           this.ready=true;
+          try{localStorage.setItem(LAST_WISP_KEY,this.activeWisp)}catch{}
           this.emit("ready");
           return;
         }catch(err){
