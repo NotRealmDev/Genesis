@@ -16,12 +16,11 @@ test('Bookmarks reject executable schemes, deduplicate and cap saved entries',()
 test('Aurora customization is clamped and survives malformed storage',()=>{
   const api=fixture();const value=api.cleanTheme({enabled:false,hue:999,second:-20,brightness:900,speed:NaN});assert.equal(value.enabled,false);assert.equal(value.hue,360);assert.equal(value.second,0);assert.equal(value.brightness,100);assert.equal(value.speed,35);assert.equal(api.cleanTheme(null).enabled,true);
 });
-test('Browser-only sounds are optional and synthesized without audio files',()=>{
-  assert.match(source,/genesisBrowserSoundsV1/);assert.match(source,/createOscillator\(\)/);assert.match(source,/id='genesisBrowserSound'/);
-  assert.doesNotMatch(source,/new Audio\(/);
+test('Browser typing uses the global UI sound engine without a mute button',()=>{
+  assert.match(source,/GenesisUI\?\.sound\?\.\('key'\)/);assert.doesNotMatch(source,/genesisBrowserSoundsV1|genesisBrowserSound|Toggle browser sounds/);
 });
 test('Browser has a quick fullscreen control with a visible exit state',()=>{
-  assert.match(source,/id='genesisBrowserFullscreen'/);assert.match(source,/requestFullscreen/);assert.match(source,/exitFullscreen/);assert.match(source,/active\?'×':'⛶'/);
+  assert.match(source,/id='genesisBrowserFullscreen'/);assert.match(source,/requestFullscreen/);assert.match(source,/exitFullscreen/);assert.match(source,/active\?'Exit fullscreen':'Fullscreen browser'/);
 });
 test('Published C–S Games catalog contains no dandy entries',()=>{
   const catalog=readFileSync(new URL('../games-c-s.js',import.meta.url),'utf8');assert.doesNotMatch(catalog,/dandy/i);
