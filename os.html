@@ -1990,6 +1990,8 @@ function normalizeURL(raw){
 }
 
 function getCompatibilityRoute(url){
+  const youtubePlayer=youtubePlayerFallbackRoute(url,"YouTube videos use the official player inside Genesis for reliable playback.");
+  if(youtubePlayer)return youtubePlayer;
   let label="website";
   try{label=new URL(url).hostname.replace(/^www\./,"")||"website";}catch{}
   // Every normal address follows the same embedded Scramjet + Wisp pipeline.
@@ -2237,7 +2239,8 @@ async function browserNavigate(raw,push,fromUser=false,options={}){
     return;
   }
 
-  const route=options.forceProxy?{kind:"proxy",label:"website"}:getCompatibilityRoute(url);
+  const youtubePlayer=youtubePlayerFallbackRoute(url,"YouTube videos use the official player inside Genesis for reliable playback.");
+  const route=youtubePlayer||(options.forceProxy?{kind:"proxy",label:"website"}:getCompatibilityRoute(url));
   browserState.currentRoute=route;
   if(route.kind==="official"){
     loadOfficialEmbed(win,url,route);

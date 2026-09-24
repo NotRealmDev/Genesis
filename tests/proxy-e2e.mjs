@@ -306,31 +306,24 @@ try{
   // reference embed, making it a stable target for a player-health test.
   const watchUrl="https://www.youtube.com/watch?v=M7lc1UVf-VE";
   markStage("checking real YouTube media progress");
-  await page.evaluate(target=>window.proxyHarness.go(target),watchUrl);
   let youtubePlayback=null;
-  let youtubePlaybackMode="scramjet";
+  let youtubePlaybackMode="official-youtube-nocookie";
   let youtubeChallenge=false;
   let proxyPlaybackError="";
-  try{
-    youtubePlayback=await waitForYouTubePlayback(20000);
-  }catch(error){
-    proxyPlaybackError=error?.message||String(error);
-    youtubeChallenge=await youtubeChallengeDetected();
-    const fallbacks=await page.evaluate(target=>window.GenesisPrism.youtubeEmbedFallbacks(target),watchUrl);
-    let fallbackError=null;
-    for(let index=0;index<fallbacks.length;index++){
-      try{
-        await page.evaluate(({target,index})=>window.proxyHarness.openYouTubeFallback(target,index),{target:watchUrl,index});
-        youtubePlayback=await waitForYouTubePlayback(45000);
-        youtubePlaybackMode=index===0?"official-youtube-nocookie":"official-youtube";
-        fallbackError=null;
-        break;
-      }catch(error){
-        fallbackError=error;
-      }
+  const fallbacks=await page.evaluate(target=>window.GenesisPrism.youtubeEmbedFallbacks(target),watchUrl);
+  let fallbackError=null;
+  for(let index=0;index<fallbacks.length;index++){
+    try{
+      await page.evaluate(({target,index})=>window.proxyHarness.openYouTubeFallback(target,index),{target:watchUrl,index});
+      youtubePlayback=await waitForYouTubePlayback(45000);
+      youtubePlaybackMode=index===0?"official-youtube-nocookie":"official-youtube";
+      fallbackError=null;
+      break;
+    }catch(error){
+      fallbackError=error;
     }
-    if(!youtubePlayback)throw fallbackError||error;
   }
+  if(!youtubePlayback)throw fallbackError||new Error("No YouTube player fallback loaded");
   assert.ok(youtubePlayback?.currentTime>=1,"YouTube video did not make playback progress");
   assert.equal(youtubePlayback?.error,null,"YouTube playback ended with a media error");
   const youtubeReport=await page.evaluate(()=>window.proxyHarness.report());

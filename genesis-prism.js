@@ -86,6 +86,10 @@
       return looksLikeSearch ? braveSearch(raw) : "https://"+raw;
     };
     const route = (url) => {
+      const fallbacks=youtubeEmbedFallbacks(url);
+      if(fallbacks.length){
+        return{kind:"official",label:"YouTube",src:fallbacks[0],fallbacks,fallbackIndex:0,logicalUrl:url};
+      }
       let label="website";
       try{ label=new URL(url).hostname.replace(/^www\./,"") || "website"; }catch{}
       return {kind:"proxy",label,transport:"wisp"};

@@ -64,7 +64,7 @@ test("Genesis uses Scramjet's native URL codec exactly",()=>{
   assert.doesNotThrow(()=>new vm.Script("("+context.GenesisPrism.codec.decode.toString()+")"));
 });
 
-test("all ordinary addresses use the Scramjet + Wisp route",()=>{
+test("ordinary pages use Scramjet while YouTube watch pages use the reliable in-Genesis player",()=>{
   const context=loadPrismShell();
   for(const url of [
     "https://www.youtube.com/",
@@ -76,6 +76,9 @@ test("all ordinary addresses use the Scramjet + Wisp route",()=>{
     assert.equal(route.kind,"proxy",url);
     assert.equal(route.transport,"wisp",url);
   }
+  const watch=context.getCompatibilityRoute("https://www.youtube.com/watch?v=jNQXAC9IVRw");
+  assert.equal(watch.kind,"official");
+  assert.match(watch.src,/youtube-nocookie\.com\/embed\/jNQXAC9IVRw/);
   assert.match(context.browserSearchURL("browser test"),/^https:\/\/search\.brave\.com\/search\?q=/);
   assert.match(os,/loads every website through the same <b>Scramjet \+ Wisp<\/b> browser/);
 });
