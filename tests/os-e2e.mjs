@@ -31,13 +31,23 @@ await new Promise(resolve=>server.listen(4174,"127.0.0.1",resolve));
 
 const browser=await chromium.launch({
   headless:process.env.GENESIS_TEST_HEADFUL!=="1",
-  args:["--autoplay-policy=no-user-gesture-required"]
+  args:["--autoplay-policy=no-user-gesture-required","--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]
 });
 const page=await browser.newPage({viewport:{width:1440,height:900}});
 const announcementTopic=`genesis-announcements-e2e-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;
 const logs=[];
 page.on("console",message=>logs.push(message.type()+": "+message.text()));
 page.on("pageerror",error=>logs.push("pageerror: "+error.message));
+const stubDeviceId=async(target,id)=>{
+  for(const rpc of ["genesis_register_device","genesis_check_device"]){
+    await target.route("**/rest/v1/rpc/"+rpc,route=>route.fulfill({
+      status:200,
+      contentType:"application/json",
+      body:JSON.stringify([{display_id:id,active:true}])
+    }));
+  }
+};
+await stubDeviceId(page,527);
 
 try{
   await page.addInitScript(topic=>{
@@ -50,14 +60,17 @@ try{
   await page.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
 
-  const receiver=await browser.newPage({viewport:{width:1200,height:760}});
+  const receiverContext=await browser.newContext({viewport:{width:1200,height:760}});
+  const receiver=await receiverContext.newPage();
   receiver.on("console",message=>logs.push("receiver "+message.type()+": "+message.text()));
   receiver.on("pageerror",error=>logs.push("receiver pageerror: "+error.message));
+  await stubDeviceId(receiver,528);
   await receiver.addInitScript(topic=>{
     window.GENESIS_ANNOUNCEMENT_TOPIC=topic;
     localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
     localStorage.setItem("genesisDisplayId","528");
     localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
+    localStorage.setItem("genesisMessagesTutorialComplete","1");
   },announcementTopic);
   await receiver.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
   await Promise.all([
@@ -75,8 +88,7 @@ try{
     const banner=document.getElementById("genesisGlobalAnnouncement");
     return banner?.dataset.announcementId===value.id && banner.classList.contains("show") && banner.textContent===value.message;
   },announcement,{timeout:15000});
-  await receiver.close();
-
+  await receiverContext.close();
   await page.evaluate(()=>openApp("messages"));
   await page.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:15000});
 
@@ -117,12 +129,75 @@ try{
   assert.match(await page.locator("#gmThread").innerText(),/Saved draft check/,"saved message did not survive reopening");
 
   await page.evaluate(()=>{
-    const replies=["Study Hub",""];
+    const replies=["Study Hub","528"];
     window.prompt=()=>replies.shift()??"";
     GenesisMessages.createServerPrompt();
   });
   await page.waitForFunction(()=>document.querySelector("#gmNavTitle")?.textContent==="Study Hub",null,{timeout:5000});
   assert.match(await page.locator("#gmContactList").innerText(),/general/,"new server did not create #general");
+
+  await page.evaluate(()=>GenesisMessages.openServerSettings());
+  await page.waitForSelector("#gmServerModal:not([hidden])",{state:"visible",timeout:5000});
+  await page.fill("#gmServerName","Study Lounge");
+  await page.fill("#gmServerDescription","Homework, games, and voice chat");
+  await page.fill("#gmServerIcon","✨");
+  await page.selectOption("#gmServerAccent","cyan");
+  await page.click("#gmServerModal .primary");
+  await page.waitForFunction(()=>document.querySelector("#gmNavTitle")?.textContent==="Study Lounge",null,{timeout:5000});
+  assert.match(await page.locator("#gmIdentity").innerText(),/Homework, games, and voice chat/,"server description was not rendered");
+
+  await page.evaluate(()=>{
+    window.prompt=()=>"Lounge";
+    GenesisMessages.createVoiceChannelPrompt();
+  });
+  await page.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("lounge"),null,{timeout:5000});
+  assert.match(await page.locator("#gmContactList").innerText(),/lounge/,"voice channel was not rendered");
+
+  const voiceServer=await page.evaluate(id=>JSON.parse(localStorage.getItem("genesisMessagesServers:"+id)||"[]")[0],myId);
+  assert.ok(voiceServer?.channels?.some(channel=>channel.type==="voice"),"voice channel was not persisted");
+  assert.ok(voiceServer?.members?.includes("528"),"receiver was not included in server membership");
+
+  const voiceContext=await browser.newContext({viewport:{width:1200,height:760}});
+  const voiceReceiver=await voiceContext.newPage();
+  voiceReceiver.on("console",message=>logs.push("voice receiver "+message.type()+": "+message.text()));
+  voiceReceiver.on("pageerror",error=>logs.push("voice receiver pageerror: "+error.message));
+  await stubDeviceId(voiceReceiver,528);
+  await voiceReceiver.addInitScript(server=>{
+    localStorage.setItem("genesisLogin",JSON.stringify({user:"VoiceUser",role:"user",expires:Date.now()+3600000}));
+    localStorage.setItem("genesisDisplayId","528");
+    localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
+    localStorage.setItem("genesisMessagesTutorialComplete","1");
+    localStorage.setItem("genesisMessagesServers:528",JSON.stringify([server]));
+    localStorage.setItem("genesisMessagesView:528",JSON.stringify({mode:"server",server:server.id,channel:server.channels.find(item=>item.type==="voice").id}));
+  },voiceServer);
+  await voiceReceiver.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
+  await voiceReceiver.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
+  await voiceReceiver.evaluate(()=>openApp("messages"));
+  await voiceReceiver.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:10000});
+  await voiceReceiver.waitForFunction(()=>document.querySelectorAll("#gmServerRail .gm-server-icon").length>0,null,{timeout:10000});
+  const voiceIds={sid:voiceServer.id,cid:voiceServer.channels.find(channel=>channel.type==="voice").id};
+  await voiceReceiver.evaluate(({sid,cid})=>{GenesisMessages.selectServer(sid);GenesisMessages.selectChannel(cid)},voiceIds);
+  await voiceReceiver.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.toLowerCase().includes("lounge"),null,{timeout:10000});
+
+  await page.click(".gm-join-voice");
+  await page.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
+  await voiceReceiver.click(".gm-join-voice");
+  await voiceReceiver.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
+  await Promise.all([
+    page.waitForSelector("#gmVoiceAudio-528",{state:"attached",timeout:20000}),
+    voiceReceiver.waitForSelector("#gmVoiceAudio-527",{state:"attached",timeout:20000})
+  ]);
+  await page.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
+  await voiceReceiver.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
+  assert.match(await page.locator("#gmThread").innerText(),/VoiceUser|Genesis ID 528/,"remote voice participant was not shown");
+
+  await page.click("#gmVoiceDock .danger");
+  await voiceReceiver.click("#gmVoiceDock .danger");
+  await Promise.all([
+    page.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000}),
+    voiceReceiver.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000})
+  ]);
+  await voiceContext.close();
 
   await page.evaluate(()=>{
     window.prompt=()=>"hangout";

@@ -12,12 +12,16 @@
   const VIEW_PREFIX="genesisMessagesView:";
   const TUTORIAL_KEY="genesisMessagesTutorialComplete";
   const SDK_VERSION="2.116.0";
+  const SERVER_ACCENTS=Object.freeze({
+    violet:"#7c6cff",blue:"#4f8cff",cyan:"#35b9cf",green:"#43b581",orange:"#f0a45d",pink:"#e96fb2"
+  });
 
   const state={
     client:null,inbox:null,identity:"",connection:"connecting",
     mode:"dm",selected:"",selectedServer:"",selectedChannel:"",
     contacts:[],history:{},servers:[],serverHistory:{},
-    window:null,tutorialIndex:-1,tutorialTimer:null,tutorialResize:null,retryTimer:null
+    window:null,tutorialIndex:-1,tutorialTimer:null,tutorialResize:null,retryTimer:null,
+    voice:{serverId:"",channelId:"",channel:null,stream:null,peers:new Map(),participants:{},muted:false,joining:false}
   };
 
   const tutorialSteps=[
@@ -70,6 +74,11 @@
   function channelSlug(value){
     return String(value||"").trim().toLowerCase().replace(/[^a-z0-9 -]/g,"").replace(/\s+/g,"-").replace(/-+/g,"-").slice(0,28);
   }
+  function serverAccent(value){return SERVER_ACCENTS[value]?value:"violet"}
+  function serverIcon(value){
+    return Array.from(String(value||"").trim()).slice(0,2).join("");
+  }
+  function voiceTopic(sid,cid){return "genesis-voice-"+serverId(sid)+"-"+serverId(cid)}
   function normalizeServer(raw){
     if(!raw||typeof raw!=="object")return null;
     const id=serverId(raw.id);
@@ -81,13 +90,24 @@
     for(const item of Array.isArray(raw.channels)?raw.channels:[]){
       const cid=serverId(item?.id)||channelSlug(item?.name);
       const cname=channelSlug(item?.name||cid);
-      if(cid&&cname&&!channels.some(channel=>channel.id===cid))channels.push({id:cid,name:cname});
+      const type=item?.type==="voice"?"voice":"text";
+      if(cid&&cname&&!channels.some(channel=>channel.id===cid))channels.push({id:cid,name:cname,type});
     }
-    if(!channels.length)channels.push({id:"general",name:"general"});
-    return {id,name,owner,members,channels,createdAt:String(raw.createdAt||new Date().toISOString())};
+    if(!channels.some(channel=>channel.type==="text"))channels.unshift({id:"general",name:"general",type:"text"});
+    return {
+      id,name,owner,members,channels,
+      description:String(raw.description||"").trim().slice(0,120),
+      icon:serverIcon(raw.icon),
+      accent:serverAccent(raw.accent),
+      createdAt:String(raw.createdAt||new Date().toISOString())
+    };
   }
   function publicServer(server){
-    return {id:server.id,name:server.name,owner:server.owner,members:server.members.slice(),channels:server.channels.map(c=>({id:c.id,name:c.name})),createdAt:server.createdAt};
+    return {
+      id:server.id,name:server.name,owner:server.owner,members:server.members.slice(),
+      channels:server.channels.map(c=>({id:c.id,name:c.name,type:c.type==="voice"?"voice":"text"})),
+      description:server.description||"",icon:server.icon||"",accent:serverAccent(server.accent),createdAt:server.createdAt
+    };
   }
 
   function loadIdentity(id=currentId()){
@@ -249,6 +269,7 @@
           '<div class="gm-add-status" id="gmAddStatus"></div>'+
         '</div>'+
         '<div class="gm-contact-list" id="gmContactList"></div>'+
+        '<div class="gm-voice-dock" id="gmVoiceDock" hidden></div>'+
         '<div class="gm-userbar"><span class="gm-user-avatar">'+escapeHTML((currentName().slice(0,2)||"GU").toUpperCase())+'</span><span><strong>'+escapeHTML(currentName())+'</strong><small>ID '+escapeHTML(id)+'</small></span><span class="gm-status-dot"></span></div>'+
       '</aside>'+
       '<section class="gm-chat">'+
@@ -262,6 +283,8 @@
           '<button class="gm-send-btn" id="gmSendButton" type="button" onclick="GenesisMessages.sendCurrent()" disabled title="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l17 8-17 8 3-8-3-8zM7 12h14"/></svg></button>'+
         '</div></div>'+
       '</section>'+
+      '<div class="gm-modal-backdrop" id="gmServerModal" hidden></div>'+
+      '<div class="gm-voice-audio" id="gmVoiceAudio" aria-hidden="true"></div>'+
       '<svg class="gm-tutorial-line" id="gmTutorialLine" aria-hidden="true"><path></path><circle r="4"></circle></svg>'+
       '<div class="gm-tutorial" id="gmTutorial" role="dialog" aria-live="polite"><div class="gm-tutorial-step" id="gmTutorialStep"></div><div class="gm-tutorial-title" id="gmTutorialTitle"></div><div class="gm-tutorial-copy" id="gmTutorialCopy"></div><div class="gm-tutorial-actions"><button type="button" onclick="GenesisMessages.finishTutorial()">Skip</button><button class="primary" id="gmTutorialNext" type="button" onclick="GenesisMessages.nextTutorial()">Next</button></div></div>'+
     '</div>';
@@ -275,7 +298,9 @@
     rail.innerHTML=state.servers.map(function(server){
       const unread=serverUnreadCount(server);
       const initials=server.name.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase()||"G";
-      return '<button class="gm-server-icon '+(state.mode==="server"&&state.selectedServer===server.id?"active":"")+'" type="button" onclick="GenesisMessages.selectServer(\''+escapeHTML(server.id)+'\')" title="'+escapeHTML(server.name)+'"><span>'+escapeHTML(initials)+'</span>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</button>';
+      const mark=server.icon||initials;
+      const accent=SERVER_ACCENTS[serverAccent(server.accent)];
+      return '<button class="gm-server-icon '+(state.mode==="server"&&state.selectedServer===server.id?"active":"")+'" style="--server-accent:'+accent+'" type="button" onclick="GenesisMessages.selectServer(\''+escapeHTML(server.id)+'\')" title="'+escapeHTML(server.name)+'"><span>'+escapeHTML(mark)+'</span>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</button>';
     }).join("");
   }
 
@@ -291,12 +316,21 @@
       const server=currentServer();
       if(!server){state.mode="dm";saveView();return renderContacts()}
       if(title)title.textContent=server.name;
-      if(identity)identity.innerHTML='<span class="gm-live-dot"></span><span>'+server.members.length+' member'+(server.members.length===1?"":"s")+'</span>';
+      if(identity)identity.innerHTML='<span class="gm-live-dot"></span><span>'+escapeHTML(server.description||server.members.length+" member"+(server.members.length===1?"":"s"))+'</span>';
       if(add)add.hidden=true;
-      if(actions)actions.innerHTML='<button type="button" onclick="GenesisMessages.inviteToServerPrompt()">Invite</button><button type="button" onclick="GenesisMessages.createChannelPrompt()">＋ Channel</button>';
-      list.innerHTML='<div class="gm-section-label">TEXT CHANNELS</div>'+server.channels.map(function(channel){
+      const owner=server.owner===state.identity;
+      if(actions)actions.innerHTML=owner
+        ? '<button type="button" onclick="GenesisMessages.inviteToServerPrompt()">Invite</button><button type="button" onclick="GenesisMessages.openServerSettings()">Customize</button><button type="button" onclick="GenesisMessages.createChannelPrompt()">＋ Text</button><button type="button" onclick="GenesisMessages.createVoiceChannelPrompt()">＋ Voice</button>'
+        : '';
+      const textChannels=server.channels.filter(channel=>channel.type!=="voice");
+      const voiceChannels=server.channels.filter(channel=>channel.type==="voice");
+      list.innerHTML='<div class="gm-section-label">TEXT CHANNELS</div>'+textChannels.map(function(channel){
         const unread=serverConversation(server.id,channel.id).filter(message=>message.direction==="incoming"&&message.unread).length;
         return '<button class="gm-channel '+(channel.id===state.selectedChannel?"active":"")+'" type="button" onclick="GenesisMessages.selectChannel(\''+escapeHTML(channel.id)+'\')"><span>#</span><strong>'+escapeHTML(channel.name)+'</strong>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</button>';
+      }).join("")+
+      '<div class="gm-section-label gm-voice-label">VOICE CHANNELS</div>'+voiceChannels.map(function(channel){
+        const joined=state.voice.serverId===server.id&&state.voice.channelId===channel.id;
+        return '<button class="gm-channel gm-voice-channel '+(channel.id===state.selectedChannel?"active ":"")+(joined?"joined":"")+'" type="button" onclick="GenesisMessages.selectChannel(\''+escapeHTML(channel.id)+'\')"><span>◖</span><strong>'+escapeHTML(channel.name)+'</strong>'+(joined?'<i>LIVE</i>':'')+'</button>';
       }).join("");
       return;
     }
@@ -368,6 +402,19 @@
         thread.innerHTML='<div class="gm-empty-thread"><div class="gm-empty-orb">#</div><h3>Select a channel</h3></div>';
         updateConnectionUI();return;
       }
+      const composer=document.querySelector(".gm-composer-wrap");
+      if(channel.type==="voice"){
+        if(composer)composer.hidden=true;
+        const joined=state.voice.serverId===server.id&&state.voice.channelId===channel.id&&!!state.voice.channel;
+        const participants=joined?Object.entries(state.voice.participants):[];
+        header.innerHTML='<div class="gm-channel-head"><span>◖</span><div><strong>'+escapeHTML(channel.name)+'</strong><small>'+escapeHTML(server.name)+' · Voice channel</small></div></div><div class="gm-head-pill">'+(joined?"Connected":"Voice")+'</div>';
+        thread.innerHTML='<div class="gm-voice-room"><div class="gm-voice-hero"><div class="gm-voice-orb">◖</div><h2>'+escapeHTML(channel.name)+'</h2><p>'+escapeHTML(server.description||"Talk live with people in this server.")+'</p>'+(joined
+          ? '<div class="gm-voice-actions"><button type="button" onclick="GenesisMessages.toggleVoiceMute()">'+(state.voice.muted?"Unmute microphone":"Mute microphone")+'</button><button class="danger" type="button" onclick="GenesisMessages.leaveVoice()">Disconnect</button></div>'
+          : '<button class="gm-join-voice" type="button" onclick="GenesisMessages.joinVoice()">Join Voice</button>')+'</div>'+
+          '<div class="gm-voice-members"><div class="gm-section-label">IN VOICE</div>'+(participants.length?participants.map(function(entry){const id=entry[0],person=entry[1];return '<div class="gm-voice-person"><span>'+escapeHTML((person.name||id).replace(/\s+/g,"").slice(0,2).toUpperCase())+'</span><strong>'+escapeHTML(person.name||"Genesis ID "+id)+'</strong><small>'+(person.muted?"Muted":"Connected")+'</small></div>'}).join(""):'<div class="gm-voice-empty">'+(joined?"Waiting for someone else to join.":"Join to see who is connected.")+'</div>')+'</div></div>';
+        input.disabled=true;send.disabled=true;updateConnectionUI();return;
+      }
+      if(composer)composer.hidden=false;
       header.innerHTML='<div class="gm-channel-head"><span>#</span><div><strong>'+escapeHTML(channel.name)+'</strong><small>'+escapeHTML(server.name)+' · '+server.members.length+' members · <span id="gmConnectionLabel"></span></small></div></div><div class="gm-head-pill">'+server.members.length+' members</div>';
       const messages=serverConversation(server.id,channel.id);
       thread.innerHTML=messages.length?renderMessageRows(messages,true):'<div class="gm-channel-welcome"><div>#</div><h2>Welcome to #'+escapeHTML(channel.name)+'</h2><p>This is the start of the channel in '+escapeHTML(server.name)+'.</p></div>';
@@ -377,6 +424,7 @@
       return;
     }
 
+    const composer=document.querySelector(".gm-composer-wrap");if(composer)composer.hidden=false;
     const contact=state.contacts.find(item=>item.id===state.selected);
     if(!contact){
       header.innerHTML='<div><strong>Direct Messages</strong><small id="gmConnectionLabel">Connecting…</small></div>';
@@ -391,7 +439,15 @@
     requestAnimationFrame(function(){thread.scrollTop=thread.scrollHeight});
   }
 
-  function renderAll(){renderServerRail();renderContacts();renderConversation();updateBadges()}
+  function renderVoiceDock(){
+    const dock=document.getElementById("gmVoiceDock");if(!dock)return;
+    if(!state.voice.channel){dock.hidden=true;dock.innerHTML="";return}
+    const server=state.servers.find(item=>item.id===state.voice.serverId);
+    const channel=server?.channels.find(item=>item.id===state.voice.channelId);
+    dock.hidden=false;
+    dock.innerHTML='<div><strong>Voice Connected</strong><small>'+escapeHTML(server?.name||"Server")+' · '+escapeHTML(channel?.name||"voice")+'</small></div><button type="button" onclick="GenesisMessages.toggleVoiceMute()" title="Mute">'+(state.voice.muted?"Unmute":"Mute")+'</button><button class="danger" type="button" onclick="GenesisMessages.leaveVoice()" title="Disconnect">×</button>';
+  }
+  function renderAll(){renderServerRail();renderContacts();renderConversation();renderVoiceDock();updateBadges()}
   function updateConnectionUI(){
     const label=document.getElementById("gmConnectionLabel");
     const dots=document.querySelectorAll(".gm-live-dot,.gm-status-dot");
@@ -420,7 +476,9 @@
   function selectChannel(id){
     const server=currentServer(),cid=serverId(id);
     if(!server||!server.channels.some(channel=>channel.id===cid))return;
-    state.mode="server";state.selectedChannel=cid;saveView();markCurrentServerRead();renderAll();
+    state.mode="server";state.selectedChannel=cid;saveView();
+    if(server.channels.find(channel=>channel.id===cid)?.type!=="voice")markCurrentServerRead();
+    renderAll();
     setTimeout(function(){document.getElementById("gmMessageInput")?.focus()},80);
   }
   function markCurrentServerRead(){
@@ -482,7 +540,7 @@
     if(!name)return;
     const invited=String(prompt("Invite Genesis IDs now? Separate IDs with commas. You can leave this blank.")||"").split(",").map(normalizeId).filter(id=>id&&id!==state.identity);
     const id="s-"+uniqueMessageId().replace(/[^a-z0-9]/gi,"").slice(0,18);
-    const server=normalizeServer({id,name,owner:state.identity,members:[state.identity].concat(invited),channels:[{id:"general",name:"general"}],createdAt:new Date().toISOString()});
+    const server=normalizeServer({id,name,owner:state.identity,members:[state.identity].concat(invited),channels:[{id:"general",name:"general",type:"text"}],accent:"violet",description:"",icon:"",createdAt:new Date().toISOString()});
     state.servers.unshift(server);saveServers();
     state.mode="server";state.selectedServer=server.id;state.selectedChannel="general";saveView();renderAll();
     if(state.connection==="live")broadcastServerMeta(server,invited);
@@ -499,13 +557,200 @@
     if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement(fresh.length+" member"+(fresh.length===1?"":"s")+" invited to "+server.name,3200);
   }
   function createChannelPrompt(){
-    const server=currentServer();if(!server)return;
-    const name=channelSlug(prompt("Channel name")||"");
+    const server=currentServer();if(!server||server.owner!==state.identity)return;
+    const name=channelSlug(prompt("Text channel name")||"");
     if(!name)return;
     let id=name,suffix=2;
     while(server.channels.some(channel=>channel.id===id)){id=name+"-"+suffix++}
-    server.channels.push({id,name});state.selectedChannel=id;saveServers();saveView();renderAll();
+    server.channels.push({id,name,type:"text"});state.selectedChannel=id;saveServers();saveView();renderAll();
     if(state.connection==="live")broadcastServerMeta(server);
+  }
+  function createVoiceChannelPrompt(){
+    const server=currentServer();if(!server||server.owner!==state.identity)return;
+    const name=channelSlug(prompt("Voice channel name")||"");
+    if(!name)return;
+    let id="voice-"+name,suffix=2;
+    while(server.channels.some(channel=>channel.id===id)){id="voice-"+name+"-"+suffix++}
+    server.channels.push({id,name,type:"voice"});state.selectedChannel=id;saveServers();saveView();renderAll();
+    if(state.connection==="live")broadcastServerMeta(server);
+  }
+  function openServerSettings(){
+    const server=currentServer(),modal=document.getElementById("gmServerModal");
+    if(!server||!modal||server.owner!==state.identity)return;
+    modal.hidden=false;
+    modal.innerHTML='<div class="gm-modal-card"><div class="gm-modal-head"><div><strong>Customize server</strong><small>Changes sync to invited members.</small></div><button type="button" onclick="GenesisMessages.closeServerSettings()">×</button></div>'+
+      '<label>Server name<input id="gmServerName" maxlength="36" value="'+escapeHTML(server.name)+'"></label>'+
+      '<label>Description<textarea id="gmServerDescription" maxlength="120" rows="3" placeholder="What is this server for?">'+escapeHTML(server.description||"")+'</textarea></label>'+
+      '<div class="gm-modal-grid"><label>Icon / emoji<input id="gmServerIcon" maxlength="4" value="'+escapeHTML(server.icon||"")+'" placeholder="✨"></label><label>Accent<select id="gmServerAccent">'+Object.keys(SERVER_ACCENTS).map(function(key){return '<option value="'+key+'" '+(serverAccent(server.accent)===key?"selected":"")+'>'+key[0].toUpperCase()+key.slice(1)+'</option>'}).join("")+'</select></label></div>'+
+      '<div class="gm-accent-preview" style="--server-accent:'+SERVER_ACCENTS[serverAccent(server.accent)]+'"><span id="gmServerPreviewIcon">'+escapeHTML(server.icon||server.name.slice(0,2).toUpperCase())+'</span><div><strong id="gmServerPreviewName">'+escapeHTML(server.name)+'</strong><small>Server preview</small></div></div>'+
+      '<div class="gm-modal-actions"><button type="button" onclick="GenesisMessages.closeServerSettings()">Cancel</button><button class="primary" type="button" onclick="GenesisMessages.saveServerSettings()">Save changes</button></div></div>';
+    const updatePreview=function(){
+      const name=String(document.getElementById("gmServerName")?.value||server.name).trim()||server.name;
+      const icon=serverIcon(document.getElementById("gmServerIcon")?.value||"")||name.slice(0,2).toUpperCase();
+      const accent=serverAccent(document.getElementById("gmServerAccent")?.value||server.accent);
+      const preview=modal.querySelector(".gm-accent-preview"),previewName=document.getElementById("gmServerPreviewName"),previewIcon=document.getElementById("gmServerPreviewIcon");
+      if(preview)preview.style.setProperty("--server-accent",SERVER_ACCENTS[accent]);
+      if(previewName)previewName.textContent=name;
+      if(previewIcon)previewIcon.textContent=icon;
+    };
+    ["gmServerName","gmServerIcon","gmServerAccent"].forEach(function(id){
+      const element=document.getElementById(id);
+      if(element)element.addEventListener(element.tagName==="SELECT"?"change":"input",updatePreview);
+    });
+  }
+  function closeServerSettings(){const modal=document.getElementById("gmServerModal");if(modal){modal.hidden=true;modal.innerHTML=""}}
+  function saveServerSettings(){
+    const server=currentServer();if(!server||server.owner!==state.identity)return;
+    const name=String(document.getElementById("gmServerName")?.value||"").trim().slice(0,36);
+    if(!name)return;
+    server.name=name;
+    server.description=String(document.getElementById("gmServerDescription")?.value||"").trim().slice(0,120);
+    server.icon=serverIcon(document.getElementById("gmServerIcon")?.value||"");
+    server.accent=serverAccent(document.getElementById("gmServerAccent")?.value||"");
+    saveServers();closeServerSettings();renderAll();
+    if(state.connection==="live")broadcastServerMeta(server);
+  }
+
+  function voiceParticipant(id,name,muted){
+    const normalized=normalizeId(id);if(!normalized)return;
+    state.voice.participants[normalized]={name:String(name||"Genesis ID "+normalized).slice(0,40),muted:!!muted};
+  }
+  function removeVoicePeer(id){
+    const normalized=normalizeId(id),pc=state.voice.peers.get(normalized);
+    if(pc){try{pc.close()}catch{}state.voice.peers.delete(normalized)}
+    delete state.voice.participants[normalized];
+    const audio=document.getElementById("gmVoiceAudio-"+normalized);if(audio)audio.remove();
+    renderAll();
+  }
+  async function sendVoiceEvent(event,payload){
+    const channel=state.voice.channel;if(!channel)throw new Error("Voice channel is not connected");
+    const response=await channel.send({type:"broadcast",event,payload});
+    if(response!=="ok")throw new Error("Voice signaling returned "+response);
+    return response;
+  }
+  function ensureVoicePeer(peerId){
+    const id=normalizeId(peerId);if(!id||id===state.identity)return null;
+    let pc=state.voice.peers.get(id);if(pc)return pc;
+    pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+    state.voice.peers.set(id,pc);
+    if(state.voice.stream)state.voice.stream.getTracks().forEach(track=>pc.addTrack(track,state.voice.stream));
+    pc.onicecandidate=function(event){
+      if(!event.candidate)return;
+      const candidate=typeof event.candidate.toJSON==="function"?event.candidate.toJSON():{candidate:event.candidate.candidate,sdpMid:event.candidate.sdpMid,sdpMLineIndex:event.candidate.sdpMLineIndex,usernameFragment:event.candidate.usernameFragment};
+      sendVoiceEvent("voice-signal",{from:state.identity,to:id,candidate,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){});
+    };
+    pc.ontrack=function(event){
+      let audio=document.getElementById("gmVoiceAudio-"+id);
+      if(!audio){audio=document.createElement("audio");audio.id="gmVoiceAudio-"+id;audio.autoplay=true;document.getElementById("gmVoiceAudio")?.appendChild(audio)}
+      audio.srcObject=event.streams[0];
+      audio.play?.().catch(function(){});
+    };
+    pc.onconnectionstatechange=function(){if(["failed","closed"].includes(pc.connectionState))removeVoicePeer(id)};
+    return pc;
+  }
+  async function makeVoiceOffer(peerId){
+    const pc=ensureVoicePeer(peerId);if(!pc||pc.__makingOffer||pc.signalingState!=="stable")return;
+    pc.__makingOffer=true;
+    try{
+      const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+      await sendVoiceEvent("voice-signal",{from:state.identity,to:normalizeId(peerId),description:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},serverId:state.voice.serverId,channelId:state.voice.channelId});
+    }finally{pc.__makingOffer=false}
+  }
+  function validVoicePacket(payload){
+    if(serverId(payload?.serverId)!==state.voice.serverId||serverId(payload?.channelId)!==state.voice.channelId)return "";
+    const from=normalizeId(payload?.from),server=state.servers.find(item=>item.id===state.voice.serverId);
+    return from&&server?.members.includes(from)?from:"";
+  }
+  async function handleVoiceHello(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);if(!from||from===state.identity)return;
+    voiceParticipant(from,payload.name,false);renderAll();
+    await sendVoiceEvent("voice-present",{from:state.identity,to:from,name:currentName(),muted:state.voice.muted,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){});
+    if(state.identity<from)makeVoiceOffer(from).catch(function(){});
+  }
+  function handleVoicePresent(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);
+    if(!from||from===state.identity||normalizeId(payload.to)!==state.identity)return;
+    voiceParticipant(from,payload.name,payload.muted);renderAll();
+    if(state.identity<from)makeVoiceOffer(from).catch(function(){});
+  }
+  async function handleVoiceSignal(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);
+    if(!from||from===state.identity||normalizeId(payload.to)!==state.identity)return;
+    voiceParticipant(from,payload.name,false);
+    const pc=ensureVoicePeer(from);if(!pc)return;
+    try{
+      if(payload.description){
+        await pc.setRemoteDescription(payload.description);
+        if(payload.description.type==="offer"){
+          const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+          await sendVoiceEvent("voice-signal",{from:state.identity,to:from,description:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},serverId:state.voice.serverId,channelId:state.voice.channelId});
+        }
+      }else if(payload.candidate){await pc.addIceCandidate(payload.candidate)}
+    }catch(error){console.warn("Genesis voice signaling:",error)}
+    renderAll();
+  }
+  function handleVoiceState(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);if(!from||from===state.identity)return;
+    voiceParticipant(from,payload.name,payload.muted);renderAll();
+  }
+  function handleVoiceLeave(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);if(from)removeVoicePeer(from);
+  }
+  async function joinVoice(){
+    const server=currentServer(),channel=currentChannel();
+    if(!server||channel?.type!=="voice"||state.voice.joining)return false;
+    if(state.voice.channel&&state.voice.serverId===server.id&&state.voice.channelId===channel.id)return true;
+    await leaveVoice();
+    if(!state.client)await start();
+    if(!state.client||!navigator.mediaDevices?.getUserMedia||typeof RTCPeerConnection!=="function"){
+      if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Voice is not available in this browser.",4200);
+      return false;
+    }
+    state.voice.joining=true;
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+      state.voice.serverId=server.id;state.voice.channelId=channel.id;state.voice.stream=stream;state.voice.participants={};state.voice.muted=false;
+      voiceParticipant(state.identity,currentName(),false);
+      const room=state.client.channel(voiceTopic(server.id,channel.id),{config:{broadcast:{self:false,ack:true}}});
+      state.voice.channel=room
+        .on("broadcast",{event:"voice-hello"},handleVoiceHello)
+        .on("broadcast",{event:"voice-present"},handleVoicePresent)
+        .on("broadcast",{event:"voice-signal"},handleVoiceSignal)
+        .on("broadcast",{event:"voice-state"},handleVoiceState)
+        .on("broadcast",{event:"voice-leave"},handleVoiceLeave);
+      await new Promise(function(resolve,reject){
+        const timer=setTimeout(function(){reject(new Error("Voice connection timed out"))},10000);
+        state.voice.channel.subscribe(function(status){
+          if(status==="SUBSCRIBED"){clearTimeout(timer);resolve()}
+          else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){clearTimeout(timer);reject(new Error("Voice signaling could not connect"))}
+        });
+      });
+      await sendVoiceEvent("voice-hello",{from:state.identity,name:currentName(),serverId:server.id,channelId:channel.id});
+      renderAll();return true;
+    }catch(error){
+      console.warn("Genesis voice join:",error);
+      if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Could not join voice: "+String(error?.message||error),4600);
+      await leaveVoice();return false;
+    }finally{state.voice.joining=false}
+  }
+  async function leaveVoice(){
+    const channel=state.voice.channel;
+    if(channel){try{await sendVoiceEvent("voice-leave",{from:state.identity,serverId:state.voice.serverId,channelId:state.voice.channelId})}catch{}}
+    for(const pc of state.voice.peers.values()){try{pc.close()}catch{}}
+    state.voice.peers.clear();
+    if(state.voice.stream){for(const track of state.voice.stream.getTracks()){try{track.stop()}catch{}}}
+    if(state.client&&channel){try{await state.client.removeChannel(channel)}catch{}}
+    state.voice={serverId:"",channelId:"",channel:null,stream:null,peers:new Map(),participants:{},muted:false,joining:false};
+    const audioRoot=document.getElementById("gmVoiceAudio");if(audioRoot)audioRoot.innerHTML="";
+    renderAll();return true;
+  }
+  function toggleVoiceMute(){
+    if(!state.voice.stream)return false;
+    state.voice.muted=!state.voice.muted;
+    state.voice.stream.getAudioTracks().forEach(track=>{track.enabled=!state.voice.muted});
+    voiceParticipant(state.identity,currentName(),state.voice.muted);
+    sendVoiceEvent("voice-state",{from:state.identity,name:currentName(),muted:state.voice.muted,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){});
+    renderAll();return state.voice.muted;
   }
 
   async function sendDirectMessage(text,media){
@@ -685,7 +930,7 @@
     clearTimeout(state.tutorialTimer);
     if(localStorage.getItem(TUTORIAL_KEY)!=="1")state.tutorialTimer=setTimeout(function(){beginTutorial(0)},560);
   }
-  function onWindowClose(){clearTimeout(state.tutorialTimer);finishTutorial(false);state.window=null}
+  function onWindowClose(){clearTimeout(state.tutorialTimer);finishTutorial(false);void leaveVoice();state.window=null}
 
   function tutorialElements(){
     return {shell:document.getElementById("genesisMessagesApp"),card:document.getElementById("gmTutorial"),svg:document.getElementById("gmTutorialLine"),path:document.querySelector("#gmTutorialLine path"),dot:document.querySelector("#gmTutorialLine circle")};
@@ -757,17 +1002,25 @@
       '.gm-contact{width:100%;min-height:51px;padding:7px 8px;border:0;border-radius:10px;background:transparent;color:#b8bdc8;display:grid;grid-template-columns:35px minmax(0,1fr) auto;gap:8px;align-items:center;text-align:left;cursor:pointer}.gm-contact:hover,.gm-contact.active{background:rgba(255,255,255,.065);color:#fff}.gm-contact.active{background:hsla(var(--accent),55%,52%,.16)}',
       '.gm-avatar{width:35px;height:35px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,hsla(var(--accent),65%,58%,.55),#303543);color:#fff;font-size:10px;font-weight:750}.gm-contact-copy{min-width:0}.gm-contact-copy strong{display:block;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm-contact-copy small{display:block;margin-top:3px;color:#7f8695;font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm-contact-meta{display:flex;flex-direction:column;align-items:flex-end;gap:5px}.gm-contact-meta time{font-size:7px;color:#6f7582}.gm-contact-meta b,.gm-channel b{min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:#ed4245;color:#fff;display:grid;place-items:center;font-size:7px}',
       '.gm-channel{width:100%;height:36px;padding:0 9px;border:0;border-radius:8px;background:transparent;color:#8e95a4;display:grid;grid-template-columns:19px 1fr auto;align-items:center;text-align:left;cursor:pointer}.gm-channel span{font-size:18px;color:#69707e}.gm-channel strong{font-size:10px;font-weight:620;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm-channel:hover,.gm-channel.active{background:rgba(255,255,255,.055);color:#e8ebf1}.gm-channel.active{background:rgba(255,255,255,.075)}',
+      '.gm-voice-label{margin-top:9px}.gm-voice-channel{grid-template-columns:19px 1fr auto}.gm-voice-channel span{font-size:15px}.gm-voice-channel i{font-style:normal;font-size:6px;font-weight:850;letter-spacing:.08em;color:#52d990}.gm-voice-channel.joined{color:#69e5a1}.gm-voice-channel.joined span{color:#69e5a1}',
+      '.gm-voice-dock{padding:9px 9px 8px;background:#10131a;border-top:1px solid rgba(255,255,255,.05);display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:6px;align-items:center}.gm-voice-dock[hidden]{display:none}.gm-voice-dock strong,.gm-voice-dock small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm-voice-dock strong{color:#55d88f;font-size:8px}.gm-voice-dock small{margin-top:2px;color:#8a91a0;font-size:7px}.gm-voice-dock button{height:28px;padding:0 7px;border:0;border-radius:8px;background:rgba(255,255,255,.07);color:#c6cbd5;font-size:8px;cursor:pointer}.gm-voice-dock button:hover{background:rgba(255,255,255,.12);color:#fff}.gm-voice-dock button.danger{font-size:15px;color:#ff8a90}',
+
       '.gm-empty-contacts{height:100%;min-height:150px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#7f8695;padding:18px}.gm-empty-contacts>div{font-size:24px;margin-bottom:8px}.gm-empty-contacts strong{color:#bdc2cc;font-size:10px}.gm-empty-contacts span{margin-top:5px;font-size:8px;line-height:1.5}',
       '.gm-userbar{height:55px;flex:none;padding:8px 10px;display:grid;grid-template-columns:32px 1fr 8px;gap:8px;align-items:center;background:#12141b;border-top:1px solid rgba(255,255,255,.04)}.gm-user-avatar{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:hsla(var(--accent),65%,55%,.35);font-size:9px;font-weight:800}.gm-userbar strong,.gm-userbar small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gm-userbar strong{font-size:9px}.gm-userbar small{font-size:7px;color:#7d8492;margin-top:2px}',
       '.gm-chat{min-width:0;display:grid;grid-template-rows:58px minmax(0,1fr) auto;background:radial-gradient(circle at 80% -10%,hsla(var(--accent),60%,55%,.08),transparent 34%),#1c1f28}.gm-chat-head{padding:0 18px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.055);box-shadow:0 1px 0 rgba(0,0,0,.18)}.gm-chat-head strong{font-size:11px}.gm-chat-head small{display:block;margin-top:3px;color:#878e9c;font-size:8px}.gm-chat-person,.gm-channel-head{display:flex;align-items:center;gap:10px}.gm-channel-head>span{font-size:23px;color:#7c8391}.gm-head-pill{padding:5px 8px;border-radius:9px;background:rgba(255,255,255,.05);color:#8e95a3;font-size:8px}.gm-remove{border:0;background:transparent;color:#7f8695;cursor:pointer}',
       '.gm-thread{min-height:0;overflow:auto;padding:18px 18px 12px;scroll-behavior:smooth;scrollbar-width:thin}.gm-chat-message{display:grid;grid-template-columns:38px minmax(0,1fr);gap:10px;padding:5px 7px;margin:1px 0;border-radius:8px;animation:gmMessageIn .2s ease}.gm-chat-message:hover{background:rgba(255,255,255,.025)}@keyframes gmMessageIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}.gm-message-avatar{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:#303541;color:#fff;font-size:9px;font-weight:780}.gm-chat-message.own .gm-message-avatar{background:hsla(var(--accent),65%,55%,.42)}.gm-message-content{min-width:0}.gm-message-meta{display:flex;align-items:baseline;gap:7px}.gm-message-meta strong{font-size:10px}.gm-message-meta time{color:#69707d;font-size:7px}.gm-message-text{margin-top:2px;color:#d9dce3;font-size:11px;line-height:1.45;overflow-wrap:anywhere}.gm-message-media{display:block;max-width:min(420px,70vw);max-height:310px;margin-top:7px;border-radius:12px;object-fit:contain;background:#101219;border:1px solid rgba(255,255,255,.06)}',
       '.gm-channel-welcome{padding:34px 8px 10px;margin-top:auto}.gm-channel-welcome>div{width:58px;height:58px;border-radius:50%;display:grid;place-items:center;background:#2d313d;font-size:28px;font-weight:760}.gm-channel-welcome h2{margin:14px 0 5px;font-size:21px;letter-spacing:-.03em}.gm-channel-welcome p{margin:0;color:#878e9c;font-size:10px}.gm-empty-thread{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:#7f8695}.gm-empty-thread h3{margin:12px 0 5px;color:#d7dae1}.gm-empty-thread p{max-width:320px;font-size:9px}.gm-empty-orb{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:#2b2f3a;font-size:20px}',
+      '.gm-voice-room{min-height:100%;display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px;align-items:center}.gm-voice-hero{max-width:480px;padding:30px}.gm-voice-orb{width:68px;height:68px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(145deg,hsla(var(--accent),70%,58%,.35),rgba(255,255,255,.06));font-size:30px}.gm-voice-hero h2{margin:16px 0 6px;font-size:25px;letter-spacing:-.04em}.gm-voice-hero p{margin:0 0 20px;color:#9299a8;font-size:10px;line-height:1.6}.gm-join-voice,.gm-voice-actions button{height:38px;padding:0 14px;border:0;border-radius:10px;background:#43b581;color:#fff;font-size:10px;font-weight:720;cursor:pointer}.gm-voice-actions{display:flex;gap:8px}.gm-voice-actions button{background:rgba(255,255,255,.08)}.gm-voice-actions .danger{background:rgba(237,66,69,.18);color:#ff9a9d}.gm-voice-members{align-self:stretch;padding:20px 12px;border-left:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.08)}.gm-voice-person{display:grid;grid-template-columns:34px 1fr;grid-template-rows:17px 17px;column-gap:8px;align-items:center;padding:6px;border-radius:9px}.gm-voice-person>span{grid-row:1/3;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#313643;font-size:8px;font-weight:800}.gm-voice-person strong{font-size:9px}.gm-voice-person small{font-size:7px;color:#737b89}.gm-voice-empty{padding:12px 8px;color:#737b89;font-size:8px;line-height:1.5}.gm-voice-audio{display:none}',
+
       '.gm-composer-wrap{padding:0 18px 18px}.gm-composer{display:grid;grid-template-columns:32px 35px minmax(0,1fr) 38px;gap:6px;align-items:end;min-height:48px;padding:6px;border-radius:13px;background:#272b35}.gm-composer textarea{width:100%;min-height:36px;max-height:116px;padding:9px 6px;border:0;outline:0;resize:none;background:transparent;color:#e7e9ee;font:inherit;font-size:11px;line-height:1.45}.gm-composer textarea::placeholder{color:#717886}.gm-composer button{border:0;color:#aeb4c0;cursor:pointer;transition:.18s}.gm-media-btn,.gm-gif-btn{width:32px;height:32px;align-self:center;border-radius:9px;background:transparent;font-size:17px}.gm-gif-btn{font-size:8px;font-weight:800}.gm-media-btn:hover,.gm-gif-btn:hover{background:rgba(255,255,255,.07);color:#fff}.gm-send-btn{width:38px;height:38px;border-radius:10px;background:hsl(var(--accent),64%,52%);display:grid;place-items:center}.gm-send-btn:disabled{opacity:.25;cursor:default}.gm-send-btn svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.7}',
+
+      '.gm-modal-backdrop{position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:rgba(4,6,10,.64);backdrop-filter:blur(10px)}.gm-modal-backdrop[hidden]{display:none}.gm-modal-card{width:min(430px,100%);padding:18px;border-radius:17px;background:#1b1e27;border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 90px rgba(0,0,0,.45)}.gm-modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}.gm-modal-head strong{display:block;font-size:14px}.gm-modal-head small{display:block;margin-top:4px;color:#8b92a0;font-size:8px}.gm-modal-head button{width:28px;height:28px;border:0;border-radius:8px;background:rgba(255,255,255,.06);color:#aeb4c0;cursor:pointer}.gm-modal-card>label,.gm-modal-grid label{display:block;margin-top:10px;color:#9aa1af;font-size:8px;font-weight:650}.gm-modal-card input,.gm-modal-card textarea,.gm-modal-card select{display:block;width:100%;margin-top:5px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:#101219;color:#fff;padding:9px 10px;outline:none;font:inherit;font-size:10px}.gm-modal-card textarea{resize:vertical;min-height:64px}.gm-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gm-accent-preview{--server-accent:#7c6cff;margin-top:14px;padding:11px;border-radius:11px;background:color-mix(in srgb,var(--server-accent) 16%,#171a22);display:flex;align-items:center;gap:10px}.gm-accent-preview>span{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--server-accent);font-size:14px;font-weight:800}.gm-accent-preview strong,.gm-accent-preview small{display:block}.gm-accent-preview strong{font-size:10px}.gm-accent-preview small{margin-top:2px;color:#9299a8;font-size:7px}.gm-modal-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:16px}.gm-modal-actions button{height:34px;padding:0 11px;border:0;border-radius:9px;background:rgba(255,255,255,.07);color:#d6dae2;font-size:9px;cursor:pointer}.gm-modal-actions .primary{background:hsl(var(--accent),64%,52%);color:#fff}',
+      '.gm-server-icon{--server-accent:#7c6cff}.gm-server-icon:hover{background:color-mix(in srgb,var(--server-accent) 34%,#222631)}.gm-server-icon.active{background:var(--server-accent);box-shadow:0 8px 25px color-mix(in srgb,var(--server-accent) 28%,transparent)}',
       '.desktop-icon .app-icon{position:relative}.gm-app-badge{position:absolute;right:-5px;top:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ed4245;color:#fff;display:none;place-items:center;border:2px solid #121725;font:750 8px/1 Inter,sans-serif}.gm-app-badge.show{display:grid}',
       '.gm-tutorial{position:absolute;right:18px;bottom:18px;z-index:12;width:min(300px,calc(100% - 36px));padding:17px;border-radius:16px;border:1px solid rgba(255,255,255,.13);background:rgba(15,17,23,.96);box-shadow:0 24px 70px rgba(0,0,0,.48);opacity:0;transform:translateY(10px) scale(.97);pointer-events:none;transition:.25s}.gm-tutorial.show{opacity:1;transform:none;pointer-events:auto}.gm-tutorial.place-left{right:auto;left:18px}.gm-tutorial.place-top{bottom:auto;top:18px}.gm-tutorial-step{font-size:7px;letter-spacing:.13em;color:hsla(var(--accent),85%,72%,.9)}.gm-tutorial-title{margin-top:7px;font-size:13px;font-weight:720}.gm-tutorial-copy{margin-top:6px;color:#969dac;font-size:9px;line-height:1.5}.gm-tutorial-actions{display:flex;justify-content:flex-end;gap:6px;margin-top:13px}.gm-tutorial-actions button{height:30px;padding:0 10px;border:0;border-radius:9px;background:rgba(255,255,255,.06);color:#fff;cursor:pointer;font-size:9px}.gm-tutorial-actions .primary{background:hsla(var(--accent),65%,52%,.45)}',
       '.gm-tutorial-line{position:absolute;inset:0;width:100%;height:100%;z-index:11;pointer-events:none;opacity:0}.gm-tutorial-line.show{opacity:1}.gm-tutorial-line path{fill:none;stroke:hsla(var(--accent),90%,72%,.95);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .55s ease}.gm-tutorial-line circle{fill:hsl(var(--accent),85%,70%);opacity:0}.gm-tutorial-target{position:relative;z-index:13!important;box-shadow:0 0 0 2px hsla(var(--accent),90%,73%,.8),0 0 0 7px hsla(var(--accent),80%,55%,.1)!important}',
       '@media(max-width:850px){.window[data-app="messages"]{width:calc(100vw - 20px)}.gm-shell{grid-template-columns:62px 210px minmax(0,1fr)}}',
-      '@media(max-width:620px){.gm-shell{grid-template-columns:56px 150px minmax(0,1fr)}.gm-contact{grid-template-columns:32px minmax(0,1fr)}.gm-contact-meta,.gm-contact-copy small{display:none}.gm-server-actions{grid-template-columns:1fr}.gm-chat-head{padding:0 10px}.gm-thread{padding:12px 8px}.gm-composer-wrap{padding:0 8px 8px}.gm-userbar{display:none}.gm-tutorial-line{display:none}}',
+      '@media(max-width:620px){.gm-shell{grid-template-columns:56px 150px minmax(0,1fr)}.gm-contact{grid-template-columns:32px minmax(0,1fr)}.gm-contact-meta,.gm-contact-copy small{display:none}.gm-server-actions{grid-template-columns:1fr}.gm-chat-head{padding:0 10px}.gm-thread{padding:12px 8px}.gm-composer-wrap{padding:0 8px 8px}.gm-userbar{display:none}.gm-tutorial-line{display:none}.gm-voice-room{grid-template-columns:1fr}.gm-voice-members{display:none}.gm-modal-grid{grid-template-columns:1fr}}',
       '@media(prefers-reduced-motion:reduce){.window[data-app="messages"],.gm-chat-message{animation:none!important}.gm-tutorial{transition:none!important}}'
     ].join("");
     document.head.appendChild(style);
@@ -788,8 +1041,10 @@
     sdkVersion:SDK_VERSION,html,init,start,onWindowClose,
     selectDirectMessages,selectServer,selectChannel,selectContact,
     toggleAddContact,submitContact,sendCurrent,removeCurrent,pickImage,sendGifPrompt,
-    createServerPrompt,createGroupPrompt,createChannelPrompt,inviteToServerPrompt,
+    createServerPrompt,createGroupPrompt,createChannelPrompt,createVoiceChannelPrompt,inviteToServerPrompt,
+    openServerSettings,closeServerSettings,saveServerSettings,
+    joinVoice,leaveVoice,toggleVoiceMute,
     replayTutorial,nextTutorial,finishTutorial,
-    __test:Object.freeze({normalizeId,topicFor,escapeHTML,channelSlug,safeMediaUrl,messagePreview,normalizeServer})
+    __test:Object.freeze({normalizeId,topicFor,voiceTopic,escapeHTML,channelSlug,serverAccent,serverIcon,safeMediaUrl,messagePreview,normalizeServer})
   });
 })(globalThis);
