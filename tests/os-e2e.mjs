@@ -116,6 +116,24 @@ try{
   assert.match(await page.locator("#gmContactList").innerText(),new RegExp(contactId),"saved contact did not survive reopening");
   assert.match(await page.locator("#gmThread").innerText(),/Saved draft check/,"saved message did not survive reopening");
 
+  await page.evaluate(()=>{
+    const replies=["Study Hub",""];
+    window.prompt=()=>replies.shift()??"";
+    GenesisMessages.createServerPrompt();
+  });
+  await page.waitForFunction(()=>document.querySelector("#gmNavTitle")?.textContent==="Study Hub",null,{timeout:5000});
+  assert.match(await page.locator("#gmContactList").innerText(),/general/,"new server did not create #general");
+
+  await page.evaluate(()=>{
+    window.prompt=()=>"hangout";
+    GenesisMessages.createChannelPrompt();
+  });
+  await page.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("hangout"),null,{timeout:5000});
+  await page.fill("#gmMessageInput","Server hello");
+  await page.click("#gmSendButton");
+  await page.waitForFunction(()=>document.querySelector("#gmThread")?.textContent.includes("Server hello"),null,{timeout:5000});
+  assert.match(await page.locator("#gmContactList").innerText(),/hangout/,"new text channel was not rendered");
+
   await page.evaluate(()=>openGame("ugs-survivalracev2"));
   await page.waitForFunction(()=>{
     const frame=document.getElementById("gameFrame");
