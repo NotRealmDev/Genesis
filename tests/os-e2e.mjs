@@ -58,6 +58,7 @@ try{
     localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
     localStorage.setItem("genesisDisplayId","528");
     localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
+    localStorage.setItem("genesisMessagesTutorialComplete","1");
   },announcementTopic);
   await receiver.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
   await Promise.all([
@@ -75,8 +76,6 @@ try{
     const banner=document.getElementById("genesisGlobalAnnouncement");
     return banner?.dataset.announcementId===value.id && banner.classList.contains("show") && banner.textContent===value.message;
   },announcement,{timeout:15000});
-  await receiver.close();
-
   await page.evaluate(()=>openApp("messages"));
   await page.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:15000});
 
@@ -117,7 +116,7 @@ try{
   assert.match(await page.locator("#gmThread").innerText(),/Saved draft check/,"saved message did not survive reopening");
 
   await page.evaluate(()=>{
-    const replies=["Study Hub",""];
+    const replies=["Study Hub","528"];
     window.prompt=()=>replies.shift()??"";
     GenesisMessages.createServerPrompt();
   });
@@ -140,11 +139,38 @@ try{
   });
   await page.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("lounge"),null,{timeout:5000});
   assert.match(await page.locator("#gmContactList").innerText(),/lounge/,"voice channel was not rendered");
+
+  const voiceServer=await page.evaluate(()=>JSON.parse(localStorage.getItem("genesisMessagesServers:527")||"[]")[0]);
+  assert.ok(voiceServer?.channels?.some(channel=>channel.type==="voice"),"voice channel was not persisted");
+  await receiver.evaluate(server=>{
+    localStorage.setItem("genesisMessagesServers:528",JSON.stringify([server]));
+    localStorage.setItem("genesisMessagesView:528",JSON.stringify({mode:"server",server:server.id,channel:server.channels.find(item=>item.type==="voice").id}));
+  },voiceServer);
+  await receiver.evaluate(()=>openApp("messages"));
+  await receiver.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:10000});
+  const voiceIds={sid:voiceServer.id,cid:voiceServer.channels.find(channel=>channel.type==="voice").id};
+  await receiver.evaluate(({sid,cid})=>{GenesisMessages.selectServer(sid);GenesisMessages.selectChannel(cid)},voiceIds);
+  await receiver.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("lounge"),null,{timeout:5000});
+
   await page.click(".gm-join-voice");
   await page.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
-  assert.match(await page.locator("#gmThread").innerText(),/Connected|Waiting for someone else to join/,"voice channel did not connect");
+  await receiver.click(".gm-join-voice");
+  await receiver.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
+  await Promise.all([
+    page.waitForSelector("#gmVoiceAudio-528",{state:"attached",timeout:20000}),
+    receiver.waitForSelector("#gmVoiceAudio-527",{state:"attached",timeout:20000})
+  ]);
+  await page.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
+  await receiver.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
+  assert.match(await page.locator("#gmThread").innerText(),/Jameson|Genesis ID 528/,"remote voice participant was not shown");
+
   await page.click("#gmVoiceDock .danger");
-  await page.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000});
+  await receiver.click("#gmVoiceDock .danger");
+  await Promise.all([
+    page.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000}),
+    receiver.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000})
+  ]);
+  await receiver.close();
 
   await page.evaluate(()=>{
     window.prompt=()=>"hangout";
