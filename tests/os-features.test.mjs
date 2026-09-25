@@ -86,9 +86,32 @@ test("Genesis overhaul exposes Store themes account username and DNS settings",(
   assert.match(overhaul,/Wisp remains the actual web transport/);
 });
 
-test("Messages includes image GIF and group creation controls",()=>{
-  assert.match(messages,/createGroupPrompt/);
+test("Messages has Discord-style servers channels media and readable notifications",()=>{
+  assert.match(messages,/createServerPrompt/);
+  assert.match(messages,/createChannelPrompt/);
+  assert.match(messages,/inviteToServerPrompt/);
+  assert.match(messages,/server-message/);
+  assert.match(messages,/server-sync/);
+  assert.match(messages,/gmServerRail/);
   assert.match(messages,/gmImagePicker/);
   assert.match(messages,/sendGifPrompt/);
-  assert.match(messages,/media:\{type,url:safe\}/);
+  assert.match(messages,/messagePreview/);
+  assert.match(messages,/showMessageNotification/);
+  assert.match(messages,/sender\+" · "\+context/);
+});
+
+test("Messages notification previews preserve actual message text",()=>{
+  const context={
+    globalThis:null,
+    localStorage:{getItem(){return null},setItem(){},removeItem(){}},
+    sessionStorage:{getItem(){return null}},
+    crypto:{randomUUID(){return "test-id"}}
+  };
+  context.globalThis=context;
+  vm.createContext(context);
+  vm.runInContext(messages,context,{filename:"genesis-messages.js"});
+  const helpers=context.GenesisMessages.__test;
+  assert.equal(helpers.messagePreview("hey are you joining?"),"hey are you joining?");
+  assert.equal(helpers.messagePreview("",{type:"image",url:"https://example.com/a.png"}),"sent an image");
+  assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
 });
