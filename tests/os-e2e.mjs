@@ -148,6 +148,8 @@ try{
     localStorage.setItem("genesisMessagesServers:528",JSON.stringify([server]));
     localStorage.setItem("genesisMessagesView:528",JSON.stringify({mode:"server",server:server.id,channel:server.channels.find(item=>item.type==="voice").id}));
   },voiceServer);
+  await receiver.reload({waitUntil:"domcontentloaded",timeout:30000});
+  await receiver.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
   await receiver.evaluate(()=>openApp("messages"));
   await receiver.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:10000});
   await receiver.waitForFunction(()=>document.querySelectorAll("#gmServerRail .gm-server-icon").length>0,null,{timeout:10000});
