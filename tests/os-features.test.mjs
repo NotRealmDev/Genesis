@@ -100,6 +100,40 @@ test("Messages has Discord-style servers channels media and readable notificatio
   assert.match(messages,/sender\+" · "\+context/);
 });
 
+test("Messages supports voice channels and customizable server metadata",()=>{
+  assert.match(messages,/createVoiceChannelPrompt/);
+  assert.match(messages,/joinVoice/);
+  assert.match(messages,/leaveVoice/);
+  assert.match(messages,/toggleVoiceMute/);
+  assert.match(messages,/RTCPeerConnection/);
+  assert.match(messages,/getUserMedia/);
+  assert.match(messages,/voice-signal/);
+  assert.match(messages,/openServerSettings/);
+  assert.match(messages,/gmServerDescription/);
+  assert.match(messages,/gmServerAccent/);
+
+  const context={
+    globalThis:null,
+    localStorage:{getItem(){return null},setItem(){},removeItem(){}},
+    sessionStorage:{getItem(){return null}},
+    crypto:{randomUUID(){return "test-id"}}
+  };
+  context.globalThis=context;
+  vm.createContext(context);
+  vm.runInContext(messages,context,{filename:"genesis-messages.js"});
+  const helpers=context.GenesisMessages.__test;
+  assert.equal(helpers.voiceTopic("s-demo","voice-lounge"),"genesis-voice-s-demo-voice-lounge");
+  const normalized=helpers.normalizeServer({
+    id:"s-demo",name:"Study Hub",owner:"527",members:["527"],
+    description:"Homework and games",icon:"✨",accent:"cyan",
+    channels:[{id:"general",name:"general",type:"text"},{id:"voice-lounge",name:"lounge",type:"voice"}]
+  });
+  assert.equal(normalized.description,"Homework and games");
+  assert.equal(normalized.icon,"✨");
+  assert.equal(normalized.accent,"cyan");
+  assert.equal(normalized.channels[1].type,"voice");
+});
+
 test("Messages notification previews preserve actual message text",()=>{
   const context={
     globalThis:null,
