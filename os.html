@@ -562,6 +562,7 @@ button{color:inherit}
 <script src="libby.js" defer></script>
 <script src="genesis-prism.js" defer></script>
 <script src="genesis-announcements.js" defer></script>
+<script src="genesis-overhaul.js" defer></script>
 </head>
 <body>
 <div id="os">
@@ -641,6 +642,7 @@ button{color:inherit}
     <button class="dock-app" data-dock-app="files" onclick="openApp('files')" title="Files"><svg viewBox="0 0 24 24"><path d="M3 7h7l2 2h9v10H3z"/></svg><span class="dock-dot"></span></button>
     <button class="dock-app" data-dock-app="browser" onclick="openApp('browser')" title="Browser"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9"/></svg><span class="dock-dot"></span></button>
     <button class="dock-app" data-dock-app="messages" onclick="openApp('messages')" title="Messages"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/></svg><span class="gm-app-badge" data-messages-badge></span><span class="dock-dot"></span></button>
+    <button class="dock-app" data-dock-app="store" onclick="openApp('store')" title="Store"><svg viewBox="0 0 24 24"><path d="M4 6h16v12H4z"/><path d="M8 9h8M8 13h5"/><circle cx="17" cy="15.5" r="1.5"/></svg><span class="dock-dot"></span></button>
     <button class="dock-app" data-dock-app="settings" onclick="openApp('settings')" title="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg><span class="dock-dot"></span></button>
   </div></div>
 </div>
@@ -1382,6 +1384,8 @@ function genesisUpdateMusicUI(){
 
 
 const apps = {
+  store:{title:"Store",content:()=>window.GenesisOverhaul?.storeHTML?.()||`<div class="section"><div class="heading">Store</div><div class="muted">Store is loading…</div></div>`},
+  accountSettings:{title:"Account Settings",content:()=>window.GenesisOverhaul?.accountHTML?.()||`<div class="section"><div class="heading">Account Settings</div></div>`},
   browser:{title:"Browser",content:browserHTML},
   files:{title:"Files",content:()=>`<div class="section"><div class="heading">Files</div><div class="files-grid">
     ${["Documents","Downloads","Pictures","Projects","System"].map(x=>`<div class="file-card"><div class="folder"></div><span>${x}</span></div>`).join("")}
@@ -1438,6 +1442,7 @@ function openApp(appId){
   if(appId==="announcement") setTimeout(()=>document.getElementById("announcementText")?.focus(),0);
   if(appId==="music") setTimeout(initMusicPlayer,0);
   if(appId==="messages") setTimeout(()=>window.GenesisMessages?.init?.(),0);
+  if(appId==="store") setTimeout(()=>window.GenesisOverhaul?.applyTheme?.(window.GenesisOverhaul.currentTheme()),0);
 
   win.querySelector(".close").onclick = e => {e.stopPropagation(); closeWindow(appId,win)};
   win.querySelector(".minimize").onclick = e => {e.stopPropagation(); win.classList.add("minimized")};
@@ -1452,6 +1457,7 @@ function openApp(appId){
     area.addEventListener("input",()=>localStorage.setItem("realmOsNotes",area.value));
   }
   if(appId==="browser") initBrowser(win);
+  if(appId==="accountSettings") setTimeout(()=>document.getElementById("gxUsername")?.focus(),0);
 }
 
 function closeWindow(appId,win){
