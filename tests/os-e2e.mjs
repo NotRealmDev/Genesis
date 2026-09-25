@@ -31,7 +31,7 @@ await new Promise(resolve=>server.listen(4174,"127.0.0.1",resolve));
 
 const browser=await chromium.launch({
   headless:process.env.GENESIS_TEST_HEADFUL!=="1",
-  args:["--autoplay-policy=no-user-gesture-required"]
+  args:["--autoplay-policy=no-user-gesture-required","--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream"]
 });
 const page=await browser.newPage({viewport:{width:1440,height:900}});
 const announcementTopic=`genesis-announcements-e2e-${Date.now()}-${crypto.randomUUID().slice(0,8)}`;
@@ -123,6 +123,28 @@ try{
   });
   await page.waitForFunction(()=>document.querySelector("#gmNavTitle")?.textContent==="Study Hub",null,{timeout:5000});
   assert.match(await page.locator("#gmContactList").innerText(),/general/,"new server did not create #general");
+
+  await page.evaluate(()=>GenesisMessages.openServerSettings());
+  await page.waitForSelector("#gmServerModal:not([hidden])",{state:"visible",timeout:5000});
+  await page.fill("#gmServerName","Study Lounge");
+  await page.fill("#gmServerDescription","Homework, games, and voice chat");
+  await page.fill("#gmServerIcon","✨");
+  await page.selectOption("#gmServerAccent","cyan");
+  await page.click("#gmServerModal .primary");
+  await page.waitForFunction(()=>document.querySelector("#gmNavTitle")?.textContent==="Study Lounge",null,{timeout:5000});
+  assert.match(await page.locator("#gmIdentity").innerText(),/Homework, games, and voice chat/,"server description was not rendered");
+
+  await page.evaluate(()=>{
+    window.prompt=()=>"Lounge";
+    GenesisMessages.createVoiceChannelPrompt();
+  });
+  await page.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("lounge"),null,{timeout:5000});
+  assert.match(await page.locator("#gmContactList").innerText(),/lounge/,"voice channel was not rendered");
+  await page.click(".gm-join-voice");
+  await page.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
+  assert.match(await page.locator("#gmThread").innerText(),/Connected|Waiting for someone else to join/,"voice channel did not connect");
+  await page.click("#gmVoiceDock .danger");
+  await page.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000});
 
   await page.evaluate(()=>{
     window.prompt=()=>"hangout";
