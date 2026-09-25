@@ -71,3 +71,24 @@ test("retired VM and Test apps are not loaded and About OS reports 1.232",()=>{
   assert.match(os,/Version 1\.232 · Glass Desktop Environment/);
   assert.match(os,/<span>OS<\/span><span>1\.232<\/span>/);
 });
+
+
+test("Genesis overhaul exposes Store themes account username and DNS settings",()=>{
+  const overhaul = readFileSync(new URL("../genesis-overhaul.js",import.meta.url),"utf8");
+  assert.match(os,/data-dock-app="store"/);
+  assert.match(os,/genesis-overhaul\.js/);
+  assert.match(overhaul,/Sunset/);
+  assert.match(overhaul,/Chill/);
+  assert.match(overhaul,/genesisUsername/);
+  assert.match(overhaul,/cloudflare-dns\.com/);
+  assert.match(overhaul,/dns\.google/);
+  assert.match(overhaul,/quad9\.net/);
+  assert.match(overhaul,/Wisp remains the actual web transport/);
+});
+
+test("Messages includes image GIF and group creation controls",()=>{
+  assert.match(messages,/createGroupPrompt/);
+  assert.match(messages,/gmImagePicker/);
+  assert.match(messages,/sendGifPrompt/);
+  assert.match(messages,/media:\{type,url:safe\}/);
+});
