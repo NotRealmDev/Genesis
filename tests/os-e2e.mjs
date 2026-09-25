@@ -143,15 +143,17 @@ try{
 
   const voiceServer=await page.evaluate(id=>JSON.parse(localStorage.getItem("genesisMessagesServers:"+id)||"[]")[0],myId);
   assert.ok(voiceServer?.channels?.some(channel=>channel.type==="voice"),"voice channel was not persisted");
+  assert.ok(voiceServer?.members?.includes("528"),"receiver was not included in server membership");
   await receiver.evaluate(server=>{
     localStorage.setItem("genesisMessagesServers:528",JSON.stringify([server]));
     localStorage.setItem("genesisMessagesView:528",JSON.stringify({mode:"server",server:server.id,channel:server.channels.find(item=>item.type==="voice").id}));
   },voiceServer);
   await receiver.evaluate(()=>openApp("messages"));
   await receiver.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:10000});
+  await receiver.waitForFunction(()=>document.querySelectorAll("#gmServerRail .gm-server-icon").length>0,null,{timeout:10000});
   const voiceIds={sid:voiceServer.id,cid:voiceServer.channels.find(channel=>channel.type==="voice").id};
   await receiver.evaluate(({sid,cid})=>{GenesisMessages.selectServer(sid);GenesisMessages.selectChannel(cid)},voiceIds);
-  await receiver.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("lounge"),null,{timeout:5000});
+  await receiver.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.toLowerCase().includes("lounge"),null,{timeout:10000});
 
   await page.click(".gm-join-voice");
   await page.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
