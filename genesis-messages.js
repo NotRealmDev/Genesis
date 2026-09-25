@@ -584,6 +584,19 @@
       '<div class="gm-modal-grid"><label>Icon / emoji<input id="gmServerIcon" maxlength="4" value="'+escapeHTML(server.icon||"")+'" placeholder="✨"></label><label>Accent<select id="gmServerAccent">'+Object.keys(SERVER_ACCENTS).map(function(key){return '<option value="'+key+'" '+(serverAccent(server.accent)===key?"selected":"")+'>'+key[0].toUpperCase()+key.slice(1)+'</option>'}).join("")+'</select></label></div>'+
       '<div class="gm-accent-preview" style="--server-accent:'+SERVER_ACCENTS[serverAccent(server.accent)]+'"><span id="gmServerPreviewIcon">'+escapeHTML(server.icon||server.name.slice(0,2).toUpperCase())+'</span><div><strong id="gmServerPreviewName">'+escapeHTML(server.name)+'</strong><small>Server preview</small></div></div>'+
       '<div class="gm-modal-actions"><button type="button" onclick="GenesisMessages.closeServerSettings()">Cancel</button><button class="primary" type="button" onclick="GenesisMessages.saveServerSettings()">Save changes</button></div></div>';
+    const updatePreview=function(){
+      const name=String(document.getElementById("gmServerName")?.value||server.name).trim()||server.name;
+      const icon=serverIcon(document.getElementById("gmServerIcon")?.value||"")||name.slice(0,2).toUpperCase();
+      const accent=serverAccent(document.getElementById("gmServerAccent")?.value||server.accent);
+      const preview=modal.querySelector(".gm-accent-preview"),previewName=document.getElementById("gmServerPreviewName"),previewIcon=document.getElementById("gmServerPreviewIcon");
+      if(preview)preview.style.setProperty("--server-accent",SERVER_ACCENTS[accent]);
+      if(previewName)previewName.textContent=name;
+      if(previewIcon)previewIcon.textContent=icon;
+    };
+    ["gmServerName","gmServerIcon","gmServerAccent"].forEach(function(id){
+      const element=document.getElementById(id);
+      if(element)element.addEventListener(element.tagName==="SELECT"?"change":"input",updatePreview);
+    });
   }
   function closeServerSettings(){const modal=document.getElementById("gmServerModal");if(modal){modal.hidden=true;modal.innerHTML=""}}
   function saveServerSettings(){
@@ -621,7 +634,11 @@
     pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
     state.voice.peers.set(id,pc);
     if(state.voice.stream)state.voice.stream.getTracks().forEach(track=>pc.addTrack(track,state.voice.stream));
-    pc.onicecandidate=function(event){if(event.candidate)sendVoiceEvent("voice-signal",{from:state.identity,to:id,candidate:event.candidate,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){})};
+    pc.onicecandidate=function(event){
+      if(!event.candidate)return;
+      const candidate=typeof event.candidate.toJSON==="function"?event.candidate.toJSON():{candidate:event.candidate.candidate,sdpMid:event.candidate.sdpMid,sdpMLineIndex:event.candidate.sdpMLineIndex,usernameFragment:event.candidate.usernameFragment};
+      sendVoiceEvent("voice-signal",{from:state.identity,to:id,candidate,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){});
+    };
     pc.ontrack=function(event){
       let audio=document.getElementById("gmVoiceAudio-"+id);
       if(!audio){audio=document.createElement("audio");audio.id="gmVoiceAudio-"+id;audio.autoplay=true;document.getElementById("gmVoiceAudio")?.appendChild(audio)}
@@ -636,7 +653,7 @@
     pc.__makingOffer=true;
     try{
       const offer=await pc.createOffer();await pc.setLocalDescription(offer);
-      await sendVoiceEvent("voice-signal",{from:state.identity,to:normalizeId(peerId),description:pc.localDescription,serverId:state.voice.serverId,channelId:state.voice.channelId});
+      await sendVoiceEvent("voice-signal",{from:state.identity,to:normalizeId(peerId),description:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},serverId:state.voice.serverId,channelId:state.voice.channelId});
     }finally{pc.__makingOffer=false}
   }
   function validVoicePacket(payload){
@@ -666,7 +683,7 @@
         await pc.setRemoteDescription(payload.description);
         if(payload.description.type==="offer"){
           const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
-          await sendVoiceEvent("voice-signal",{from:state.identity,to:from,description:pc.localDescription,serverId:state.voice.serverId,channelId:state.voice.channelId});
+          await sendVoiceEvent("voice-signal",{from:state.identity,to:from,description:{type:pc.localDescription.type,sdp:pc.localDescription.sdp},serverId:state.voice.serverId,channelId:state.voice.channelId});
         }
       }else if(payload.candidate){await pc.addIceCandidate(payload.candidate)}
     }catch(error){console.warn("Genesis voice signaling:",error)}
