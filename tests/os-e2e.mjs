@@ -77,6 +77,7 @@ try{
     const banner=document.getElementById("genesisGlobalAnnouncement");
     return banner?.dataset.announcementId===value.id && banner.classList.contains("show") && banner.textContent===value.message;
   },announcement,{timeout:15000});
+  await receiverContext.close();
   await page.evaluate(()=>openApp("messages"));
   await page.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:15000});
 
@@ -144,38 +145,47 @@ try{
   const voiceServer=await page.evaluate(id=>JSON.parse(localStorage.getItem("genesisMessagesServers:"+id)||"[]")[0],myId);
   assert.ok(voiceServer?.channels?.some(channel=>channel.type==="voice"),"voice channel was not persisted");
   assert.ok(voiceServer?.members?.includes("528"),"receiver was not included in server membership");
-  await receiver.evaluate(server=>{
+
+  const voiceContext=await browser.newContext({viewport:{width:1200,height:760}});
+  const voiceReceiver=await voiceContext.newPage();
+  voiceReceiver.on("console",message=>logs.push("voice receiver "+message.type()+": "+message.text()));
+  voiceReceiver.on("pageerror",error=>logs.push("voice receiver pageerror: "+error.message));
+  await voiceReceiver.addInitScript(server=>{
+    localStorage.setItem("genesisLogin",JSON.stringify({user:"VoiceUser",role:"user",expires:Date.now()+3600000}));
+    localStorage.setItem("genesisDisplayId","528");
+    localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
+    localStorage.setItem("genesisMessagesTutorialComplete","1");
     localStorage.setItem("genesisMessagesServers:528",JSON.stringify([server]));
     localStorage.setItem("genesisMessagesView:528",JSON.stringify({mode:"server",server:server.id,channel:server.channels.find(item=>item.type==="voice").id}));
   },voiceServer);
-  await receiver.reload({waitUntil:"domcontentloaded",timeout:30000});
-  await receiver.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
-  await receiver.evaluate(()=>openApp("messages"));
-  await receiver.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:10000});
-  await receiver.waitForFunction(()=>document.querySelectorAll("#gmServerRail .gm-server-icon").length>0,null,{timeout:10000});
+  await voiceReceiver.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
+  await voiceReceiver.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
+  await voiceReceiver.evaluate(()=>openApp("messages"));
+  await voiceReceiver.waitForSelector('.window[data-app="messages"] #genesisMessagesApp',{state:"visible",timeout:10000});
+  await voiceReceiver.waitForFunction(()=>document.querySelectorAll("#gmServerRail .gm-server-icon").length>0,null,{timeout:10000});
   const voiceIds={sid:voiceServer.id,cid:voiceServer.channels.find(channel=>channel.type==="voice").id};
-  await receiver.evaluate(({sid,cid})=>{GenesisMessages.selectServer(sid);GenesisMessages.selectChannel(cid)},voiceIds);
-  await receiver.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.toLowerCase().includes("lounge"),null,{timeout:10000});
+  await voiceReceiver.evaluate(({sid,cid})=>{GenesisMessages.selectServer(sid);GenesisMessages.selectChannel(cid)},voiceIds);
+  await voiceReceiver.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.toLowerCase().includes("lounge"),null,{timeout:10000});
 
   await page.click(".gm-join-voice");
   await page.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
-  await receiver.click(".gm-join-voice");
-  await receiver.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
+  await voiceReceiver.click(".gm-join-voice");
+  await voiceReceiver.waitForFunction(()=>!document.querySelector("#gmVoiceDock")?.hidden,null,{timeout:15000});
   await Promise.all([
     page.waitForSelector("#gmVoiceAudio-528",{state:"attached",timeout:20000}),
-    receiver.waitForSelector("#gmVoiceAudio-527",{state:"attached",timeout:20000})
+    voiceReceiver.waitForSelector("#gmVoiceAudio-527",{state:"attached",timeout:20000})
   ]);
   await page.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
-  await receiver.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
-  assert.match(await page.locator("#gmThread").innerText(),/Jameson|Genesis ID 528/,"remote voice participant was not shown");
+  await voiceReceiver.waitForFunction(()=>document.querySelectorAll(".gm-voice-person").length>=2,null,{timeout:10000});
+  assert.match(await page.locator("#gmThread").innerText(),/VoiceUser|Genesis ID 528/,"remote voice participant was not shown");
 
   await page.click("#gmVoiceDock .danger");
-  await receiver.click("#gmVoiceDock .danger");
+  await voiceReceiver.click("#gmVoiceDock .danger");
   await Promise.all([
     page.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000}),
-    receiver.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000})
+    voiceReceiver.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000})
   ]);
-  await receiverContext.close();
+  await voiceContext.close();
 
   await page.evaluate(()=>{
     window.prompt=()=>"hangout";
