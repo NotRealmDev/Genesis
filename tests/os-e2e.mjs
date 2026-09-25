@@ -38,6 +38,16 @@ const announcementTopic=`genesis-announcements-e2e-${Date.now()}-${crypto.random
 const logs=[];
 page.on("console",message=>logs.push(message.type()+": "+message.text()));
 page.on("pageerror",error=>logs.push("pageerror: "+error.message));
+const stubDeviceId=async(target,id)=>{
+  for(const rpc of ["genesis_register_device","genesis_check_device"]){
+    await target.route("**/rest/v1/rpc/"+rpc,route=>route.fulfill({
+      status:200,
+      contentType:"application/json",
+      body:JSON.stringify([{display_id:id,active:true}])
+    }));
+  }
+};
+await stubDeviceId(page,527);
 
 try{
   await page.addInitScript(topic=>{
@@ -54,6 +64,7 @@ try{
   const receiver=await receiverContext.newPage();
   receiver.on("console",message=>logs.push("receiver "+message.type()+": "+message.text()));
   receiver.on("pageerror",error=>logs.push("receiver pageerror: "+error.message));
+  await stubDeviceId(receiver,528);
   await receiver.addInitScript(topic=>{
     window.GENESIS_ANNOUNCEMENT_TOPIC=topic;
     localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
@@ -150,6 +161,7 @@ try{
   const voiceReceiver=await voiceContext.newPage();
   voiceReceiver.on("console",message=>logs.push("voice receiver "+message.type()+": "+message.text()));
   voiceReceiver.on("pageerror",error=>logs.push("voice receiver pageerror: "+error.message));
+  await stubDeviceId(voiceReceiver,528);
   await voiceReceiver.addInitScript(server=>{
     localStorage.setItem("genesisLogin",JSON.stringify({user:"VoiceUser",role:"user",expires:Date.now()+3600000}));
     localStorage.setItem("genesisDisplayId","528");
