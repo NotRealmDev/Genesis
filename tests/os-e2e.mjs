@@ -50,7 +50,8 @@ try{
   await page.goto("http://127.0.0.1:4174/os.html",{waitUntil:"domcontentloaded",timeout:30000});
   await page.waitForFunction(()=>typeof window.GenesisMessages?.start==="function",null,{timeout:30000});
 
-  const receiver=await browser.newPage({viewport:{width:1200,height:760}});
+  const receiverContext=await browser.newContext({viewport:{width:1200,height:760}});
+  const receiver=await receiverContext.newPage();
   receiver.on("console",message=>logs.push("receiver "+message.type()+": "+message.text()));
   receiver.on("pageerror",error=>logs.push("receiver pageerror: "+error.message));
   await receiver.addInitScript(topic=>{
@@ -140,7 +141,7 @@ try{
   await page.waitForFunction(()=>document.querySelector("#gmChatHead")?.textContent.includes("lounge"),null,{timeout:5000});
   assert.match(await page.locator("#gmContactList").innerText(),/lounge/,"voice channel was not rendered");
 
-  const voiceServer=await page.evaluate(()=>JSON.parse(localStorage.getItem("genesisMessagesServers:527")||"[]")[0]);
+  const voiceServer=await page.evaluate(id=>JSON.parse(localStorage.getItem("genesisMessagesServers:"+id)||"[]")[0],myId);
   assert.ok(voiceServer?.channels?.some(channel=>channel.type==="voice"),"voice channel was not persisted");
   await receiver.evaluate(server=>{
     localStorage.setItem("genesisMessagesServers:528",JSON.stringify([server]));
@@ -170,7 +171,7 @@ try{
     page.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000}),
     receiver.waitForFunction(()=>document.querySelector("#gmVoiceDock")?.hidden===true,null,{timeout:10000})
   ]);
-  await receiver.close();
+  await receiverContext.close();
 
   await page.evaluate(()=>{
     window.prompt=()=>"hangout";
