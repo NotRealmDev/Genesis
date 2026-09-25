@@ -12,12 +12,16 @@
   const VIEW_PREFIX="genesisMessagesView:";
   const TUTORIAL_KEY="genesisMessagesTutorialComplete";
   const SDK_VERSION="2.116.0";
+  const SERVER_ACCENTS=Object.freeze({
+    violet:"#7c6cff",blue:"#4f8cff",cyan:"#35b9cf",green:"#43b581",orange:"#f0a45d",pink:"#e96fb2"
+  });
 
   const state={
     client:null,inbox:null,identity:"",connection:"connecting",
     mode:"dm",selected:"",selectedServer:"",selectedChannel:"",
     contacts:[],history:{},servers:[],serverHistory:{},
-    window:null,tutorialIndex:-1,tutorialTimer:null,tutorialResize:null,retryTimer:null
+    window:null,tutorialIndex:-1,tutorialTimer:null,tutorialResize:null,retryTimer:null,
+    voice:{serverId:"",channelId:"",channel:null,stream:null,peers:new Map(),participants:{},muted:false,joining:false}
   };
 
   const tutorialSteps=[
@@ -70,6 +74,11 @@
   function channelSlug(value){
     return String(value||"").trim().toLowerCase().replace(/[^a-z0-9 -]/g,"").replace(/\s+/g,"-").replace(/-+/g,"-").slice(0,28);
   }
+  function serverAccent(value){return SERVER_ACCENTS[value]?value:"violet"}
+  function serverIcon(value){
+    return Array.from(String(value||"").trim()).slice(0,2).join("");
+  }
+  function voiceTopic(sid,cid){return "genesis-voice-"+serverId(sid)+"-"+serverId(cid)}
   function normalizeServer(raw){
     if(!raw||typeof raw!=="object")return null;
     const id=serverId(raw.id);
@@ -81,13 +90,24 @@
     for(const item of Array.isArray(raw.channels)?raw.channels:[]){
       const cid=serverId(item?.id)||channelSlug(item?.name);
       const cname=channelSlug(item?.name||cid);
-      if(cid&&cname&&!channels.some(channel=>channel.id===cid))channels.push({id:cid,name:cname});
+      const type=item?.type==="voice"?"voice":"text";
+      if(cid&&cname&&!channels.some(channel=>channel.id===cid))channels.push({id:cid,name:cname,type});
     }
-    if(!channels.length)channels.push({id:"general",name:"general"});
-    return {id,name,owner,members,channels,createdAt:String(raw.createdAt||new Date().toISOString())};
+    if(!channels.some(channel=>channel.type==="text"))channels.unshift({id:"general",name:"general",type:"text"});
+    return {
+      id,name,owner,members,channels,
+      description:String(raw.description||"").trim().slice(0,120),
+      icon:serverIcon(raw.icon),
+      accent:serverAccent(raw.accent),
+      createdAt:String(raw.createdAt||new Date().toISOString())
+    };
   }
   function publicServer(server){
-    return {id:server.id,name:server.name,owner:server.owner,members:server.members.slice(),channels:server.channels.map(c=>({id:c.id,name:c.name})),createdAt:server.createdAt};
+    return {
+      id:server.id,name:server.name,owner:server.owner,members:server.members.slice(),
+      channels:server.channels.map(c=>({id:c.id,name:c.name,type:c.type==="voice"?"voice":"text"})),
+      description:server.description||"",icon:server.icon||"",accent:serverAccent(server.accent),createdAt:server.createdAt
+    };
   }
 
   function loadIdentity(id=currentId()){
@@ -249,6 +269,7 @@
           '<div class="gm-add-status" id="gmAddStatus"></div>'+
         '</div>'+
         '<div class="gm-contact-list" id="gmContactList"></div>'+
+        '<div class="gm-voice-dock" id="gmVoiceDock" hidden></div>'+
         '<div class="gm-userbar"><span class="gm-user-avatar">'+escapeHTML((currentName().slice(0,2)||"GU").toUpperCase())+'</span><span><strong>'+escapeHTML(currentName())+'</strong><small>ID '+escapeHTML(id)+'</small></span><span class="gm-status-dot"></span></div>'+
       '</aside>'+
       '<section class="gm-chat">'+
@@ -262,6 +283,8 @@
           '<button class="gm-send-btn" id="gmSendButton" type="button" onclick="GenesisMessages.sendCurrent()" disabled title="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l17 8-17 8 3-8-3-8zM7 12h14"/></svg></button>'+
         '</div></div>'+
       '</section>'+
+      '<div class="gm-modal-backdrop" id="gmServerModal" hidden></div>'+
+      '<div class="gm-voice-audio" id="gmVoiceAudio" aria-hidden="true"></div>'+
       '<svg class="gm-tutorial-line" id="gmTutorialLine" aria-hidden="true"><path></path><circle r="4"></circle></svg>'+
       '<div class="gm-tutorial" id="gmTutorial" role="dialog" aria-live="polite"><div class="gm-tutorial-step" id="gmTutorialStep"></div><div class="gm-tutorial-title" id="gmTutorialTitle"></div><div class="gm-tutorial-copy" id="gmTutorialCopy"></div><div class="gm-tutorial-actions"><button type="button" onclick="GenesisMessages.finishTutorial()">Skip</button><button class="primary" id="gmTutorialNext" type="button" onclick="GenesisMessages.nextTutorial()">Next</button></div></div>'+
     '</div>';
@@ -275,7 +298,9 @@
     rail.innerHTML=state.servers.map(function(server){
       const unread=serverUnreadCount(server);
       const initials=server.name.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase()||"G";
-      return '<button class="gm-server-icon '+(state.mode==="server"&&state.selectedServer===server.id?"active":"")+'" type="button" onclick="GenesisMessages.selectServer(\''+escapeHTML(server.id)+'\')" title="'+escapeHTML(server.name)+'"><span>'+escapeHTML(initials)+'</span>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</button>';
+      const mark=server.icon||initials;
+      const accent=SERVER_ACCENTS[serverAccent(server.accent)];
+      return '<button class="gm-server-icon '+(state.mode==="server"&&state.selectedServer===server.id?"active":"")+'" style="--server-accent:'+accent+'" type="button" onclick="GenesisMessages.selectServer(\''+escapeHTML(server.id)+'\')" title="'+escapeHTML(server.name)+'"><span>'+escapeHTML(mark)+'</span>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</button>';
     }).join("");
   }
 
@@ -291,12 +316,21 @@
       const server=currentServer();
       if(!server){state.mode="dm";saveView();return renderContacts()}
       if(title)title.textContent=server.name;
-      if(identity)identity.innerHTML='<span class="gm-live-dot"></span><span>'+server.members.length+' member'+(server.members.length===1?"":"s")+'</span>';
+      if(identity)identity.innerHTML='<span class="gm-live-dot"></span><span>'+escapeHTML(server.description||server.members.length+" member"+(server.members.length===1?"":"s"))+'</span>';
       if(add)add.hidden=true;
-      if(actions)actions.innerHTML='<button type="button" onclick="GenesisMessages.inviteToServerPrompt()">Invite</button><button type="button" onclick="GenesisMessages.createChannelPrompt()">＋ Channel</button>';
-      list.innerHTML='<div class="gm-section-label">TEXT CHANNELS</div>'+server.channels.map(function(channel){
+      const owner=server.owner===state.identity;
+      if(actions)actions.innerHTML=owner
+        ? '<button type="button" onclick="GenesisMessages.inviteToServerPrompt()">Invite</button><button type="button" onclick="GenesisMessages.openServerSettings()">Customize</button><button type="button" onclick="GenesisMessages.createChannelPrompt()">＋ Text</button><button type="button" onclick="GenesisMessages.createVoiceChannelPrompt()">＋ Voice</button>'
+        : '';
+      const textChannels=server.channels.filter(channel=>channel.type!=="voice");
+      const voiceChannels=server.channels.filter(channel=>channel.type==="voice");
+      list.innerHTML='<div class="gm-section-label">TEXT CHANNELS</div>'+textChannels.map(function(channel){
         const unread=serverConversation(server.id,channel.id).filter(message=>message.direction==="incoming"&&message.unread).length;
         return '<button class="gm-channel '+(channel.id===state.selectedChannel?"active":"")+'" type="button" onclick="GenesisMessages.selectChannel(\''+escapeHTML(channel.id)+'\')"><span>#</span><strong>'+escapeHTML(channel.name)+'</strong>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</button>';
+      }).join("")+
+      '<div class="gm-section-label gm-voice-label">VOICE CHANNELS</div>'+voiceChannels.map(function(channel){
+        const joined=state.voice.serverId===server.id&&state.voice.channelId===channel.id;
+        return '<button class="gm-channel gm-voice-channel '+(channel.id===state.selectedChannel?"active ":"")+(joined?"joined":"")+'" type="button" onclick="GenesisMessages.selectChannel(\''+escapeHTML(channel.id)+'\')"><span>◖</span><strong>'+escapeHTML(channel.name)+'</strong>'+(joined?'<i>LIVE</i>':'')+'</button>';
       }).join("");
       return;
     }
@@ -368,6 +402,19 @@
         thread.innerHTML='<div class="gm-empty-thread"><div class="gm-empty-orb">#</div><h3>Select a channel</h3></div>';
         updateConnectionUI();return;
       }
+      const composer=document.querySelector(".gm-composer-wrap");
+      if(channel.type==="voice"){
+        if(composer)composer.hidden=true;
+        const joined=state.voice.serverId===server.id&&state.voice.channelId===channel.id&&!!state.voice.channel;
+        const participants=joined?Object.entries(state.voice.participants):[];
+        header.innerHTML='<div class="gm-channel-head"><span>◖</span><div><strong>'+escapeHTML(channel.name)+'</strong><small>'+escapeHTML(server.name)+' · Voice channel</small></div></div><div class="gm-head-pill">'+(joined?"Connected":"Voice")+'</div>';
+        thread.innerHTML='<div class="gm-voice-room"><div class="gm-voice-hero"><div class="gm-voice-orb">◖</div><h2>'+escapeHTML(channel.name)+'</h2><p>'+escapeHTML(server.description||"Talk live with people in this server.")+'</p>'+(joined
+          ? '<div class="gm-voice-actions"><button type="button" onclick="GenesisMessages.toggleVoiceMute()">'+(state.voice.muted?"Unmute microphone":"Mute microphone")+'</button><button class="danger" type="button" onclick="GenesisMessages.leaveVoice()">Disconnect</button></div>'
+          : '<button class="gm-join-voice" type="button" onclick="GenesisMessages.joinVoice()">Join Voice</button>')+'</div>'+
+          '<div class="gm-voice-members"><div class="gm-section-label">IN VOICE</div>'+(participants.length?participants.map(function(entry){const id=entry[0],person=entry[1];return '<div class="gm-voice-person"><span>'+escapeHTML((person.name||id).replace(/\s+/g,"").slice(0,2).toUpperCase())+'</span><strong>'+escapeHTML(person.name||"Genesis ID "+id)+'</strong><small>'+(person.muted?"Muted":"Connected")+'</small></div>'}).join(""):'<div class="gm-voice-empty">'+(joined?"Waiting for someone else to join.":"Join to see who is connected.")+'</div>')+'</div></div>';
+        input.disabled=true;send.disabled=true;updateConnectionUI();return;
+      }
+      if(composer)composer.hidden=false;
       header.innerHTML='<div class="gm-channel-head"><span>#</span><div><strong>'+escapeHTML(channel.name)+'</strong><small>'+escapeHTML(server.name)+' · '+server.members.length+' members · <span id="gmConnectionLabel"></span></small></div></div><div class="gm-head-pill">'+server.members.length+' members</div>';
       const messages=serverConversation(server.id,channel.id);
       thread.innerHTML=messages.length?renderMessageRows(messages,true):'<div class="gm-channel-welcome"><div>#</div><h2>Welcome to #'+escapeHTML(channel.name)+'</h2><p>This is the start of the channel in '+escapeHTML(server.name)+'.</p></div>';
@@ -377,6 +424,7 @@
       return;
     }
 
+    const composer=document.querySelector(".gm-composer-wrap");if(composer)composer.hidden=false;
     const contact=state.contacts.find(item=>item.id===state.selected);
     if(!contact){
       header.innerHTML='<div><strong>Direct Messages</strong><small id="gmConnectionLabel">Connecting…</small></div>';
@@ -391,7 +439,15 @@
     requestAnimationFrame(function(){thread.scrollTop=thread.scrollHeight});
   }
 
-  function renderAll(){renderServerRail();renderContacts();renderConversation();updateBadges()}
+  function renderVoiceDock(){
+    const dock=document.getElementById("gmVoiceDock");if(!dock)return;
+    if(!state.voice.channel){dock.hidden=true;dock.innerHTML="";return}
+    const server=state.servers.find(item=>item.id===state.voice.serverId);
+    const channel=server?.channels.find(item=>item.id===state.voice.channelId);
+    dock.hidden=false;
+    dock.innerHTML='<div><strong>Voice Connected</strong><small>'+escapeHTML(server?.name||"Server")+' · '+escapeHTML(channel?.name||"voice")+'</small></div><button type="button" onclick="GenesisMessages.toggleVoiceMute()" title="Mute">'+(state.voice.muted?"Unmute":"Mute")+'</button><button class="danger" type="button" onclick="GenesisMessages.leaveVoice()" title="Disconnect">×</button>';
+  }
+  function renderAll(){renderServerRail();renderContacts();renderConversation();renderVoiceDock();updateBadges()}
   function updateConnectionUI(){
     const label=document.getElementById("gmConnectionLabel");
     const dots=document.querySelectorAll(".gm-live-dot,.gm-status-dot");
@@ -420,7 +476,9 @@
   function selectChannel(id){
     const server=currentServer(),cid=serverId(id);
     if(!server||!server.channels.some(channel=>channel.id===cid))return;
-    state.mode="server";state.selectedChannel=cid;saveView();markCurrentServerRead();renderAll();
+    state.mode="server";state.selectedChannel=cid;saveView();
+    if(server.channels.find(channel=>channel.id===cid)?.type!=="voice")markCurrentServerRead();
+    renderAll();
     setTimeout(function(){document.getElementById("gmMessageInput")?.focus()},80);
   }
   function markCurrentServerRead(){
@@ -482,7 +540,7 @@
     if(!name)return;
     const invited=String(prompt("Invite Genesis IDs now? Separate IDs with commas. You can leave this blank.")||"").split(",").map(normalizeId).filter(id=>id&&id!==state.identity);
     const id="s-"+uniqueMessageId().replace(/[^a-z0-9]/gi,"").slice(0,18);
-    const server=normalizeServer({id,name,owner:state.identity,members:[state.identity].concat(invited),channels:[{id:"general",name:"general"}],createdAt:new Date().toISOString()});
+    const server=normalizeServer({id,name,owner:state.identity,members:[state.identity].concat(invited),channels:[{id:"general",name:"general",type:"text"}],accent:"violet",description:"",icon:"",createdAt:new Date().toISOString()});
     state.servers.unshift(server);saveServers();
     state.mode="server";state.selectedServer=server.id;state.selectedChannel="general";saveView();renderAll();
     if(state.connection==="live")broadcastServerMeta(server,invited);
@@ -499,13 +557,183 @@
     if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement(fresh.length+" member"+(fresh.length===1?"":"s")+" invited to "+server.name,3200);
   }
   function createChannelPrompt(){
-    const server=currentServer();if(!server)return;
-    const name=channelSlug(prompt("Channel name")||"");
+    const server=currentServer();if(!server||server.owner!==state.identity)return;
+    const name=channelSlug(prompt("Text channel name")||"");
     if(!name)return;
     let id=name,suffix=2;
     while(server.channels.some(channel=>channel.id===id)){id=name+"-"+suffix++}
-    server.channels.push({id,name});state.selectedChannel=id;saveServers();saveView();renderAll();
+    server.channels.push({id,name,type:"text"});state.selectedChannel=id;saveServers();saveView();renderAll();
     if(state.connection==="live")broadcastServerMeta(server);
+  }
+  function createVoiceChannelPrompt(){
+    const server=currentServer();if(!server||server.owner!==state.identity)return;
+    const name=channelSlug(prompt("Voice channel name")||"");
+    if(!name)return;
+    let id="voice-"+name,suffix=2;
+    while(server.channels.some(channel=>channel.id===id)){id="voice-"+name+"-"+suffix++}
+    server.channels.push({id,name,type:"voice"});state.selectedChannel=id;saveServers();saveView();renderAll();
+    if(state.connection==="live")broadcastServerMeta(server);
+  }
+  function openServerSettings(){
+    const server=currentServer(),modal=document.getElementById("gmServerModal");
+    if(!server||!modal||server.owner!==state.identity)return;
+    modal.hidden=false;
+    modal.innerHTML='<div class="gm-modal-card"><div class="gm-modal-head"><div><strong>Customize server</strong><small>Changes sync to invited members.</small></div><button type="button" onclick="GenesisMessages.closeServerSettings()">×</button></div>'+
+      '<label>Server name<input id="gmServerName" maxlength="36" value="'+escapeHTML(server.name)+'"></label>'+
+      '<label>Description<textarea id="gmServerDescription" maxlength="120" rows="3" placeholder="What is this server for?">'+escapeHTML(server.description||"")+'</textarea></label>'+
+      '<div class="gm-modal-grid"><label>Icon / emoji<input id="gmServerIcon" maxlength="4" value="'+escapeHTML(server.icon||"")+'" placeholder="✨"></label><label>Accent<select id="gmServerAccent">'+Object.keys(SERVER_ACCENTS).map(function(key){return '<option value="'+key+'" '+(serverAccent(server.accent)===key?"selected":"")+'>'+key[0].toUpperCase()+key.slice(1)+'</option>'}).join("")+'</select></label></div>'+
+      '<div class="gm-accent-preview" style="--server-accent:'+SERVER_ACCENTS[serverAccent(server.accent)]+'"><span id="gmServerPreviewIcon">'+escapeHTML(server.icon||server.name.slice(0,2).toUpperCase())+'</span><div><strong id="gmServerPreviewName">'+escapeHTML(server.name)+'</strong><small>Server preview</small></div></div>'+
+      '<div class="gm-modal-actions"><button type="button" onclick="GenesisMessages.closeServerSettings()">Cancel</button><button class="primary" type="button" onclick="GenesisMessages.saveServerSettings()">Save changes</button></div></div>';
+  }
+  function closeServerSettings(){const modal=document.getElementById("gmServerModal");if(modal){modal.hidden=true;modal.innerHTML=""}}
+  function saveServerSettings(){
+    const server=currentServer();if(!server||server.owner!==state.identity)return;
+    const name=String(document.getElementById("gmServerName")?.value||"").trim().slice(0,36);
+    if(!name)return;
+    server.name=name;
+    server.description=String(document.getElementById("gmServerDescription")?.value||"").trim().slice(0,120);
+    server.icon=serverIcon(document.getElementById("gmServerIcon")?.value||"");
+    server.accent=serverAccent(document.getElementById("gmServerAccent")?.value||"");
+    saveServers();closeServerSettings();renderAll();
+    if(state.connection==="live")broadcastServerMeta(server);
+  }
+
+  function voiceParticipant(id,name,muted){
+    const normalized=normalizeId(id);if(!normalized)return;
+    state.voice.participants[normalized]={name:String(name||"Genesis ID "+normalized).slice(0,40),muted:!!muted};
+  }
+  function removeVoicePeer(id){
+    const normalized=normalizeId(id),pc=state.voice.peers.get(normalized);
+    if(pc){try{pc.close()}catch{}state.voice.peers.delete(normalized)}
+    delete state.voice.participants[normalized];
+    const audio=document.getElementById("gmVoiceAudio-"+normalized);if(audio)audio.remove();
+    renderAll();
+  }
+  async function sendVoiceEvent(event,payload){
+    const channel=state.voice.channel;if(!channel)throw new Error("Voice channel is not connected");
+    const response=await channel.send({type:"broadcast",event,payload});
+    if(response!=="ok")throw new Error("Voice signaling returned "+response);
+    return response;
+  }
+  function ensureVoicePeer(peerId){
+    const id=normalizeId(peerId);if(!id||id===state.identity)return null;
+    let pc=state.voice.peers.get(id);if(pc)return pc;
+    pc=new RTCPeerConnection({iceServers:[{urls:"stun:stun.l.google.com:19302"},{urls:"stun:stun1.l.google.com:19302"}]});
+    state.voice.peers.set(id,pc);
+    if(state.voice.stream)state.voice.stream.getTracks().forEach(track=>pc.addTrack(track,state.voice.stream));
+    pc.onicecandidate=function(event){if(event.candidate)sendVoiceEvent("voice-signal",{from:state.identity,to:id,candidate:event.candidate,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){})};
+    pc.ontrack=function(event){
+      let audio=document.getElementById("gmVoiceAudio-"+id);
+      if(!audio){audio=document.createElement("audio");audio.id="gmVoiceAudio-"+id;audio.autoplay=true;document.getElementById("gmVoiceAudio")?.appendChild(audio)}
+      audio.srcObject=event.streams[0];
+      audio.play?.().catch(function(){});
+    };
+    pc.onconnectionstatechange=function(){if(["failed","closed"].includes(pc.connectionState))removeVoicePeer(id)};
+    return pc;
+  }
+  async function makeVoiceOffer(peerId){
+    const pc=ensureVoicePeer(peerId);if(!pc||pc.__makingOffer||pc.signalingState!=="stable")return;
+    pc.__makingOffer=true;
+    try{
+      const offer=await pc.createOffer();await pc.setLocalDescription(offer);
+      await sendVoiceEvent("voice-signal",{from:state.identity,to:normalizeId(peerId),description:pc.localDescription,serverId:state.voice.serverId,channelId:state.voice.channelId});
+    }finally{pc.__makingOffer=false}
+  }
+  function validVoicePacket(payload){
+    if(serverId(payload?.serverId)!==state.voice.serverId||serverId(payload?.channelId)!==state.voice.channelId)return "";
+    const from=normalizeId(payload?.from),server=state.servers.find(item=>item.id===state.voice.serverId);
+    return from&&server?.members.includes(from)?from:"";
+  }
+  async function handleVoiceHello(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);if(!from||from===state.identity)return;
+    voiceParticipant(from,payload.name,false);renderAll();
+    await sendVoiceEvent("voice-present",{from:state.identity,to:from,name:currentName(),muted:state.voice.muted,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){});
+    if(state.identity<from)makeVoiceOffer(from).catch(function(){});
+  }
+  function handleVoicePresent(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);
+    if(!from||from===state.identity||normalizeId(payload.to)!==state.identity)return;
+    voiceParticipant(from,payload.name,payload.muted);renderAll();
+    if(state.identity<from)makeVoiceOffer(from).catch(function(){});
+  }
+  async function handleVoiceSignal(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);
+    if(!from||from===state.identity||normalizeId(payload.to)!==state.identity)return;
+    voiceParticipant(from,payload.name,false);
+    const pc=ensureVoicePeer(from);if(!pc)return;
+    try{
+      if(payload.description){
+        await pc.setRemoteDescription(payload.description);
+        if(payload.description.type==="offer"){
+          const answer=await pc.createAnswer();await pc.setLocalDescription(answer);
+          await sendVoiceEvent("voice-signal",{from:state.identity,to:from,description:pc.localDescription,serverId:state.voice.serverId,channelId:state.voice.channelId});
+        }
+      }else if(payload.candidate){await pc.addIceCandidate(payload.candidate)}
+    }catch(error){console.warn("Genesis voice signaling:",error)}
+    renderAll();
+  }
+  function handleVoiceState(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);if(!from||from===state.identity)return;
+    voiceParticipant(from,payload.name,payload.muted);renderAll();
+  }
+  function handleVoiceLeave(packet){
+    const payload=packet?.payload||packet,from=validVoicePacket(payload);if(from)removeVoicePeer(from);
+  }
+  async function joinVoice(){
+    const server=currentServer(),channel=currentChannel();
+    if(!server||channel?.type!=="voice"||state.voice.joining)return false;
+    if(state.voice.channel&&state.voice.serverId===server.id&&state.voice.channelId===channel.id)return true;
+    await leaveVoice();
+    if(!state.client)await start();
+    if(!state.client||!navigator.mediaDevices?.getUserMedia||typeof RTCPeerConnection!=="function"){
+      if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Voice is not available in this browser.",4200);
+      return false;
+    }
+    state.voice.joining=true;
+    try{
+      const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+      state.voice.serverId=server.id;state.voice.channelId=channel.id;state.voice.stream=stream;state.voice.participants={};state.voice.muted=false;
+      voiceParticipant(state.identity,currentName(),false);
+      const room=state.client.channel(voiceTopic(server.id,channel.id),{config:{broadcast:{self:false,ack:true}}});
+      state.voice.channel=room
+        .on("broadcast",{event:"voice-hello"},handleVoiceHello)
+        .on("broadcast",{event:"voice-present"},handleVoicePresent)
+        .on("broadcast",{event:"voice-signal"},handleVoiceSignal)
+        .on("broadcast",{event:"voice-state"},handleVoiceState)
+        .on("broadcast",{event:"voice-leave"},handleVoiceLeave);
+      await new Promise(function(resolve,reject){
+        const timer=setTimeout(function(){reject(new Error("Voice connection timed out"))},10000);
+        state.voice.channel.subscribe(function(status){
+          if(status==="SUBSCRIBED"){clearTimeout(timer);resolve()}
+          else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){clearTimeout(timer);reject(new Error("Voice signaling could not connect"))}
+        });
+      });
+      await sendVoiceEvent("voice-hello",{from:state.identity,name:currentName(),serverId:server.id,channelId:channel.id});
+      renderAll();return true;
+    }catch(error){
+      console.warn("Genesis voice join:",error);
+      if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Could not join voice: "+String(error?.message||error),4600);
+      await leaveVoice();return false;
+    }finally{state.voice.joining=false}
+  }
+  async function leaveVoice(){
+    const channel=state.voice.channel;
+    if(channel){try{await sendVoiceEvent("voice-leave",{from:state.identity,serverId:state.voice.serverId,channelId:state.voice.channelId})}catch{}}
+    for(const pc of state.voice.peers.values()){try{pc.close()}catch{}}
+    state.voice.peers.clear();
+    if(state.voice.stream){for(const track of state.voice.stream.getTracks()){try{track.stop()}catch{}}}
+    if(state.client&&channel){try{await state.client.removeChannel(channel)}catch{}}
+    state.voice={serverId:"",channelId:"",channel:null,stream:null,peers:new Map(),participants:{},muted:false,joining:false};
+    const audioRoot=document.getElementById("gmVoiceAudio");if(audioRoot)audioRoot.innerHTML="";
+    renderAll();return true;
+  }
+  function toggleVoiceMute(){
+    if(!state.voice.stream)return false;
+    state.voice.muted=!state.voice.muted;
+    state.voice.stream.getAudioTracks().forEach(track=>{track.enabled=!state.voice.muted});
+    voiceParticipant(state.identity,currentName(),state.voice.muted);
+    sendVoiceEvent("voice-state",{from:state.identity,name:currentName(),muted:state.voice.muted,serverId:state.voice.serverId,channelId:state.voice.channelId}).catch(function(){});
+    renderAll();return state.voice.muted;
   }
 
   async function sendDirectMessage(text,media){
@@ -685,7 +913,7 @@
     clearTimeout(state.tutorialTimer);
     if(localStorage.getItem(TUTORIAL_KEY)!=="1")state.tutorialTimer=setTimeout(function(){beginTutorial(0)},560);
   }
-  function onWindowClose(){clearTimeout(state.tutorialTimer);finishTutorial(false);state.window=null}
+  function onWindowClose(){clearTimeout(state.tutorialTimer);finishTutorial(false);void leaveVoice();state.window=null}
 
   function tutorialElements(){
     return {shell:document.getElementById("genesisMessagesApp"),card:document.getElementById("gmTutorial"),svg:document.getElementById("gmTutorialLine"),path:document.querySelector("#gmTutorialLine path"),dot:document.querySelector("#gmTutorialLine circle")};
@@ -788,8 +1016,10 @@
     sdkVersion:SDK_VERSION,html,init,start,onWindowClose,
     selectDirectMessages,selectServer,selectChannel,selectContact,
     toggleAddContact,submitContact,sendCurrent,removeCurrent,pickImage,sendGifPrompt,
-    createServerPrompt,createGroupPrompt,createChannelPrompt,inviteToServerPrompt,
+    createServerPrompt,createGroupPrompt,createChannelPrompt,createVoiceChannelPrompt,inviteToServerPrompt,
+    openServerSettings,closeServerSettings,saveServerSettings,
+    joinVoice,leaveVoice,toggleVoiceMute,
     replayTutorial,nextTutorial,finishTutorial,
-    __test:Object.freeze({normalizeId,topicFor,escapeHTML,channelSlug,safeMediaUrl,messagePreview,normalizeServer})
+    __test:Object.freeze({normalizeId,topicFor,voiceTopic,escapeHTML,channelSlug,serverAccent,serverIcon,safeMediaUrl,messagePreview,normalizeServer})
   });
 })(globalThis);
