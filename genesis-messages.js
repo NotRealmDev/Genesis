@@ -7,6 +7,8 @@
   const HISTORY_PREFIX = "genesisMessagesHistory:";
   const SELECTED_PREFIX = "genesisMessagesSelected:";
   const TUTORIAL_KEY = "genesisMessagesTutorialComplete";
+  const GROUPS_PREFIX = "genesisMessagesGroups:";
+  const GROUP_HISTORY_PREFIX = "genesisMessagesGroupHistory:";
   const SDK_VERSION = "2.116.0";
 
   const state = {
@@ -21,7 +23,10 @@
     tutorialIndex:-1,
     tutorialTimer:null,
     tutorialResize:null,
-    retryTimer:null
+    retryTimer:null,
+    groups:[],
+    groupHistory:{},
+    selectedGroup:""
   };
 
   const tutorialSteps = [
@@ -89,6 +94,9 @@
   function historyKey(id=state.identity){ return HISTORY_PREFIX + id; }
   function selectedKey(id=state.identity){ return SELECTED_PREFIX + id; }
   function topicFor(id){ return "genesis-inbox-" + normalizeId(id); }
+  function groupsKey(id=state.identity){ return GROUPS_PREFIX + id; }
+  function groupHistoryKey(id=state.identity){ return GROUP_HISTORY_PREFIX + id; }
+  function groupTopic(id){ return "genesis-group-" + String(id||"").replace(/[^a-z0-9_-]/gi,"").slice(0,64); }
 
   function escapeHTML(value){
     return String(value == null ? "" : value).replace(/[&<>"']/g, character => ({
@@ -105,6 +113,8 @@
       ? contacts.filter(contact => normalizeId(contact?.id) && normalizeId(contact.id) !== id)
       : [];
     state.history = history && typeof history === "object" && !Array.isArray(history) ? history : {};
+    state.groups = storageGet(groupsKey(id), []);
+    state.groupHistory = storageGet(groupHistoryKey(id), {});
     const selected = normalizeId(localStorage.getItem(selectedKey(id)) || "");
     state.selected = state.contacts.some(contact => contact.id === selected)
       ? selected
@@ -119,6 +129,8 @@
   function saveHistory(){
     storageSet(historyKey(), state.history);
   }
+  function saveGroups(){ storageSet(groupsKey(), state.groups); }
+  function saveGroupHistory(){ storageSet(groupHistoryKey(), state.groupHistory); }
 
   function saveSelected(){
     try{ localStorage.setItem(selectedKey(), state.selected || ""); }catch{}
@@ -207,7 +219,7 @@
             <div class="gm-title">Messages</div>
             <div class="gm-identity" id="gmIdentity"><span class="gm-live-dot"></span><span>Your ID ${escapeHTML(id)}</span></div>
           </div>
-          <button class="gm-help" type="button" onclick="GenesisMessages.replayTutorial()" title="Show tutorial">?</button>
+          <div style="display:flex;gap:6px"><button class="gm-help" type="button" onclick="GenesisMessages.createGroupPrompt()" title="New group">＋</button><button class="gm-help" type="button" onclick="GenesisMessages.replayTutorial()" title="Show tutorial">?</button></div>
         </div>
         <button class="gm-add-contact" id="gmAddContactButton" type="button" onclick="GenesisMessages.toggleAddContact(true)">
           <span>＋</span><span>Add ID</span>
@@ -226,6 +238,7 @@
         <header class="gm-chat-head" id="gmChatHead"></header>
         <div class="gm-thread" id="gmThread"></div>
         <div class="gm-composer" id="gmComposer">
+          <button class="gm-media-btn" type="button" onclick="GenesisMessages.pickImage()" title="Send image">▧</button><button class="gm-media-btn" type="button" onclick="GenesisMessages.sendGifPrompt()" title="Send GIF">GIF</button><input id="gmImagePicker" type="file" accept="image/*" hidden>
           <textarea id="gmMessageInput" maxlength="${MAX_MESSAGE_LENGTH}" rows="1" placeholder="Choose an ID to start messaging" disabled></textarea>
           <button id="gmSendButton" type="button" onclick="GenesisMessages.sendCurrent()" disabled title="Send message">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l17 8-17 8 3-8-3-8zM7 12h14"/></svg>
@@ -282,6 +295,9 @@
   function renderConversation(){
     const header = document.getElementById("gmChatHead");
     const thread = document.getElementById("gmThread");
+    const picker=document.getElementById("gmImagePicker");
+    if(picker && !picker.dataset.bound){picker.dataset.bound="1";picker.addEventListener("change",()=>{const file=picker.files?.[0];if(!file)return;const reader=new FileReader();reader.onload=()=>sendMedia("image",reader.result);reader.readAsDataURL(file);picker.value=""})}
+
     const input = document.getElementById("gmMessageInput");
     const send = document.getElementById("gmSendButton");
     if(!header || !thread || !input || !send) return;
@@ -302,8 +318,9 @@
     thread.innerHTML = messages.length ? messages.map(message => {
       const own = message.direction === "outgoing";
       const status = own ? (message.status === "delivered" ? "Delivered" : message.status === "queued" ? "Saved · retrying" : message.status === "sending" ? "Sending…" : "Sent") : "";
+      const media=message.media?.url ? `<img src="${escapeHTML(message.media.url)}" alt="${escapeHTML(message.media.type||"image")}" loading="lazy">` : "";
       return `<div class="gm-message-row ${own ? "outgoing" : "incoming"}" data-message-id="${escapeHTML(message.id)}">
-        <div class="gm-bubble"><div>${escapeHTML(message.text).replace(/\n/g,"<br>")}</div><small>${escapeHTML(formatTime(message.sentAt))}${status ? " · " + escapeHTML(status) : ""}</small></div>
+        <div class="gm-bubble">${media}<div>${escapeHTML(message.text).replace(/\n/g,"<br>")}</div><small>${escapeHTML(formatTime(message.sentAt))}${status ? " · " + escapeHTML(status) : ""}</small></div>
       </div>`;
     }).join("") : `<div class="gm-empty-thread compact"><div class="gm-empty-orb">${escapeHTML(contact.id.slice(-2))}</div><h3>Message ${escapeHTML(contactLabel(contact))}</h3><p>Your conversation will be saved on this device.</p></div>`;
     input.disabled = false;
@@ -400,6 +417,25 @@
     }
   }
 
+  async function sendMedia(type,url){
+    const target=normalizeId(state.selected),safe=String(url||"").trim().slice(0,240000);
+    if(!target||!safe)return;
+    const message={id:uniqueMessageId(),from:state.identity,to:target,senderName:currentName(),text:type==="gif"?"GIF":"Image",media:{type,url:safe},sentAt:new Date().toISOString(),direction:"outgoing",status:"sending",unread:false,version:2};
+    putMessage(target,message);renderContacts();renderConversation();
+    try{await sendBroadcast(target,"message",{id:message.id,from:message.from,to:message.to,senderName:message.senderName,text:message.text,media:message.media,sentAt:message.sentAt,version:2});patchMessage(target,message.id,{status:"sent"})}catch{patchMessage(target,message.id,{status:"queued"})}
+    renderContacts();renderConversation();
+  }
+  function pickImage(){document.getElementById("gmImagePicker")?.click()}
+  function sendGifPrompt(){const url=prompt("Paste a direct GIF URL");if(/^https:\/\//i.test(String(url||"")))sendMedia("gif",url)}
+  function createGroupPrompt(){
+    const name=String(prompt("Group name")||"").trim().slice(0,30);if(!name)return;
+    const members=String(prompt("Genesis IDs, separated by commas")||"").split(",").map(normalizeId).filter(id=>id&&id!==state.identity);
+    if(!members.length)return;
+    const id="g-"+uniqueMessageId().replace(/[^a-z0-9]/gi,"").slice(0,18);
+    state.groups.unshift({id,name,members:Array.from(new Set(members)),createdAt:new Date().toISOString()});saveGroups();
+    if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Group “"+name+"” created",3000);
+  }
+
   async function sendCurrent(){
     const input = document.getElementById("gmMessageInput");
     const target = normalizeId(state.selected);
@@ -472,7 +508,8 @@
     const from = normalizeId(payload?.from);
     const to = normalizeId(payload?.to);
     const text = String(payload?.text || "").trim().slice(0,MAX_MESSAGE_LENGTH);
-    if(!payload?.id || !from || to !== state.identity || !text || from === state.identity) return;
+    const mediaOk = payload?.media && /^https:\/\//i.test(String(payload.media.url||""));
+    if(!payload?.id || !from || to !== state.identity || (!text && !mediaOk) || from === state.identity) return;
 
     const contact = addContact(from,{name:payload.senderName});
     const appOpen = !!document.getElementById("genesisMessagesApp");
@@ -483,6 +520,7 @@
       to,
       senderName:String(payload.senderName || "Genesis User").slice(0,40),
       text,
+      media:payload.media && /^https:\/\//i.test(String(payload.media.url||"")) ? {type:String(payload.media.type||"image").slice(0,12),url:String(payload.media.url).slice(0,240000)} : null,
       sentAt:payload.sentAt && !Number.isNaN(new Date(payload.sentAt).getTime()) ? payload.sentAt : new Date().toISOString(),
       direction:"incoming",
       status:"received",
@@ -777,10 +815,10 @@
       .gm-message-row.outgoing .gm-bubble{background:linear-gradient(145deg,hsla(var(--accent),78%,57%,.65),hsla(var(--accent),78%,47%,.48));border-bottom-right-radius:5px}.gm-message-row.incoming .gm-bubble{border-bottom-left-radius:5px}
       .gm-bubble small{display:block;text-align:right;margin-top:5px;color:rgba(255,255,255,.52);font-size:8px}
       .gm-empty-thread{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:34px;color:var(--muted)}.gm-empty-thread.compact{min-height:260px}.gm-empty-thread h3{margin:13px 0 6px;color:rgba(255,255,255,.86);font-size:17px}.gm-empty-thread p{max-width:330px;margin:0;font-size:10px;line-height:1.6}.gm-empty-orb{width:58px;height:58px;border-radius:21px;display:grid;place-items:center;background:linear-gradient(145deg,hsla(var(--accent),76%,58%,.3),rgba(255,255,255,.04));border:1px solid rgba(255,255,255,.1);font-weight:730}
-      .gm-composer{display:grid;grid-template-columns:minmax(0,1fr) 43px;align-items:end;gap:8px;padding:10px 13px 13px;border-top:1px solid rgba(255,255,255,.06);background:rgba(4,7,13,.52)}
+      .gm-composer{display:grid;grid-template-columns:36px 40px minmax(0,1fr) 43px;align-items:end;gap:8px;padding:10px 13px 13px;border-top:1px solid rgba(255,255,255,.06);background:rgba(4,7,13,.52)}
       .gm-composer textarea{width:100%;min-height:42px;max-height:116px;resize:none;border-radius:16px;border:1px solid rgba(255,255,255,.09);outline:0;background:rgba(255,255,255,.055);color:#fff;padding:11px 13px;line-height:1.45;scrollbar-width:thin}.gm-composer textarea:focus{border-color:hsla(var(--accent),75%,65%,.38);background:rgba(255,255,255,.075)}.gm-composer textarea:disabled{opacity:.38}
       .gm-composer>button{width:43px;height:43px;border-radius:15px;border:1px solid rgba(255,255,255,.12);background:hsl(var(--accent),70%,55%);display:grid;place-items:center;cursor:pointer;transition:.2s}.gm-composer>button:hover:not(:disabled){transform:translateY(-2px) scale(1.03)}.gm-composer>button:disabled{opacity:.28;cursor:default}.gm-composer svg{width:20px;height:20px;fill:none;stroke:#fff;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-      .desktop-icon .app-icon{position:relative}.gm-app-badge{position:absolute;right:-5px;top:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ff4568;color:#fff;display:none;place-items:center;border:2px solid #121725;font:750 8px/1 Inter,sans-serif}.gm-app-badge.show{display:grid}
+      .gm-media-btn{width:36px!important;height:36px!important;align-self:center;border-radius:12px!important;background:rgba(255,255,255,.07)!important;font-size:9px!important}.gm-media-btn:hover{background:rgba(255,255,255,.13)!important}.gm-bubble img{display:block;max-width:min(320px,62vw);max-height:260px;border-radius:12px;margin-bottom:6px;object-fit:cover}.desktop-icon .app-icon{position:relative}.gm-app-badge{position:absolute;right:-5px;top:-5px;min-width:18px;height:18px;padding:0 5px;border-radius:999px;background:#ff4568;color:#fff;display:none;place-items:center;border:2px solid #121725;font:750 8px/1 Inter,sans-serif}.gm-app-badge.show{display:grid}
       .gm-tutorial{position:absolute;right:18px;bottom:18px;z-index:8;width:min(300px,calc(100% - 36px));padding:18px;border-radius:21px;border:1px solid rgba(255,255,255,.16);background:rgba(8,12,21,.92);box-shadow:0 24px 70px rgba(0,0,0,.46);backdrop-filter:blur(24px) saturate(160%);opacity:0;transform:translateY(12px) scale(.96);pointer-events:none;transition:opacity .32s ease,transform .42s cubic-bezier(.2,.85,.2,1),left .35s ease,right .35s ease,top .35s ease,bottom .35s ease}.gm-tutorial.show{opacity:1;transform:none;pointer-events:auto}.gm-tutorial.place-left{right:auto;left:18px}.gm-tutorial.place-top{bottom:auto;top:18px}
       .gm-tutorial-step{font-size:8px;letter-spacing:.15em;text-transform:uppercase;color:hsla(var(--accent),90%,76%,.88)}.gm-tutorial-title{margin-top:8px;font-size:15px;font-weight:710}.gm-tutorial-copy{margin-top:7px;color:var(--muted);font-size:10px;line-height:1.55}.gm-tutorial-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:15px}.gm-tutorial-actions button{height:33px;padding:0 12px;border-radius:11px;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.055);cursor:pointer;font-size:10px}.gm-tutorial-actions .primary{background:hsla(var(--accent),75%,55%,.42)}
       .gm-tutorial-line{position:absolute;inset:0;width:100%;height:100%;z-index:7;overflow:visible;pointer-events:none;opacity:0;transition:opacity .28s ease}.gm-tutorial-line.show{opacity:1}.gm-tutorial-line path{fill:none;stroke:hsla(var(--accent),90%,72%,.95);stroke-width:2;stroke-linecap:round;stroke-dasharray:1;stroke-dashoffset:1;filter:drop-shadow(0 0 6px hsla(var(--accent),90%,65%,.55));transition:stroke-dashoffset .65s cubic-bezier(.2,.8,.2,1),opacity .18s ease}.gm-tutorial-line circle{fill:hsl(var(--accent),85%,70%);filter:drop-shadow(0 0 7px hsla(var(--accent),90%,70%,.8));opacity:0;transition:opacity .25s .42s}
@@ -819,6 +857,9 @@
     submitContact,
     sendCurrent,
     removeCurrent,
+    pickImage,
+    sendGifPrompt,
+    createGroupPrompt,
     replayTutorial,
     nextTutorial,
     finishTutorial,
