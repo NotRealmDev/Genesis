@@ -18,16 +18,23 @@ window.GENESIS_BACKEND = {
     document.head.appendChild(script);
   }
 
+  function loadRansom(isOS){
+    const loadEvent=()=>loadScript('genesis-ransom-a90.js?build=a90-r1','A-90 jumpscare override',()=>{
+      loadScript('genesis-ransom-easter.js?build=ransom-event-r5','RANSOM Easter egg');
+    });
+    if(isOS){
+      loadScript('genesis-ransom-music.js?build=ransom-music-r1','RANSOM soundtrack',loadEvent);
+    }else{
+      loadEvent();
+    }
+  }
+
   function load(){
     const path=location.pathname||"/";
     const isLogin=/(?:^|\/)index\.html$/i.test(path)||path==="/"||path==="";
     const isOS=/(?:^|\/)os\.html$/i.test(path);
 
-    if(isLogin||isOS){
-      loadScript('genesis-ransom-a90.js?build=a90-r1','A-90 jumpscare override',()=>{
-        loadScript('genesis-ransom-easter.js?build=ransom-event-r5','RANSOM Easter egg');
-      });
-    }
+    if(isLogin||isOS)loadRansom(isOS);
 
     if(!isOS)return;
     for(const [src,label] of [['genesis-browser-extras.js?build=browser-extras-r3','Browser extras'],['genesis-ui-polish.js?build=ui-polish-r2','Genesis UI polish']]){
