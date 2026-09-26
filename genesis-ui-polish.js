@@ -26,8 +26,34 @@
   const originalClose=global.closeWindow;
   if(typeof originalClose==='function')global.closeWindow=function(...args){sound('close');return originalClose.apply(this,args)};
 
+  const RANSOM_SESSION_KEY='genesisRansomSession';
+  function canPlayMenuMusic(){
+    try{
+      if(global.sessionStorage?.getItem('realmAuth')!=='1')return false;
+      if(global.sessionStorage?.getItem(RANSOM_SESSION_KEY)==='1')return false;
+      if(new URLSearchParams(location.search||'').get('ransomEvent')==='1')return false;
+      const login=JSON.parse(global.localStorage?.getItem('genesisLogin')||'null');
+      if(!login||!login.expires||Date.now()>=Number(login.expires))return false;
+      if(document.documentElement.classList.contains('genesis-ransom-running')||document.documentElement.classList.contains('genesis-ransom-event-running'))return false;
+      if(document.getElementById('genesisRansomOSEvent')||document.querySelector('.genesis-ransom-result'))return false;
+      if(global.GenesisRansomEaster?.isRunning?.())return false;
+      return true;
+    }catch{return false}
+  }
   let musicStarted=false;
+  function pauseMusic(){
+    try{
+      if(typeof global.genesisGetMusicAudio!=='function')return false;
+      global.genesisGetMusicAudio().pause();
+      musicStarted=false;
+      return true;
+    }catch{return false}
+  }
   async function startMusic(){
+    if(!canPlayMenuMusic()){
+      pauseMusic();
+      return false;
+    }
     if(musicStarted||typeof global.genesisGetMusicAudio!=='function')return false;
     try{
       const player=global.genesisGetMusicAudio();player.loop=true;player.preload='auto';
@@ -37,7 +63,7 @@
   function cleanupStartListeners(){document.removeEventListener('pointerdown',startOnGesture,true);document.removeEventListener('keydown',startOnGesture,true)}
   function startOnGesture(){startMusic()}
   document.addEventListener('pointerdown',startOnGesture,true);document.addEventListener('keydown',startOnGesture,true);
-  startMusic();
+  if(canPlayMenuMusic())startMusic();else pauseMusic();
 
   const style=document.createElement('style');style.id='genesisUiPolishStyles';style.textContent=`
     :root{--ease-spring:cubic-bezier(.2,.82,.2,1);--soft-outline:0 0 0 3px hsla(var(--accent),80%,62%,.16)}
@@ -64,5 +90,5 @@
     @media(prefers-reduced-motion:reduce){*,*:before,*:after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
   `;document.head.appendChild(style);
 
-  global.GenesisUI={sound,startMusic};
+  global.GenesisUI={sound,startMusic,pauseMusic,canPlayMenuMusic};
 })(window);

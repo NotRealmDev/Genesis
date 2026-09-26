@@ -23,11 +23,11 @@ window.GENESIS_BACKEND = {
     const isOS=/(?:^|\/)os\.html$/i.test(path);
 
     if(isLogin||isOS){
-      loadScript('genesis-ransom-easter.js?build=ransom-event-r2','RANSOM Easter egg');
+      loadScript('genesis-ransom-easter.js?build=ransom-event-r3','RANSOM Easter egg');
     }
 
     if(!isOS)return;
-    for(const [src,label] of [['genesis-browser-extras.js?build=browser-extras-r3','Browser extras'],['genesis-ui-polish.js?build=ui-polish-r1','Genesis UI polish']]){
+    for(const [src,label] of [['genesis-browser-extras.js?build=browser-extras-r3','Browser extras'],['genesis-ui-polish.js?build=ui-polish-r2','Genesis UI polish']]){
       loadScript(src,label);
     }
   }
