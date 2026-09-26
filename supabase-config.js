@@ -20,7 +20,9 @@ window.GENESIS_BACKEND = {
 
   function loadRansom(isOS){
     const loadEvent=()=>loadScript('genesis-ransom-a90.js?build=a90-r1','A-90 jumpscare override',()=>{
-      loadScript('genesis-ransom-easter.js?build=ransom-event-r5','RANSOM Easter egg');
+      loadScript('genesis-ransom-easter.js?build=ransom-event-r5','RANSOM Easter egg',()=>{
+        if(isOS)loadScript('genesis-ransom-failure.js?build=ransom-failure-r1','RANSOM failure behavior');
+      });
     });
     if(isOS){
       loadScript('genesis-ransom-music.js?build=ransom-music-r1','RANSOM soundtrack',loadEvent);
