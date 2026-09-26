@@ -10,6 +10,8 @@ test("RANSOM Easter egg loads on login and OS",()=>{
   assert.match(config,/const isLogin=/);
   assert.match(config,/const isOS=/);
   assert.match(config,/isLogin\|\|isOS/);
+  assert.match(config,/index/);
+  assert.match(config,/os/);
 });
 
 test("RANSOM credentials trigger Tape Zero before entering the OS",()=>{
