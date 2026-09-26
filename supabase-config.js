@@ -9,10 +9,11 @@ window.GENESIS_BACKEND = {
 };
 
 (function(){
-  function loadScript(src,label){
+  function loadScript(src,label,onload){
     const script=document.createElement('script');
     script.src=src;
     script.defer=true;
+    if(onload)script.onload=onload;
     script.onerror=()=>console.error(label+' did not load. Refresh to retry.');
     document.head.appendChild(script);
   }
@@ -23,7 +24,9 @@ window.GENESIS_BACKEND = {
     const isOS=/(?:^|\/)os\.html$/i.test(path);
 
     if(isLogin||isOS){
-      loadScript('genesis-ransom-easter.js?build=ransom-event-r3','RANSOM Easter egg');
+      loadScript('genesis-ransom-a90.js?build=a90-r1','A-90 jumpscare override',()=>{
+        loadScript('genesis-ransom-easter.js?build=ransom-event-r5','RANSOM Easter egg');
+      });
     }
 
     if(!isOS)return;
