@@ -7,7 +7,7 @@ const egg=readFileSync(new URL("../genesis-ransom-easter.js",import.meta.url),"u
 
 test("RANSOM Easter egg loads on login and OS",()=>{
   assert.match(config,/genesis-ransom-easter\.js\?build=ransom-event-r2/);
-  assert.match(config,/index\\?\.html|index\\\.html/);
+  assert.match(config,/index\\\.html/);
   assert.match(config,/os\\\.html/);
   assert.match(config,/isLogin\|\|isOS/);
 });
