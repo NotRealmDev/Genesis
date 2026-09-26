@@ -45,6 +45,14 @@
       }
       #genesisRansomPreviewButton{background:rgba(255,48,68,.14);border-color:rgba(255,70,88,.22)}
       #genesisRansomPreviewButton:hover{background:rgba(255,48,68,.24)}
+      .ransom-coin.ransom-hard-coin{
+        width:56px!important;height:62px!important;z-index:2147482350!important;
+        opacity:.68!important;filter:drop-shadow(0 0 4px rgba(255,225,80,.42))!important;
+        transition:opacity .22s ease,transform .22s ease!important;
+      }
+      .ransom-coin.ransom-hard-coin img{height:76%!important}
+      .ransom-coin.ransom-hard-coin span{font-size:8px!important;opacity:.55!important}
+      .ransom-coin.ransom-hard-coin.ransom-hard-pending{opacity:0!important;pointer-events:none!important}
       @keyframes grpShake{0%{transform:translate(0,0)}25%{transform:translate(5px,-2px)}50%{transform:translate(-4px,3px)}75%{transform:translate(3px,4px)}100%{transform:translate(-3px,-2px)}}
     `;
     document.head.appendChild(style);
@@ -128,6 +136,36 @@
     window.addEventListener("touchstart",switchFace,{once:true,capture:true});
   }
 
+  function hardPosition(coin){
+    const edge=Math.floor(Math.random()*4);
+    let left,top;
+    if(edge===0){left=4+Math.random()*13;top=23+Math.random()*65}
+    else if(edge===1){left=83+Math.random()*13;top=23+Math.random()*65}
+    else if(edge===2){left=15+Math.random()*70;top=10+Math.random()*10}
+    else{left=15+Math.random()*70;top=79+Math.random()*12}
+    coin.style.left=left.toFixed(1)+"%";
+    coin.style.top=top.toFixed(1)+"%";
+  }
+
+  function hardenCoin(coin){
+    if(!coin||coin.dataset.ransomHard==="1")return;
+    coin.dataset.ransomHard="1";
+    coin.classList.add("ransom-hard-coin","ransom-hard-pending");
+    hardPosition(coin);
+    coin.style.pointerEvents="none";
+    const delay=1700+Math.random()*1900;
+    setTimeout(()=>{
+      if(!coin.isConnected)return;
+      coin.classList.remove("ransom-hard-pending");
+      coin.style.pointerEvents="auto";
+    },delay);
+  }
+
+  function hardenCoins(root=document){
+    if(root?.matches?.(".ransom-coin"))hardenCoin(root);
+    root?.querySelectorAll?.(".ransom-coin").forEach(hardenCoin);
+  }
+
   function installButton(){
     if(!isAdmin())return;
     const input=document.getElementById("deactivateIdInput");
@@ -152,7 +190,15 @@
   function start(){
     injectStyles();
     installButton();
-    const observer=new MutationObserver(installButton);
+    hardenCoins();
+    const observer=new MutationObserver(records=>{
+      installButton();
+      for(const record of records){
+        for(const node of record.addedNodes){
+          if(node?.nodeType===1)hardenCoins(node);
+        }
+      }
+    });
     observer.observe(document.body,{subtree:true,childList:true});
   }
 
