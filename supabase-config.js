@@ -38,6 +38,7 @@ window.GENESIS_BACKEND = {
     const isLogin=/(?:^|\/)index\.html$/i.test(path)||path==="/"||path==="";
     const isOS=/(?:^|\/)os\.html$/i.test(path);
 
+    if(isOS)loadScript('genesis-ransom-notice.js?build=ransom-notice-r1','RANSOM first-run notice');
     if(isLogin||isOS)loadRansom(isOS);
 
     if(!isOS)return;
