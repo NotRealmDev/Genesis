@@ -21,9 +21,7 @@ window.GENESIS_BACKEND = {
   function loadRansom(isOS){
     const loadEvent=()=>loadScript('genesis-ransom-a90.js?build=a90-r1','A-90 jumpscare override',()=>{
       loadScript('genesis-ransom-easter.js?build=ransom-event-r5','RANSOM Easter egg',()=>{
-        if(isOS)loadScript('genesis-ransom-failure.js?build=ransom-failure-r1','RANSOM failure behavior',()=>{
-          loadScript('genesis-ransom-preview.js?build=ransom-preview-r1','RANSOM admin preview');
-        });
+        if(isOS)loadScript('genesis-ransom-failure.js?build=ransom-failure-r1','RANSOM failure behavior');
       });
     });
     if(isOS){
@@ -38,7 +36,6 @@ window.GENESIS_BACKEND = {
     const isLogin=/(?:^|\/)index\.html$/i.test(path)||path==="/"||path==="";
     const isOS=/(?:^|\/)os\.html$/i.test(path);
 
-    if(isOS)loadScript('genesis-ransom-notice.js?build=ransom-notice-r1','RANSOM first-run notice');
     if(isLogin||isOS)loadRansom(isOS);
 
     if(!isOS)return;
