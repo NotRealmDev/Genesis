@@ -9,7 +9,6 @@
 <link rel="apple-touch-icon" href="assets/icons/genesis-192.png">
 <link rel="stylesheet" href="genesis-install.css">
 <link rel="stylesheet" href="genesis-gpt.css">
-<script src="genesis-intro-state.js"></script>
 <script src="genesis-install.js" defer></script>
 <script src="genesis-gpt.js" defer></script>
 <style>
@@ -557,7 +556,6 @@ button{color:inherit}
       sessionStorage.setItem("realmAuth","1");
       sessionStorage.setItem("realmUser",login.user || "");
       sessionStorage.setItem("genesisRole",login.role || "user");
-      if(new URLSearchParams(location.search).get("ransomEvent")!=="1" && window.GenesisIntroState.shouldShow(login))location.replace("intro.html");
       return;
     }
   }catch(e){}
@@ -1410,7 +1408,6 @@ const apps = {
     <div class="setting"><label>Glass Blur</label><input type="range" min="6" max="60" value="${getStoredBlur()}" oninput="changeBlur(this.value)"></div>
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
-    <button type="button" class="os-btn" style="margin-top:10px" onclick="location.href='intro.html?replay=1'">Replay feature showcase</button>
   </div>`},
   about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.232 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
   music:{title:"Music",content:musicHTML},
