@@ -53,6 +53,7 @@ try{
   await page.addInitScript(topic=>{
     window.GENESIS_ANNOUNCEMENT_TOPIC=topic;
     localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
+    localStorage.setItem("genesisShowcaseSeen:jameson","2026-10-gpt-install-r1");
     localStorage.setItem("genesisDisplayId","527");
     localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
     localStorage.removeItem("genesisMessagesTutorialComplete");
@@ -68,6 +69,7 @@ try{
   await receiver.addInitScript(topic=>{
     window.GENESIS_ANNOUNCEMENT_TOPIC=topic;
     localStorage.setItem("genesisLogin",JSON.stringify({user:"Jameson",role:"user",expires:Date.now()+3600000}));
+    localStorage.setItem("genesisShowcaseSeen:jameson","2026-10-gpt-install-r1");
     localStorage.setItem("genesisDisplayId","528");
     localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
     localStorage.setItem("genesisMessagesTutorialComplete","1");
@@ -164,6 +166,7 @@ try{
   await stubDeviceId(voiceReceiver,528);
   await voiceReceiver.addInitScript(server=>{
     localStorage.setItem("genesisLogin",JSON.stringify({user:"VoiceUser",role:"user",expires:Date.now()+3600000}));
+    localStorage.setItem("genesisShowcaseSeen:voiceuser","2026-10-gpt-install-r1");
     localStorage.setItem("genesisDisplayId","528");
     localStorage.setItem("genesisDeviceToken",crypto.randomUUID());
     localStorage.setItem("genesisMessagesTutorialComplete","1");

@@ -227,8 +227,26 @@ var $scramjetController;
   $scramjetController=o;
 })();
 
+// Cache only a public offline notice, never account pages or proxied chats.
+const GENESIS_OFFLINE_CACHE='genesis-offline-v1';
+const GENESIS_WORKER_BASE=new URL('./',self.location.href);
+const GENESIS_OFFLINE_URL=new URL('offline.html',GENESIS_WORKER_BASE).href;
+self.addEventListener('install',event=>{
+  event.waitUntil(caches.open(GENESIS_OFFLINE_CACHE).then(cache=>cache.add(GENESIS_OFFLINE_URL)).catch(()=>{}));
+});
+self.addEventListener('activate',event=>{
+  event.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(key=>key.startsWith('genesis-offline-') && key!==GENESIS_OFFLINE_CACHE).map(key=>caches.delete(key)))));
+});
 self.addEventListener('fetch',(event)=>{
   if($scramjetController && $scramjetController.shouldRoute(event)){
     event.respondWith($scramjetController.route(event));
+    return;
+  }
+  const url=new URL(event.request.url);
+  const shellPaths=['','index.html','intro.html','os.html'].map(path=>new URL(path,GENESIS_WORKER_BASE).pathname);
+  if(event.request.mode==='navigate' && url.origin===GENESIS_WORKER_BASE.origin && shellPaths.includes(url.pathname)){
+    event.respondWith(fetch(event.request).catch(async()=>{
+      return await caches.match(GENESIS_OFFLINE_URL) || new Response('Genesis is offline. Reconnect and refresh.',{status:503,headers:{'content-type':'text/plain; charset=utf-8'}});
+    }));
   }
 });

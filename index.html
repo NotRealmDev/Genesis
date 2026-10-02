@@ -4,6 +4,12 @@
 <title>Genesis</title>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#080d16">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="assets/icons/genesis-192.png">
+<link rel="stylesheet" href="genesis-install.css">
+<script src="genesis-intro-state.js"></script>
+<script src="genesis-install.js" defer></script>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1668,7 +1674,7 @@ async function login() {
     sessionStorage.setItem("realmUser", loginName);
     sessionStorage.setItem("genesisRole", role);
 
-    window.location.href = (account && account.url) ? account.url : "intro.html";
+    window.location.href = (account?.url && account.url!=="intro.html") ? account.url : window.GenesisIntroState.destination({user:loginName});
     return;
   }
 
@@ -1931,7 +1937,7 @@ async function initializeGenesisLogin(){
     sessionStorage.setItem("realmAuth","1");
     sessionStorage.setItem("realmUser",login.user || "");
     sessionStorage.setItem("genesisRole",login.role || "user");
-    location.replace("os.html");
+    location.replace(window.GenesisIntroState.destination(login));
   }
 }
 
