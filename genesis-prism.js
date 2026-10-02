@@ -772,7 +772,7 @@
         if(!window.LibcurlTransport) throw new Error("libby.js did not load.");
 
         const swUrl=new URL("servy.js",BASE_URL);
-        swUrl.searchParams.set("build",BUILD_ID);
+        // Share a stable registration with Genesis's install controller.
         const registration=await navigator.serviceWorker.register(swUrl.href,{scope:BASE_URL.pathname,type:"classic",updateViaCache:"none"});
         this.registration=registration;
 
