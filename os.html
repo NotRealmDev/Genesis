@@ -1194,8 +1194,9 @@ function deactivateOSHTML(){
       <button class="os-btn" onclick="setGenesisDeviceFromInput(false)">Deactivate</button>
       <button class="os-btn" onclick="setGenesisDeviceFromInput(true)">Reactivate</button>
     </div>
-    <div id="deactivateStatus" class="admin-status"></div>
-    <div class="heading" style="font-size:17px;margin-top:22px;margin-bottom:10px">Known IDs</div>
+    <div id="deactivateStatus" class="admin-status" aria-live="polite"></div>
+    <div class="heading" style="font-size:17px;margin-top:22px;margin-bottom:10px">IDs currently on Genesis</div>
+    <div id="genesisActiveSummary" class="muted" style="font-size:11px;margin-bottom:10px">Loading active IDs…</div>
     <div id="genesisDeviceList" class="admin-list"><div class="muted">Loading…</div></div>
     <div class="admin-history">
       <div class="heading" style="font-size:17px;margin-bottom:8px">Action History</div>
@@ -2742,7 +2743,9 @@ async function setGenesisDevice(displayId, makeActive){
       p_display_id:id,
       p_active:!!makeActive
     });
-    if(status) status.textContent = `ID ${id} ${makeActive ? "reactivated" : "deactivated"}.`;
+    if(status) status.textContent = makeActive
+      ? `ID ${id} was reactivated.`
+      : `ID ${id} is now deactivated.`;
     refreshDeactivateOS();
   }catch(error){
     if(status) status.textContent = "Could not update ID: " + error.message;
@@ -2758,6 +2761,7 @@ async function refreshDeactivateOS(){
   if(genesisRole() !== "admin") return;
   const list = document.getElementById("genesisDeviceList");
   const history = document.getElementById("genesisActionHistory");
+  const summary = document.getElementById("genesisActiveSummary");
   if(!list || !history) return;
 
   try{
@@ -2766,12 +2770,17 @@ async function refreshDeactivateOS(){
     );
     const myId = Number(localStorage.getItem("genesisDisplayId"));
 
+    const active = (devices || []).filter(d=>d.active);
+    const inactive = (devices || []).filter(d=>!d.active);
+    if(summary) summary.textContent = active.length
+      ? `Active now (${active.length}): ${active.map(d=>`ID ${d.display_id}`).join(", ")} · Deactivated (${inactive.length}): ${inactive.map(d=>`ID ${d.display_id}`).join(", ") || "none"}`
+      : `Active now: none · Deactivated (${inactive.length}): ${inactive.map(d=>`ID ${d.display_id}`).join(", ") || "none"}`;
     list.innerHTML = (devices || []).map(d=>{
       const isMe = Number(d.display_id) === myId;
       return `<div class="admin-device">
         <div class="device-id">ID ${escapeHTML(d.display_id)}</div>
         <div>
-          <div class="${d.active ? "status-active" : "status-off"}">${d.active ? "Active" : "Deactivated"}${isMe ? " · This device" : ""}</div>
+          <div class="${d.active ? "status-active" : "status-off"}">${d.active ? "Active now" : "Deactivated — this ID cannot log in"}${isMe ? " · This device" : ""}</div>
           <div class="muted" style="font-size:9px;margin-top:2px">Last seen ${escapeHTML(new Date(d.last_seen).toLocaleString())}</div>
         </div>
         <button class="os-btn" onclick="setGenesisDevice(${Number(d.display_id)},${d.active ? "false" : "true"})">
