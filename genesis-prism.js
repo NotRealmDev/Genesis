@@ -4,6 +4,7 @@
   // endpoint for automatic failover, and allow an owner-supplied endpoint
   // through genesisWispUrl to take priority over both.
   const DEFAULT_WISP_URLS = [
+    "wss://wisp.workshop/",
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
