@@ -19,6 +19,8 @@ on:
       - "os.html"
       - "eaglercraft.html"
       - "games-c-s.js"
+      - "games-s-z.js"
+      - "genesis-app-tour.js"
       - "genesis-announcements.js"
       - "genesis-messages.js"
       - "supabase-config.js"
@@ -44,7 +46,7 @@ jobs:
         with:
           node-version: "22"
       - name: Run proxy unit and integration-contract tests
-        run: node --test tests/proxy-resilience.test.mjs tests/os-features.test.mjs tests/announcements-global.test.mjs tests/browser-extras.test.mjs tests/ui-polish.test.mjs tests/showcase-state.test.mjs
+        run: node --test tests/proxy-resilience.test.mjs tests/os-features.test.mjs tests/announcements-global.test.mjs tests/browser-extras.test.mjs tests/ui-polish.test.mjs tests/showcase-state.test.mjs tests/games-s-z.test.mjs tests/gpt-native.test.mjs
 
   gpt-install-showcase:
     runs-on: ubuntu-latest
@@ -58,7 +60,7 @@ jobs:
         run: |
           npm install --no-save --no-package-lock playwright@1.55.0
           npx playwright install --with-deps chromium
-      - name: Verify GPT isolation, installation, and first-run showcase
+      - name: Verify native GPT, installation, and first-run intro
         run: node tests/gpt-install-showcase.e2e.mjs
 
   game-assets:

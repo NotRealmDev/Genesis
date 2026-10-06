@@ -79,6 +79,8 @@ test("Genesis overhaul exposes Store themes account username and DNS settings",(
   assert.match(os,/genesis-overhaul\.js/);
   assert.match(overhaul,/Sunset/);
   assert.match(overhaul,/Chill/);
+  assert.match(overhaul,/Halloween/);
+  assert.match(overhaul,/theme-halloween/);
   assert.match(overhaul,/genesisUsername/);
   assert.match(overhaul,/cloudflare-dns\.com/);
   assert.match(overhaul,/dns\.google/);
@@ -148,4 +150,15 @@ test("Messages notification previews preserve actual message text",()=>{
   assert.equal(helpers.messagePreview("hey are you joining?"),"hey are you joining?");
   assert.equal(helpers.messagePreview("",{type:"image",url:"https://example.com/a.png"}),"sent an image");
   assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
+});
+
+test("first-use app tours are wired without replacing the original intro",()=>{
+  const tour=readFileSync(new URL("../genesis-app-tour.js",import.meta.url),"utf8");
+  const intro=readFileSync(new URL("../intro.html",import.meta.url),"utf8");
+  assert.match(os,/genesis-app-tour\.js/);
+  assert.match(os,/GenesisAppTour\?\.show\(appId\)/);
+  assert.match(tour,/genesisAppTourSeen:/);
+  assert.match(tour,/QUICK TOUR/);
+  assert.match(intro,/class="logo-wrap"/);
+  assert.doesNotMatch(intro,/showcaseAudio/);
 });
