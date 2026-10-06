@@ -3,12 +3,15 @@ import {readFileSync} from "node:fs";
 import vm from "node:vm";
 
 const catalogSource=readFileSync(new URL("../games-c-s.js",import.meta.url),"utf8");
+const docShardSource=readFileSync(new URL("../games-s-z.js",import.meta.url),"utf8");
 const context={URL};
 context.globalThis=context;
 vm.createContext(context);
 vm.runInContext(catalogSource,context,{filename:"games-c-s.js"});
+vm.runInContext(docShardSource,context,{filename:"games-s-z.js"});
 
 const {sourceCommit,games,installRuntimeFixes}=context.GENESIS_GAME_CATALOG;
+const docCatalog=context.GENESIS_GAME_CATALOG_T_Z;
 const catalogRepository="seanstonator-lang/UGS-Web-Hub";
 const eaglerRepository="JessePinkman27/eaglercraft-1.12.2";
 const eaglerCommit="d9e759ec21fdb807742201b11de8835e34ccd48a";
@@ -89,11 +92,28 @@ assert.equal(tree.truncated,false,"The upstream Git tree was truncated");
 const upstreamFiles=new Set(tree.tree.filter(entry=>entry.type==="blob").map(entry=>entry.path));
 const missing=Array.from(games).filter(game=>!upstreamFiles.has(game.file)).map(game=>game.file);
 assert.equal(missing.length,0,`Catalog files missing at the pinned commit: ${missing.join(", ")}`);
+const missingDocEntries=Array.from(docCatalog.games)
+  .filter(game=>!upstreamFiles.has(`games/${game.file}`))
+  .map(game=>game.file);
+assert.deepEqual(
+  missingDocEntries,
+  Array.from(docCatalog.fallbackFiles),
+  "Every missing Google Doc entry must have a deliberate Genesis Mini fallback"
+);
+assert.equal(
+  docCatalog.games.filter(game=>game.fallback).length,
+  docCatalog.fallbackFiles.length,
+  "Google Doc fallback metadata drifted"
+);
 
 const samples=new Map();
-for(const game of games)if(!samples.has(game.section))samples.set(game.section,game);
+for(const game of [...games,...docCatalog.games]){
+  if(game.fallback||samples.has(game.section))continue;
+  samples.set(game.section,game);
+}
 await mapWithConcurrency(samples.values(),4,async game=>{
-  const url=`https://cdn.jsdelivr.net/gh/${catalogRepository}@${sourceCommit}/${game.file}`;
+  const filePath=game.file.startsWith("games/")?game.file:`games/${game.file}`;
+  const url=`https://cdn.jsdelivr.net/gh/${catalogRepository}@${sourceCommit}/${filePath}`;
   console.log(`Checking ${game.section}: ${game.name}`);
   const prefix=await readPrefix(url,64);
   const text=new TextDecoder().decode(prefix);
@@ -148,6 +168,7 @@ await Promise.all(["bootstrap.js","assets.epw"].map(file=>
 
 console.log(JSON.stringify({
   verifiedCatalogFiles:games.length,
+  verifiedGoogleDocTZFiles:docCatalog.games.length,
   deliveredCatalogSamples:samples.size,
   verifiedSurvivalRaceAssets:6,
   verifiedAmazingSpiderAssets:10,

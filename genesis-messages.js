@@ -277,12 +277,13 @@
         '<div class="gm-thread" id="gmThread"></div>'+
         '<div class="gm-composer-wrap"><div class="gm-composer" id="gmComposer">'+
           '<button class="gm-media-btn" type="button" onclick="GenesisMessages.pickImage()" title="Send image">＋</button>'+
-          '<button class="gm-gif-btn" type="button" onclick="GenesisMessages.sendGifPrompt()" title="Send GIF">GIF</button>'+
+          '<button class="gm-gif-btn" type="button" onclick="GenesisMessages.openGifSearch()" title="Search GIFs">GIF</button>'+
           '<input id="gmImagePicker" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>'+
           '<textarea id="gmMessageInput" maxlength="'+MAX_MESSAGE_LENGTH+'" rows="1" placeholder="Choose a conversation" disabled></textarea>'+
           '<button class="gm-send-btn" id="gmSendButton" type="button" onclick="GenesisMessages.sendCurrent()" disabled title="Send message"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4l17 8-17 8 3-8-3-8zM7 12h14"/></svg></button>'+
         '</div></div>'+
       '</section>'+
+      '<div class="gm-gif-picker" id="gmGifPicker" hidden><div class="gm-gif-head"><strong>Search GIFs</strong><button type="button" onclick="GenesisMessages.closeGifSearch()">×</button></div><div class="gm-gif-search"><input id="gmGifSearchInput" placeholder="Search GIFs…" autocomplete="off"><button type="button" onclick="GenesisMessages.searchGifs()">Search</button></div><div class="gm-gif-status" id="gmGifStatus"></div><div class="gm-gif-results" id="gmGifResults"></div></div>'+
       '<div class="gm-modal-backdrop" id="gmServerModal" hidden></div>'+
       '<div class="gm-voice-audio" id="gmVoiceAudio" aria-hidden="true"></div>'+
       '<svg class="gm-tutorial-line" id="gmTutorialLine" aria-hidden="true"><path></path><circle r="4"></circle></svg>'+
@@ -792,6 +793,27 @@
     const url=String(prompt("Paste a direct HTTPS GIF URL")||"").trim();
     if(/^https:\/\//i.test(url))sendMedia("gif",url);
   }
+  function closeGifSearch(){document.getElementById("gmGifPicker")?.setAttribute("hidden","")}
+  function openGifSearch(){
+    const picker=document.getElementById("gmGifPicker");if(!picker)return;
+    picker.removeAttribute("hidden");
+    const input=document.getElementById("gmGifSearchInput");
+    if(input){input.focus();input.onkeydown=e=>{if(e.key==="Enter")searchGifs()}}
+  }
+  async function searchGifs(){
+    const input=document.getElementById("gmGifSearchInput"),status=document.getElementById("gmGifStatus"),results=document.getElementById("gmGifResults");
+    const query=String(input?.value||"").trim();if(!query||!results)return;
+    if(status)status.textContent="Searching GIFs…";results.innerHTML="";
+    try{
+      const url="https://tenor.googleapis.com/v2/search?key=LIVDSRZULELA&client_key=genesis&limit=18&media_filter=gif,tinygif&q="+encodeURIComponent(query);
+      const response=await fetch(url,{cache:"no-store"});if(!response.ok)throw Error("GIF search unavailable");
+      const data=await response.json();const items=Array.isArray(data.results)?data.results:[];
+      if(!items.length){if(status)status.textContent="No GIFs found.";return}
+      if(status)status.textContent="Choose a GIF to send";
+      results.innerHTML=items.map(item=>{const media=item.media_formats||{};const gif=media.gif?.url||media.mediumgif?.url||media.tinygif?.url;const preview=media.tinygif?.url||media.gif?.url;if(!gif)return"";return `<button class="gm-gif-result" type="button" onclick="GenesisMessages.chooseGif('${escapeHTML(gif)}')"><img loading="lazy" src="${escapeHTML(preview||gif)}" alt="${escapeHTML(item.content_description||"GIF")}"></button>`}).join("");
+    }catch(error){if(status)status.textContent="GIF search could not connect. You can still paste a direct GIF URL."}
+  }
+  function chooseGif(url){const safe=safeMediaUrl(url);if(!safe)return;closeGifSearch();sendMedia("gif",safe)}
 
   async function retryQueued(){
     if(!state.client||state.connection!=="live")return;
@@ -1013,6 +1035,7 @@
       '.gm-voice-room{min-height:100%;display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:18px;align-items:center}.gm-voice-hero{max-width:480px;padding:30px}.gm-voice-orb{width:68px;height:68px;border-radius:22px;display:grid;place-items:center;background:linear-gradient(145deg,hsla(var(--accent),70%,58%,.35),rgba(255,255,255,.06));font-size:30px}.gm-voice-hero h2{margin:16px 0 6px;font-size:25px;letter-spacing:-.04em}.gm-voice-hero p{margin:0 0 20px;color:#9299a8;font-size:10px;line-height:1.6}.gm-join-voice,.gm-voice-actions button{height:38px;padding:0 14px;border:0;border-radius:10px;background:#43b581;color:#fff;font-size:10px;font-weight:720;cursor:pointer}.gm-voice-actions{display:flex;gap:8px}.gm-voice-actions button{background:rgba(255,255,255,.08)}.gm-voice-actions .danger{background:rgba(237,66,69,.18);color:#ff9a9d}.gm-voice-members{align-self:stretch;padding:20px 12px;border-left:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.08)}.gm-voice-person{display:grid;grid-template-columns:34px 1fr;grid-template-rows:17px 17px;column-gap:8px;align-items:center;padding:6px;border-radius:9px}.gm-voice-person>span{grid-row:1/3;width:32px;height:32px;border-radius:50%;display:grid;place-items:center;background:#313643;font-size:8px;font-weight:800}.gm-voice-person strong{font-size:9px}.gm-voice-person small{font-size:7px;color:#737b89}.gm-voice-empty{padding:12px 8px;color:#737b89;font-size:8px;line-height:1.5}.gm-voice-audio{display:none}',
 
       '.gm-composer-wrap{padding:0 18px 18px}.gm-composer{display:grid;grid-template-columns:32px 35px minmax(0,1fr) 38px;gap:6px;align-items:end;min-height:48px;padding:6px;border-radius:13px;background:#272b35}.gm-composer textarea{width:100%;min-height:36px;max-height:116px;padding:9px 6px;border:0;outline:0;resize:none;background:transparent;color:#e7e9ee;font:inherit;font-size:11px;line-height:1.45}.gm-composer textarea::placeholder{color:#717886}.gm-composer button{border:0;color:#aeb4c0;cursor:pointer;transition:.18s}.gm-media-btn,.gm-gif-btn{width:32px;height:32px;align-self:center;border-radius:9px;background:transparent;font-size:17px}.gm-gif-btn{font-size:8px;font-weight:800}.gm-media-btn:hover,.gm-gif-btn:hover{background:rgba(255,255,255,.07);color:#fff}.gm-send-btn{width:38px;height:38px;border-radius:10px;background:hsl(var(--accent),64%,52%);display:grid;place-items:center}.gm-send-btn:disabled{opacity:.25;cursor:default}.gm-send-btn svg{width:18px;height:18px;fill:none;stroke:#fff;stroke-width:1.7}',
+      '.gm-gif-picker{position:absolute;right:18px;bottom:78px;z-index:20;width:min(390px,calc(100% - 36px));padding:13px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(25,29,39,.97);box-shadow:0 20px 60px #0008;backdrop-filter:blur(18px)}.gm-gif-picker[hidden]{display:none}.gm-gif-head,.gm-gif-search{display:flex;align-items:center;gap:8px}.gm-gif-head{justify-content:space-between;margin-bottom:10px;color:#eef4ff;font-size:12px}.gm-gif-head button{border:0;background:transparent;color:#aeb8c8;font-size:20px;cursor:pointer}.gm-gif-search input{min-width:0;flex:1;height:34px;border:1px solid #ffffff18;border-radius:9px;background:#ffffff09;color:#fff;padding:0 10px;outline:0}.gm-gif-search button{height:34px;border:0;border-radius:9px;background:hsl(var(--accent),64%,52%);color:#fff;padding:0 11px;font-size:10px;font-weight:700;cursor:pointer}.gm-gif-status{min-height:20px;padding-top:8px;color:#9ca9bb;font-size:10px}.gm-gif-results{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;max-height:250px;overflow:auto}.gm-gif-result{height:76px;padding:0;border:0;border-radius:8px;overflow:hidden;background:#ffffff0d;cursor:pointer}.gm-gif-result img{width:100%;height:100%;object-fit:cover}.gm-gif-result:hover{outline:2px solid hsl(var(--accent),72%,65%)}',
 
       '.gm-modal-backdrop{position:absolute;inset:0;z-index:20;display:grid;place-items:center;padding:20px;background:rgba(4,6,10,.64);backdrop-filter:blur(10px)}.gm-modal-backdrop[hidden]{display:none}.gm-modal-card{width:min(430px,100%);padding:18px;border-radius:17px;background:#1b1e27;border:1px solid rgba(255,255,255,.1);box-shadow:0 30px 90px rgba(0,0,0,.45)}.gm-modal-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}.gm-modal-head strong{display:block;font-size:14px}.gm-modal-head small{display:block;margin-top:4px;color:#8b92a0;font-size:8px}.gm-modal-head button{width:28px;height:28px;border:0;border-radius:8px;background:rgba(255,255,255,.06);color:#aeb4c0;cursor:pointer}.gm-modal-card>label,.gm-modal-grid label{display:block;margin-top:10px;color:#9aa1af;font-size:8px;font-weight:650}.gm-modal-card input,.gm-modal-card textarea,.gm-modal-card select{display:block;width:100%;margin-top:5px;border:1px solid rgba(255,255,255,.08);border-radius:9px;background:#101219;color:#fff;padding:9px 10px;outline:none;font:inherit;font-size:10px}.gm-modal-card textarea{resize:vertical;min-height:64px}.gm-modal-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.gm-accent-preview{--server-accent:#7c6cff;margin-top:14px;padding:11px;border-radius:11px;background:color-mix(in srgb,var(--server-accent) 16%,#171a22);display:flex;align-items:center;gap:10px}.gm-accent-preview>span{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--server-accent);font-size:14px;font-weight:800}.gm-accent-preview strong,.gm-accent-preview small{display:block}.gm-accent-preview strong{font-size:10px}.gm-accent-preview small{margin-top:2px;color:#9299a8;font-size:7px}.gm-modal-actions{display:flex;justify-content:flex-end;gap:7px;margin-top:16px}.gm-modal-actions button{height:34px;padding:0 11px;border:0;border-radius:9px;background:rgba(255,255,255,.07);color:#d6dae2;font-size:9px;cursor:pointer}.gm-modal-actions .primary{background:hsl(var(--accent),64%,52%);color:#fff}',
       '.gm-server-icon{--server-accent:#7c6cff}.gm-server-icon:hover{background:color-mix(in srgb,var(--server-accent) 34%,#222631)}.gm-server-icon.active{background:var(--server-accent);box-shadow:0 8px 25px color-mix(in srgb,var(--server-accent) 28%,transparent)}',
@@ -1040,7 +1063,7 @@
   global.GenesisMessages=Object.freeze({
     sdkVersion:SDK_VERSION,html,init,start,onWindowClose,
     selectDirectMessages,selectServer,selectChannel,selectContact,
-    toggleAddContact,submitContact,sendCurrent,removeCurrent,pickImage,sendGifPrompt,
+    toggleAddContact,submitContact,sendCurrent,removeCurrent,pickImage,sendGifPrompt,openGifSearch,closeGifSearch,searchGifs,chooseGif,
     createServerPrompt,createGroupPrompt,createChannelPrompt,createVoiceChannelPrompt,inviteToServerPrompt,
     openServerSettings,closeServerSettings,saveServerSettings,
     joinVoice,leaveVoice,toggleVoiceMute,

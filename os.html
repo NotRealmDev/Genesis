@@ -659,8 +659,10 @@ button{color:inherit}
 </div>
 
 <script src="games-c-s.js"></script>
+<script src="games-s-z.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="genesis-messages.js"></script>
+<script src="genesis-app-tour.js"></script>
 <script>
 const embeddedGamePayloads = {
   "drive-mad": "H4sIANi2pGoC/+1XS2/jNhC+51ewAuJTZEl2/FBipS22yK1ogbZngSJHEjc0qZK0E2+x/71D0ZYVJwV2u7eiQMLHzDcfR5wZkt58xzVzhw5I67by4WrjOyKpaooIVLyzkZcB5Q9XhGwqahFooC6i1rnO3iUJ42r60XKQYm+mClzStEktFJXCCbAJ31Ied/pJ/HCbVwtaLat8vaoX9byCxbrOOYVFzvIZrGuWUVrlVZpE/VJbcJSwlhoLroh2ro7XI4VfPYY/d2JfRB+0cqBc/Dt+RURYmBWRgxeX+K+5H2hGLE44CQ8/GbEH8jPlmyQIhgUU3UIRNVo3ckyqtDNUWUkdRJfgvYDnThs3gj8L7tqCw14wiPvJjVC4MVTGllEJRXazs2D6Ca1wrnSglUI9EQOyiKw7SLAtAPKGnX+GinZdUlPFKIcps/bSRqADb9B7L51iE9CWGdE5PyTkWSiun6fU2oZzUpC/eikhuAJYp80vRjRC2btBQUh6R4YUaPDz7dQHecr0NroZQNkINKiP2s8nmHdzhKvzxfIWbiGGeraIcVTFFV2uYlZlGc0Wq2VV8X6tuMHMQ8KEsaxiixWNYb5Ai2W+jPMVm8VpvqrqZbZeL9Nlgl8IL1OfDt8zvVPOHIo/fpvsjCxxeTAGTNF7cD3/8Xr2iH8nf3E4scJBKXgxnwiry744QE08okSGfzYEhU2D/9znWYylMGm1sK44gJ0orX4FY7UvlU/ACzVhUu+4pXvoNxQFNd0KeXg0AhSXB4/AvGs0zm2xWl/PPuRz3yyxyVI/nK9Wvs1TbG9T364DZJZ7TDbrodk8zG7T0GWhm4du1XfLMFsv+i4PyDwI89XEdsAwi0tMKY75rFWBu8KFaibed79XXxLHAN7jLiCDN/qSUE4wE3F1TMsiHXJN9xn6LWk0UHVGO820HMgGTautQ+m/p/YE/qz4JhJ/xCDBeU5deyT92lIYOCxQw1pk+L84/oPF0VLrYxtO3s/3/vRPzsf/8SYg1rAi6jPO8ie80qOHM2qThCfAptL8QNCXyA/CRcLFvpdsNcdv7qjBmy8K98qF7ngtHpV+5Y6qsV5qC2W1cw6vr4eJExjoe3QCUYPJidFfS1D6K698TU6YxHvsRCmUAuO/BO3ecuCzAMpaSPhKjmF4Hpw4GVV7astKG45GJyLYhp0EddJcbFAn6eHt8oJzCYShbLA42px4eYPvkLGk0i8XAknZ02CM5mLbhFgfXwZMY45NP3bNsG4vGZt0J03/SIrGz6buPRjduVYjw2N4ooxQYcPG7WVQ8PhtDFhbalP6XXnlx1H3Cji4LTX1RRaRPZU7fI+lEdnSlyLK0tRH74R/7crVpe8cQqiEz8HB83HwQ4jfhjYaJUBEHK36g7aI4swTBflF2BuDLvclMV7gpMUA+TfluW7eybtx8R4DavXOMExpoS6q+H14uA4u693Xd1/3/lfB3w98DZslDAAA",
@@ -689,7 +691,11 @@ function shouldConvertGameSourceToHTML(url){
       (
         u.pathname.includes("/npm/ugs-singlefiles") ||
         u.pathname.includes("/gh/bubbls/ugs-singlefile") ||
+        u.pathname.includes("/gh/bubbls/UGS-Assets") ||
         u.pathname.includes("/gh/seanstonator-lang/UGS-Web-Hub")
+      ) || (
+        u.hostname === "raw.githack.com" &&
+        u.pathname.includes("/bubbls/UGS-Assets/")
       )
     );
   }catch{
@@ -743,6 +749,10 @@ async function unpackEmbeddedGame(gameId){
   if(embeddedGameUrls[gameId]) return embeddedGameUrls[gameId];
 
   const game = gameLibrary.find(g => g.id === gameId);
+
+  if(game?.fallback){
+    throw new Error("This Google Doc game is not available in the pinned mirror; using Genesis Mini.");
+  }
 
   if(game && game.src){
     const sources=Array.isArray(game.sources)&&game.sources.length?game.sources:[game.src];
@@ -801,16 +811,38 @@ const GENESIS_GAME_CDN_BASE="https://cdn.jsdelivr.net/gh/seanstonator-lang/UGS-W
 const GENESIS_GAME_PAGES_BASE="https://seanstonator-lang.github.io/UGS-Web-Hub/";
 
 function catalogGame(entry){
-  const primary=new URL(entry.file,GENESIS_GAME_CDN_BASE).href;
-  const fallback=new URL(entry.file,GENESIS_GAME_PAGES_BASE).href;
+  // Newer catalog shards carry their own tested mirror URLs. Keep the
+  // original UGS-Web-Hub mapping for the legacy C-S catalog, but never try
+  // to construct a URL from an absent `file` field.
+  if(entry && entry.src){
+    const sources=Array.isArray(entry.sources)&&entry.sources.length
+      ? entry.sources.filter(Boolean)
+      : [entry.src];
+    return{
+      id:entry.id,
+      name:entry.name,
+      developer:entry.developer||("UGS · "+(entry.section||"")),
+      section:entry.section,
+      thumb:gameWebSearchThumb(entry.name),
+      src:entry.src,
+      sources:[...new Set(sources)]
+    };
+  }
+  // The Google Doc shard stores the bare HTML filename; UGS-Web-Hub keeps
+  // those pages under /games. Legacy catalog entries already include that
+  // directory, so normalize both shapes before building mirror URLs.
+  const filePath=entry.file.startsWith("games/")?entry.file:`games/${entry.file}`;
+  const primary=new URL(filePath,GENESIS_GAME_CDN_BASE).href;
+  const fallback=new URL(filePath,GENESIS_GAME_PAGES_BASE).href;
   return{
     id:entry.id,
     name:entry.name,
-    developer:"UGS · "+entry.section,
+    developer:entry.fallback?"Genesis Mini · offline remix":"UGS · "+entry.section,
     section:entry.section,
     thumb:gameWebSearchThumb(entry.name),
     src:primary,
-    sources:[primary,fallback]
+    sources:[primary,fallback],
+    fallback:Boolean(entry.fallback)
   };
 }
 
@@ -947,6 +979,7 @@ const gameLibrary = [
   {id:"ugs-burrito-bison-launcha-libre",name:"Burrito Bison Launcha Libre",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Burrito Bison Launcha Libre"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clburritobisonlaunchalibre.html"},
   {id:"ugs-buster-jam",name:"Buster Jam",developer:"UGS · B",section:"B",thumb:gameWebSearchThumb("Buster Jam"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clBusterJam.html"},
   ...((globalThis.GENESIS_GAME_CATALOG?.games||[]).map(catalogGame)),
+  ...((globalThis.GENESIS_GAME_CATALOG_T_Z?.games||[]).map(catalogGame)),
   {id:"eaglercraft-1-12-2",name:"Eaglercraft 1.12.2",developer:"Eaglercraft",section:"E",thumb:gameWebSearchThumb("Eaglercraft 1.12.2"),page:"eaglercraft.html"},
   {id:"ragdoll-archers",name:"Ragdoll Archers",developer:"Ericetto",thumb:"ragdoll-archers.png",src:"ragdoll-archers.html"},
   {id:"drive-mad",name:"Drive Mad",developer:"Fancade",thumb:"data:image/webp;base64,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"},
@@ -1472,6 +1505,7 @@ function openApp(appId){
   if(appId==="browser") initBrowser(win);
   if(appId==="gpt") window.GenesisGPT?.init(win);
   if(appId==="settings") window.GenesisInstall?.refresh();
+  window.GenesisAppTour?.show(appId);
   if(appId==="accountSettings") setTimeout(()=>document.getElementById("gxUsername")?.focus(),0);
 }
 
@@ -1610,6 +1644,12 @@ function renderGameResults(){
     more.textContent="Show more · "+shown.length+" of "+games.length;
   }
 }
+function launchGenesisMiniFallback(game, frame, loader){
+  const title=JSON.stringify(String(game?.name||"Genesis game"));
+  const html=`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><style>*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#090d18;color:#efffff;font:14px system-ui,sans-serif}body{display:grid;place-items:center;background:radial-gradient(circle at 50% 0,#253b59,#090d18 70%)}main{width:min(760px,94vw);height:min(560px,90vh);display:flex;flex-direction:column;gap:10px;padding:18px;border:1px solid #7ee8df44;border-radius:22px;background:#ffffff08;backdrop-filter:blur(18px);box-shadow:0 24px 70px #0008}header{display:flex;justify-content:space-between;align-items:center;color:#a9fff3}h1{font-size:15px;margin:0}small{color:#aebdcd}canvas{width:100%;height:100%;min-height:0;flex:1;border-radius:15px;background:linear-gradient(#131c35,#070a13);touch-action:none}button{border:1px solid #86e8dc66;border-radius:10px;background:#b6fff022;color:#eaffff;padding:8px 12px;cursor:pointer}footer{text-align:center;font-size:11px;color:#9cadc1}</style><main><header><h1>Genesis Mini · ${title}</h1><button id="reset">Restart</button></header><canvas id="c"></canvas><footer>Move with ← → or A/D · avoid the falling orbs · tap left/right on touch screens</footer></main>${"<scr"+"ipt>"}(()=>{const c=document.getElementById('c'),x=c.getContext('2d'),title=${title};let p,orbs,score,last,raf;function size(){const r=c.getBoundingClientRect(),d=devicePixelRatio||1;c.width=r.width*d;c.height=r.height*d;x.setTransform(d,0,0,d,0,0)}function reset(){p={x:c.clientWidth/2,y:c.clientHeight-42,w:34,h:14,v:0};orbs=[];score=0;last=performance.now();cancelAnimationFrame(raf);loop(last)}function loop(t){const dt=Math.min(34,t-last);last=t;if(Math.random()<.025)orbs.push({x:12+Math.random()*(c.clientWidth-24),y:-12,r:7+Math.random()*9,v:0.12+Math.random()*.2});p.x=Math.max(18,Math.min(c.clientWidth-18,p.x+p.v*dt));x.clearRect(0,0,c.clientWidth,c.clientHeight);x.fillStyle='#9ffff0';x.shadowBlur=20;x.shadowColor='#63ffe5';x.fillRect(p.x-p.w/2,p.y-p.h/2,p.w,p.h);x.shadowBlur=0;for(const o of orbs){o.y+=o.v*dt;x.beginPath();x.fillStyle='#ff9e4a';x.shadowBlur=14;x.shadowColor='#ff6338';x.arc(o.x,o.y,o.r,0,7);x.fill();x.shadowBlur=0;if(Math.abs(o.x-p.x)<o.r+p.w/2&&Math.abs(o.y-p.y)<o.r+p.h/2){x.fillStyle='#fff';x.font='700 22px system-ui';x.fillText('Run ended · '+score,c.clientWidth/2-95,c.clientHeight/2);return}if(o.y>c.clientHeight+20)score++}x.fillStyle='#dceeff';x.font='600 12px system-ui';x.fillText('Score '+score,14,22);raf=requestAnimationFrame(loop)}function move(n){p.v=n*.48}addEventListener('keydown',e=>{if(e.key==='ArrowLeft'||e.key.toLowerCase()==='a')move(-1);if(e.key==='ArrowRight'||e.key.toLowerCase()==='d')move(1);if(e.key===' '&&raf===undefined)reset()});addEventListener('keyup',e=>{if(['ArrowLeft','ArrowRight','a','d'].includes(e.key))move(0)});c.addEventListener('pointerdown',e=>move(e.offsetX<c.clientWidth/2?-1:1));c.addEventListener('pointerup',()=>move(0));addEventListener('resize',()=>{size();reset()});document.getElementById('reset').onclick=reset;size();reset()})()${"</scr"+"ipt>"}`;
+  frame.src=URL.createObjectURL(new Blob([html],{type:"text/html"}));
+  frame.addEventListener("load",()=>loader?.classList.add("hidden"),{once:true});
+}
 async function openGame(gameId){
   const g=gameLibrary.find(x=>x.id===gameId);
   if(!g)return;
@@ -1668,12 +1708,8 @@ async function openGame(gameId){
     frame.src=gameUrl;
   }catch(err){
     console.error(err);
-    if(loader){
-      loader.innerHTML=`<div class="loader-inner" style="max-width:520px;padding:28px">
-        <div style="font-size:18px;color:white;margin-bottom:10px">Could not start ${escapeHTML(g.name)}</div>
-        <div style="line-height:1.55">${escapeHTML(err.message||String(err))}</div>
-      </div>`;
-    }
+    if(loadText) loadText.textContent="Online version unavailable · starting Genesis Mini version…";
+    launchGenesisMiniFallback(g,frame,loader);
   }
 }
 function showGamesLibrary(){
