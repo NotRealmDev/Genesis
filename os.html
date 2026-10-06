@@ -662,7 +662,6 @@ button{color:inherit}
 <script src="games-s-z.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="genesis-messages.js"></script>
-<script src="genesis-app-tour.js"></script>
 <script>
 const embeddedGamePayloads = {
   "drive-mad": "H4sIANi2pGoC/+1XS2/jNhC+51ewAuJTZEl2/FBipS22yK1ogbZngSJHEjc0qZK0E2+x/71D0ZYVJwV2u7eiQMLHzDcfR5wZkt58xzVzhw5I67by4WrjOyKpaooIVLyzkZcB5Q9XhGwqahFooC6i1rnO3iUJ42r60XKQYm+mClzStEktFJXCCbAJ31Ied/pJ/HCbVwtaLat8vaoX9byCxbrOOYVFzvIZrGuWUVrlVZpE/VJbcJSwlhoLroh2ro7XI4VfPYY/d2JfRB+0cqBc/Dt+RURYmBWRgxeX+K+5H2hGLE44CQ8/GbEH8jPlmyQIhgUU3UIRNVo3ckyqtDNUWUkdRJfgvYDnThs3gj8L7tqCw14wiPvJjVC4MVTGllEJRXazs2D6Ca1wrnSglUI9EQOyiKw7SLAtAPKGnX+GinZdUlPFKIcps/bSRqADb9B7L51iE9CWGdE5PyTkWSiun6fU2oZzUpC/eikhuAJYp80vRjRC2btBQUh6R4YUaPDz7dQHecr0NroZQNkINKiP2s8nmHdzhKvzxfIWbiGGeraIcVTFFV2uYlZlGc0Wq2VV8X6tuMHMQ8KEsaxiixWNYb5Ai2W+jPMVm8VpvqrqZbZeL9Nlgl8IL1OfDt8zvVPOHIo/fpvsjCxxeTAGTNF7cD3/8Xr2iH8nf3E4scJBKXgxnwiry744QE08okSGfzYEhU2D/9znWYylMGm1sK44gJ0orX4FY7UvlU/ACzVhUu+4pXvoNxQFNd0KeXg0AhSXB4/AvGs0zm2xWl/PPuRz3yyxyVI/nK9Wvs1TbG9T364DZJZ7TDbrodk8zG7T0GWhm4du1XfLMFsv+i4PyDwI89XEdsAwi0tMKY75rFWBu8KFaibed79XXxLHAN7jLiCDN/qSUE4wE3F1TMsiHXJN9xn6LWk0UHVGO820HMgGTautQ+m/p/YE/qz4JhJ/xCDBeU5deyT92lIYOCxQw1pk+L84/oPF0VLrYxtO3s/3/vRPzsf/8SYg1rAi6jPO8ie80qOHM2qThCfAptL8QNCXyA/CRcLFvpdsNcdv7qjBmy8K98qF7ngtHpV+5Y6qsV5qC2W1cw6vr4eJExjoe3QCUYPJidFfS1D6K698TU6YxHvsRCmUAuO/BO3ecuCzAMpaSPhKjmF4Hpw4GVV7astKG45GJyLYhp0EddJcbFAn6eHt8oJzCYShbLA42px4eYPvkLGk0i8XAknZ02CM5mLbhFgfXwZMY45NP3bNsG4vGZt0J03/SIrGz6buPRjduVYjw2N4ooxQYcPG7WVQ8PhtDFhbalP6XXnlx1H3Cji4LTX1RRaRPZU7fI+lEdnSlyLK0tRH74R/7crVpe8cQqiEz8HB83HwQ4jfhjYaJUBEHK36g7aI4swTBflF2BuDLvclMV7gpMUA+TfluW7eybtx8R4DavXOMExpoS6q+H14uA4u693Xd1/3/lfB3w98DZslDAAA",
@@ -1505,7 +1504,6 @@ function openApp(appId){
   if(appId==="browser") initBrowser(win);
   if(appId==="gpt") window.GenesisGPT?.init(win);
   if(appId==="settings") window.GenesisInstall?.refresh();
-  window.GenesisAppTour?.show(appId);
   if(appId==="accountSettings") setTimeout(()=>document.getElementById("gxUsername")?.focus(),0);
 }
 
