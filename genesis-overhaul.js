@@ -7,7 +7,8 @@
   const DNS_KEY="genesisDnsProvider";
   const themes={
     sunset:{name:"Sunset",accent:18,preview:"Warm glass, peach light, and a slow sunset glow."},
-    chill:{name:"Chill",accent:207,preview:"A cozy winter room with a snowstorm outside the window."}
+    chill:{name:"Chill",accent:207,preview:"A cozy winter room with a snowstorm outside the window."},
+    halloween:{name:"Halloween",accent:28,preview:"A haunted orange moon, purple glass, fog, and drifting bats."}
   };
   const dnsProviders={
     cloudflare:{name:"Cloudflare",endpoint:"https://cloudflare-dns.com/dns-query"},
@@ -41,6 +42,7 @@
     root.style.setProperty("--accent",String(themes[key].accent));
     document.body.classList.toggle("theme-chill",key==="chill");
     document.body.classList.toggle("theme-sunset",key==="sunset");
+    document.body.classList.toggle("theme-halloween",key==="halloween");
     if(!preview) storageSet(THEME_KEY,key);
     return key;
   }
@@ -145,6 +147,10 @@
     body.theme-chill #os{background:linear-gradient(180deg,rgba(7,17,31,.18),rgba(4,9,16,.42)),radial-gradient(circle at 54% 16%,rgba(179,219,255,.18),transparent 34%),linear-gradient(145deg,#07101d,#101d2c 45%,#05080d)}
     body.theme-chill #os:before{width:100%;height:100%;left:0;top:0;border-radius:0;filter:none;background-image:radial-gradient(circle,rgba(255,255,255,.86) 0 1.5px,transparent 2px),radial-gradient(circle,rgba(255,255,255,.6) 0 1px,transparent 1.6px);background-size:46px 46px,70px 70px;background-position:0 0,18px 12px;opacity:.45;animation:gxSnow 11s linear infinite}
     body.theme-chill #os:after{right:8%;bottom:-18%;width:520px;height:420px;background:rgba(107,163,219,.16)}
+    body.theme-halloween #os{background:radial-gradient(circle at 74% 20%,rgba(255,132,31,.34),transparent 18%),radial-gradient(circle at 18% 78%,rgba(121,42,190,.26),transparent 32%),linear-gradient(145deg,#110817,#241033 46%,#07050d)}
+    body.theme-halloween #os:before{width:100%;height:100%;left:0;top:0;border-radius:0;filter:none;background-image:radial-gradient(circle at 20% 25%,#ff9b2f 0 2px,transparent 3px),radial-gradient(circle at 78% 32%,#a752ff 0 1.5px,transparent 2px);background-size:130px 130px,93px 93px;opacity:.35;animation:gxHaunt 9s ease-in-out infinite alternate}
+    body.theme-halloween #os:after{right:7%;top:9%;bottom:auto;width:190px;height:190px;border-radius:50%;background:radial-gradient(circle at 38% 37%,#27102f 0 8px,transparent 9px),radial-gradient(circle at 67% 37%,#27102f 0 8px,transparent 9px),linear-gradient(145deg,#ffd37d,#ff7d24);box-shadow:0 0 70px rgba(255,105,25,.38)}
+    @keyframes gxHaunt{to{transform:translate3d(10px,-8px) scale(1.04);opacity:.55}}
     @keyframes gxSnow{to{background-position:35px 210px,-25px 310px}}
     .gx-store{height:100%;padding:26px;overflow:auto;background:radial-gradient(circle at 50% 0,rgba(255,255,255,.05),transparent 35%)}.gx-store-head{display:flex;align-items:center;justify-content:space-between}.gx-store-pill{padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.07);font-size:10px;color:var(--muted)}
     .gx-theme-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:24px}.gx-theme-card{padding:0;border:1px solid rgba(255,255,255,.1);border-radius:24px;overflow:hidden;background:rgba(255,255,255,.045);text-align:left;cursor:pointer;color:#fff}.gx-theme-card:hover{transform:translateY(-5px) scale(1.01);box-shadow:0 24px 60px rgba(0,0,0,.28)}.gx-theme-card.active{box-shadow:0 0 0 2px hsla(var(--accent),85%,70%,.4),0 26px 70px rgba(0,0,0,.3)}
