@@ -20,7 +20,6 @@ on:
       - "eaglercraft.html"
       - "games-c-s.js"
       - "games-s-z.js"
-      - "genesis-app-tour.js"
       - "genesis-announcements.js"
       - "genesis-messages.js"
       - "supabase-config.js"
