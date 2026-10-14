@@ -108,7 +108,7 @@ try{
   const introCtx=await context({seen:false,user:"IntroTest"});
   page=await introCtx.newPage();
   await page.goto(base+"intro.html",{waitUntil:"load"});
-  assert.equal(await page.locator(".logo-wrap").count(),1);
+  assert.equal(await page.locator(".intro-card").count(),1);
   assert.equal(await page.locator("#showcaseAudio").count(),0,"The cinematic showcase intro is still present");
   assert.equal(await page.locator(".stage").count(),1);
   await page.evaluate(({version})=>localStorage.setItem("genesisShowcaseSeen:introtest",version),{version});
