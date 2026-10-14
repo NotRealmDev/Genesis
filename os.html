@@ -4,8 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Genesis</title>
+<meta name="application-name" content="Genesis">
 <meta name="theme-color" content="#080d16">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/svg+xml" href="assets/icons/genesis.svg">
 <link rel="apple-touch-icon" href="assets/icons/genesis-192.png">
 <link rel="stylesheet" href="genesis-install.css">
 <link rel="stylesheet" href="genesis-gpt.css">
@@ -38,7 +40,7 @@ button{color:inherit}
 #os:after{width:480px;height:480px;right:3%;bottom:-220px;background:hsla(calc(var(--accent) + 58),85%,55%,.15);animation-delay:-7s}
 @keyframes floatGlow{to{transform:translate3d(55px,-35px,0) scale(1.12)}}
 .wallpaper-grid{position:absolute;inset:0;pointer-events:none;opacity:.13;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:50px 50px;mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 75%,transparent)}
-.watermark{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);font-size:clamp(82px,14vw,190px);font-weight:900;letter-spacing:-12px;color:rgba(255,255,255,.026);pointer-events:none}
+.watermark{position:absolute;left:50%;top:47%;width:clamp(120px,18vw,230px);height:auto;transform:translate(-50%,-50%);opacity:.055;filter:grayscale(1);pointer-events:none}
 .desktop{position:absolute;inset:0 230px 96px 0;padding:30px}
 .desktop-icon{position:absolute;width:90px;height:104px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:default;touch-action:none}
 .desktop-icon.dragging{z-index:9999;opacity:.85;filter:brightness(1.17)}
@@ -86,13 +88,17 @@ button{color:inherit}
 
 .notes{height:100%;padding:22px}.notes textarea{width:100%;height:100%;resize:none;border:0;outline:0;background:transparent;color:#fff;font-size:15px;line-height:1.65}
 .settings label{display:block;font-size:12px;color:var(--muted);margin-bottom:9px}.setting{margin-bottom:22px}.setting input[type=range]{width:100%}.os-btn{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:10px 14px;background:rgba(255,255,255,.07);cursor:pointer;transition:.18s}.os-btn:hover{background:rgba(255,255,255,.13)}
-.about{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.about-logo{font-size:82px;font-weight:900;letter-spacing:-8px}.realm-credit{margin-top:18px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);font-size:14px}
+.about{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.about-logo{width:112px;height:112px;border-radius:28px;box-shadow:0 20px 55px rgba(0,0,0,.32),inset 0 1px rgba(255,255,255,.35);margin-bottom:18px}.realm-credit{margin-top:18px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);font-size:14px}
 
-.games{padding:22px}.games-top{display:flex;gap:12px;align-items:center;margin-bottom:19px}.games-title-wrap{min-width:120px}.games-title{font-size:24px;font-weight:650}.games-count{font-size:11px;color:var(--muted);margin-top:2px}
-.game-search-wrap{flex:1;position:relative}.game-search{width:100%;height:43px;border:1px solid rgba(255,255,255,.09);border-radius:15px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 15px 0 41px;transition:.18s}.game-search:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18);box-shadow:0 0 0 4px rgba(255,255,255,.035)}.search-glyph{position:absolute;left:15px;top:50%;transform:translateY(-50%);opacity:.55;pointer-events:none}
-.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:16px}.game-card{overflow:hidden;border-radius:22px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.09);box-shadow:0 15px 34px rgba(0,0,0,.20);transition:.23s cubic-bezier(.2,.8,.2,1)}.game-card:hover{transform:translateY(-5px) scale(1.012);background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}
-.game-thumb{width:100%;height:145px;object-fit:cover;display:block;background:#111}.game-info{height:62px;padding:0 14px;display:flex;align-items:center;justify-content:space-between}.game-name{font-size:14px;font-weight:650}.game-dev{font-size:10px;color:var(--muted);margin-top:2px}.play-pill{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.10);font-size:12px}.no-games{display:none;padding:35px;text-align:center;color:var(--muted)}
-.games-more{display:none;margin:22px auto 4px;min-width:180px}
+.games{height:100%;min-height:100%;overflow:auto;padding:24px 28px 36px;background:#050505;color:#f6f6f8;scrollbar-color:rgba(255,255,255,.25) transparent}
+.games::-webkit-scrollbar{width:9px;height:9px}.games::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}.games::-webkit-scrollbar-track{background:transparent}
+.window[data-app="games"] .window-content{background:#050505}
+.games-appbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:30px}.games-logo{display:flex;align-items:center;gap:10px}.games-logo-mark{display:grid;place-items:center;width:31px;height:31px;border-radius:10px;background:linear-gradient(145deg,#fff,#7f8795);color:#050505;font-size:15px;font-weight:900;box-shadow:0 5px 18px #fff2}.games-logo strong{display:block;font-size:12px;letter-spacing:.02em}.games-logo small{display:block;margin-top:2px;color:#858585;font-size:8px;letter-spacing:.18em}.games-cloud-pill{padding:8px 12px;border:1px solid rgba(255,255,255,.14);border-radius:999px;background:rgba(255,255,255,.06);color:#d8d8d8;font-size:8px;font-weight:700;letter-spacing:.14em;white-space:nowrap}.games-cloud-pill span{color:#858585;font-weight:500}
+.games-top{display:flex;gap:18px;align-items:flex-end;justify-content:space-between;margin-bottom:24px}.games-title-wrap{min-width:160px}.games-eyebrow{margin-bottom:4px;color:#868686;font-size:9px;font-weight:700;letter-spacing:.20em;text-transform:uppercase}.games-title{font-size:30px;line-height:1;font-weight:700;letter-spacing:-.04em}.games-count{font-size:11px;color:#858585;margin-top:7px}.game-search-wrap{width:min(340px,100%);position:relative}.game-search{width:100%;height:42px;border:1px solid rgba(255,255,255,.11);border-radius:13px;background:rgba(255,255,255,.06);color:#fff;outline:0;padding:0 15px 0 40px;transition:.18s}.game-search::placeholder{color:#777}.game-search:focus{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.25);box-shadow:0 0 0 4px rgba(255,255,255,.035)}.search-glyph{position:absolute;left:14px;top:50%;transform:translateY(-50%);opacity:.58;pointer-events:none;font-size:15px}
+.games-section{margin-top:27px}.games-section-head{display:flex;align-items:center;gap:10px;margin:0 0 13px}.games-section-mark{display:block;width:3px;height:18px;border-radius:99px;background:#f3f3f3;box-shadow:0 0 12px #fff5}.games-section-head h2{margin:0;font-size:17px;font-weight:680;letter-spacing:-.02em}.games-section-kicker{margin-left:auto;color:#777;font-size:9px;letter-spacing:.13em;text-transform:uppercase}.games-featured-card{position:relative;min-height:246px;overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:20px;background:#111;cursor:pointer;box-shadow:0 18px 42px #0008;isolation:isolate}.games-featured-card:hover{border-color:rgba(255,255,255,.30);transform:translateY(-2px)}.games-featured-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#171717;z-index:-2}.games-featured-card::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(0,0,0,.88) 0%,rgba(0,0,0,.63) 35%,rgba(0,0,0,.08) 78%),linear-gradient(0deg,rgba(0,0,0,.56),transparent 55%);z-index:-1}.games-featured-card::after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 75% 15%,rgba(255,255,255,.12),transparent 28%);pointer-events:none}.games-featured-content{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-height:246px;max-width:410px;padding:28px 32px}.games-tag{display:inline-flex;align-items:center;min-height:20px;padding:4px 8px;border-radius:5px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.20);font-size:8px;font-weight:800;letter-spacing:.15em}.games-featured-content h2{margin:13px 0 5px;font-size:31px;line-height:1.02;letter-spacing:-.045em}.games-featured-meta{color:#c8c8c8;font-size:11px}.games-featured-description{max-width:310px;margin:8px 0 17px;color:#999;font-size:10px;line-height:1.45}.games-featured-cta{display:inline-flex;align-items:center;gap:11px;padding:9px 13px;border:1px solid rgba(255,255,255,.24);border-radius:10px;background:rgba(255,255,255,.11);color:#fff;font-size:10px;font-weight:700;cursor:pointer}.games-featured-cta:hover{background:rgba(255,255,255,.20)}.games-featured-cta span{font-size:15px;line-height:10px}.games-featured-progress{position:absolute;right:24px;bottom:22px;width:180px;height:3px;overflow:hidden;border-radius:99px;background:#fff3}.games-featured-progress span{display:block;width:46%;height:100%;border-radius:inherit;background:#fff}
+.games-rail{display:flex;gap:14px;overflow-x:auto;padding:1px 2px 9px;scrollbar-width:none}.games-rail::-webkit-scrollbar{display:none}.game-ribbon-card{position:relative;flex:0 0 250px;width:250px;height:170px;overflow:hidden;border-radius:15px;border:1px solid rgba(255,255,255,.13);background:#111;cursor:pointer;box-shadow:0 12px 24px #0007;isolation:isolate;transition:.2s cubic-bezier(.2,.8,.2,1)}.game-ribbon-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,.30);box-shadow:0 17px 30px #0009}.game-ribbon-card .game-thumb{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#161616;z-index:-2}.game-ribbon-card::after{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.95),rgba(0,0,0,.12) 65%),linear-gradient(90deg,rgba(0,0,0,.45),transparent 65%);z-index:-1}.game-art-badge{position:absolute;top:10px;left:10px;padding:4px 6px;border-radius:5px;background:rgba(0,0,0,.52);border:1px solid rgba(255,255,255,.18);font-size:8px;font-weight:800;letter-spacing:.12em}.game-ribbon-info{position:absolute;right:12px;bottom:11px;left:12px}.game-ribbon-info .game-name{font-size:14px;line-height:1.1}.game-ribbon-info .game-dev{margin-top:4px;color:#b2b2b2;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.game-playtime{margin-top:6px;color:#858585;font-size:8px;letter-spacing:.04em}.games-arcade .game-ribbon-card{flex-basis:222px;width:222px;height:146px}.games-arcade .game-ribbon-info .game-name{font-size:12px}
+.games-all{margin-top:31px}.games-all .games-section-head{margin-bottom:15px}.games-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:15px}.games-grid .game-card{overflow:hidden;border-radius:15px;cursor:pointer;background:#111;border:1px solid rgba(255,255,255,.10);box-shadow:0 12px 28px #0005;transition:.2s cubic-bezier(.2,.8,.2,1)}.games-grid .game-card:hover{transform:translateY(-4px);background:#181818;border-color:rgba(255,255,255,.24)}.games-grid .game-thumb{width:100%;height:132px;object-fit:cover;display:block;background:#161616}.game-info{min-height:62px;padding:11px 12px;display:flex;align-items:center;justify-content:space-between;gap:8px}.game-name{font-size:13px;font-weight:650}.game-dev{font-size:9px;color:#878787;margin-top:3px}.play-pill{width:29px;height:29px;flex:none;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.11);font-size:10px}.no-games{display:none;padding:35px;text-align:center;color:#858585}.games-more{display:none;margin:22px auto 4px;min-width:180px}
+.games-searching .games-showcase-rails{display:none}.games-searching .games-all{margin-top:0}
 
 .player{height:100%;display:flex;flex-direction:column;background:#020305}.player-toolbar{height:50px;display:flex;align-items:center;gap:9px;padding:7px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}.player-toolbar .os-btn{padding:7px 11px}.player-name{flex:1;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-stage{position:relative;flex:1;min-height:0;background:#000}.player-frame{display:block;width:100%;height:100%;border:0;background:#000}.loader{position:absolute;inset:0;display:grid;place-items:center;background:#05070b;z-index:2;pointer-events:none;transition:.35s}.loader.hidden{opacity:0}.loader-inner{text-align:center;color:var(--muted);font-size:12px}.spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#fff;animation:spin .7s linear infinite;margin:0 auto 12px}@keyframes spin{to{transform:rotate(360deg)}}
 
@@ -224,7 +230,7 @@ button{color:inherit}
 @media(max-width:800px){
  .sidebar{display:none}.desktop{right:0}.dock-wrap{left:50%}
  .window,.window.maximized{left:12px!important;top:12px!important;width:calc(100vw - 24px)!important;height:calc(100vh - 105px)!important;transform:none!important;resize:none}
- .games-top{align-items:stretch;flex-direction:column}.games-title-wrap{min-width:0}
+ .games{padding:18px 16px 28px}.games-appbar{margin-bottom:22px}.games-cloud-pill{display:none}.games-top{align-items:stretch;flex-direction:column;gap:13px}.games-title-wrap{min-width:0}.game-search-wrap{width:100%}.games-featured-card,.games-featured-content{min-height:255px}.games-featured-content{padding:24px 22px}.games-featured-content h2{font-size:27px}.games-featured-progress{right:18px;bottom:17px;width:130px}.game-ribbon-card{flex-basis:224px;width:224px;height:158px}.games-arcade .game-ribbon-card{flex-basis:198px;width:198px;height:135px}.games-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:11px}.games-grid .game-thumb{height:112px}.game-info{padding:9px 10px}.game-name{font-size:12px}
 }
 
 /* Game Request app */
@@ -529,6 +535,7 @@ button{color:inherit}
 .admin-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .admin-status{min-height:21px;margin-top:10px;color:var(--muted);font-size:11px}
 .admin-list{margin-top:18px;display:grid;gap:8px}
+.admin-id-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.admin-id-summary-card{padding:12px 13px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.04)}.admin-id-summary-label{margin-bottom:7px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em}.admin-id-summary-value{font-size:12px;line-height:1.55;word-break:break-word}.admin-id-summary-value.active{color:#7dffac}.admin-id-summary-value.inactive{color:#ff8f9e}
 .admin-device{
   display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;
   padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.07);
@@ -576,7 +583,7 @@ button{color:inherit}
   <div id="genesisVisitorId" class="genesis-id-badge">ID ···</div>
   <div id="genesisAnnouncement" class="genesis-announcement"></div>
   <div class="wallpaper-grid"></div>
-  <div class="watermark">OS</div>
+  <img class="watermark" src="assets/icons/genesis.svg" alt="">
 
   <main id="desktop" class="desktop">
     <div class="desktop-icon" data-app="gpt" style="left:430px;top:30px">
@@ -595,7 +602,7 @@ button{color:inherit}
       <div class="app-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="8"/></svg></div><div class="app-name">Settings</div>
     </div>
     <div class="desktop-icon" data-app="about" style="left:130px;top:260px">
-      <div class="app-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v6"/><circle cx="12" cy="8" r=".7" fill="#fff"/></svg></div><div class="app-name">About OS</div>
+      <div class="app-icon"><img src="assets/icons/genesis.svg" alt="" style="width:31px;height:31px;border-radius:10px"></div><div class="app-name">About Genesis</div>
     </div>
     <div class="desktop-icon" data-app="music" style="left:230px;top:145px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M9 18V6l10-2v12"/><circle cx="6.5" cy="18" r="2.5"/><circle cx="16.5" cy="16" r="2.5"/></svg></div><div class="app-name">Music</div>
@@ -1229,7 +1236,11 @@ function deactivateOSHTML(){
     </div>
     <div id="deactivateStatus" class="admin-status" aria-live="polite"></div>
     <div class="heading" style="font-size:17px;margin-top:22px;margin-bottom:10px">IDs currently on Genesis</div>
-    <div id="genesisActiveSummary" class="muted" style="font-size:11px;margin-bottom:10px">Loading active IDs…</div>
+    <div id="genesisActiveSummary" class="muted" style="font-size:11px;margin-bottom:10px">Loading ID status…</div>
+    <div class="admin-id-summary" aria-live="polite">
+      <div class="admin-id-summary-card"><div class="admin-id-summary-label">Active IDs</div><div id="genesisActiveIds" class="admin-id-summary-value active">Loading…</div></div>
+      <div class="admin-id-summary-card"><div class="admin-id-summary-label">Deactivated IDs</div><div id="genesisInactiveIds" class="admin-id-summary-value inactive">Loading…</div></div>
+    </div>
     <div id="genesisDeviceList" class="admin-list"><div class="muted">Loading…</div></div>
     <div class="admin-history">
       <div class="heading" style="font-size:17px;margin-bottom:8px">Action History</div>
@@ -1441,9 +1452,9 @@ const apps = {
     <div class="setting"><label>Accent Color</label><input type="range" min="0" max="360" value="${getStoredHue()}" oninput="changeHue(this.value)"></div>
     <div class="setting"><label>Glass Blur</label><input type="range" min="6" max="60" value="${getStoredBlur()}" oninput="changeBlur(this.value)"></div>
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
-    <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
+    <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About Genesis</button>
   </div>`},
-  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.232 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
+  about:{title:"About Genesis",content:()=>`<div class="about"><img class="about-logo" src="assets/icons/genesis.svg" alt="Genesis logo"><h2>Genesis</h2><div class="muted">Version 1.232 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
   music:{title:"Music",content:musicHTML},
   messages:{title:"Messages",content:messagesHTML},
   games:{title:"Games",content:gamesHTML},
@@ -1601,22 +1612,86 @@ function matchingGames(query=""){
   );
 }
 
+const GAME_FEATURED_NAMES=["Survival Race v2","Ragdoll Archers","Ghost Trick - Phantom Detective","Drift Hunters"];
+const GAME_RECOMMENDED_NAMES=["Ragdoll Archers","Drift Hunters","FNAF 4","Cooking Mama","Sandboxels","MotoX3m","FNAF"];
+const GAME_ARCADE_NAMES=["Brotato","Drift Boss","Fireboy and Watergirl","Stickman Hook","Angry Birds","Ragdoll Hit","FNAF"];
+const GAME_RECENT_KEY="genesisRecentGames";
+
+function gameByName(name,exclude=new Set()){
+  const wanted=String(name||"").trim().toLowerCase();
+  return gameLibrary.find(game=>!exclude.has(game.id)&&game.name.toLowerCase()===wanted)
+    ||gameLibrary.find(game=>!exclude.has(game.id)&&game.name.toLowerCase().includes(wanted));
+}
+function showcaseGames(preferred,count,excludeIds=[]){
+  const used=new Set(excludeIds.filter(Boolean)),selected=[];
+  for(const name of preferred){
+    const game=gameByName(name,used);
+    if(game){selected.push(game);used.add(game.id)}
+    if(selected.length>=count)return selected;
+  }
+  for(const game of gameLibrary){
+    if(used.has(game.id))continue;
+    selected.push(game);used.add(game.id);
+    if(selected.length>=count)break;
+  }
+  return selected;
+}
+function recentGames(){
+  try{
+    const ids=JSON.parse(localStorage.getItem(GAME_RECENT_KEY)||"[]");
+    if(!Array.isArray(ids))return [];
+    return ids.map(id=>gameLibrary.find(game=>game.id===id)).filter(Boolean);
+  }catch(_){return []}
+}
+function rememberGame(game){
+  try{
+    const ids=[game.id,...recentGames().map(item=>item.id).filter(id=>id!==game.id)].slice(0,8);
+    localStorage.setItem(GAME_RECENT_KEY,JSON.stringify(ids));
+  }catch(_){/* private browsing can disable storage */}
+}
+function gamesSectionLabel(title,kicker=""){
+  return `<div class="games-section-head"><span class="games-section-mark"></span><h2>${escapeHTML(title)}</h2>${kicker?`<span class="games-section-kicker">${escapeHTML(kicker)}</span>`:""}</div>`;
+}
+function gameRibbonCard(game,label="PLAY NOW",variant="recommend"){
+  return `<article class="game-card game-ribbon-card ${variant}" data-game-id="${game.id}" data-search="${escapeHTML((game.name+" "+game.developer+" "+(game.section||"")).toLowerCase())}" onclick="openGame('${game.id}')">
+    <img class="game-thumb" loading="lazy" decoding="async" src="${game.thumb}" alt="${escapeHTML(game.name)}" onerror="this.onerror=null;this.src='favicon.png'">
+    <span class="game-art-badge">${escapeHTML(label)}</span>
+    <div class="game-ribbon-info"><div class="game-name">${escapeHTML(game.name)}</div><div class="game-dev">${escapeHTML(game.developer)}</div><div class="game-playtime">◷ ${variant==="arcade"?"QUICK LAUNCH":"READY TO PLAY"}</div></div>
+  </article>`;
+}
+function gameFeaturedCard(game,isRecent=false){
+  if(!game)return "";
+  const meta=[game.section,game.developer].filter(Boolean).join("  ·  ");
+  return `<article class="games-featured-card" data-game-id="${game.id}" onclick="openGame('${game.id}')">
+    <img class="games-featured-art" loading="eager" decoding="async" src="${game.thumb}" alt="${escapeHTML(game.name)}" onerror="this.onerror=null;this.src='favicon.png'">
+    <div class="games-featured-content"><span class="games-tag">${isRecent?"CONTINUE PLAYING":"FEATURED"}</span><h2>${escapeHTML(game.name)}</h2><div class="games-featured-meta">${escapeHTML(meta||"Genesis Arcade")}</div><p class="games-featured-description">${isRecent?"Jump back into your last game and keep the run going.":"A hand-picked Genesis favorite, ready to play in one click."}</p><button class="games-featured-cta" type="button" onclick="event.stopPropagation();openGame('${game.id}')">Play now <span>→</span></button></div><div class="games-featured-progress" aria-hidden="true"><span></span></div>
+  </article>`;
+}
 function gamesHTML(){
   gameVisibleLimit=GAME_RENDER_BATCH;
   gameSearchQuery="";
   const initial=gameLibrary.slice(0,gameVisibleLimit);
-  return `<div class="games">
+  const recent=recentGames();
+  const featured=recent[0]||showcaseGames(GAME_FEATURED_NAMES,1)[0];
+  const excluded=[featured?.id,...recent.map(game=>game.id)].filter(Boolean);
+  const recommended=showcaseGames(GAME_RECOMMENDED_NAMES,6,excluded);
+  const arcade=showcaseGames(GAME_ARCADE_NAMES,6,[featured?.id,...recommended.map(game=>game.id)].filter(Boolean));
+  return `<div class="games" id="gamesShell">
+    <div class="games-appbar"><div class="games-logo"><span class="games-logo-mark">G</span><div><strong>Genesis Arcade</strong><small>PLAY ANYWHERE</small></div></div><div class="games-cloud-pill">GENESIS CLOUD <span>· PLAY</span></div></div>
     <div class="games-top">
-      <div class="games-title-wrap"><div class="games-title">Games</div><div class="games-count" id="gamesCount">${gameLibrary.length} games</div></div>
+      <div class="games-title-wrap"><div class="games-eyebrow">DISCOVER</div><div class="games-title">Arcade</div><div class="games-count" id="gamesCount">${gameLibrary.length} games</div></div>
       <div class="game-search-wrap"><span class="search-glyph">⌕</span><input class="game-search" id="gameSearch" placeholder="Search games..." oninput="filterGames(this.value)" autocomplete="off"></div>
     </div>
-    <div class="games-grid" id="gamesGrid">${initial.map(gameCardHTML).join("")}</div>
-    <div class="no-games" id="noGames">No games found.</div>
-    <button class="os-btn games-more" id="gamesMore" type="button" onclick="showMoreGames()" style="display:${initial.length<gameLibrary.length?"block":"none"}">Show more · ${initial.length} of ${gameLibrary.length}</button>
+    <div class="games-showcase-rails">
+      <section class="games-section games-featured">${gamesSectionLabel("Continue Playing")}${gameFeaturedCard(featured,recent.length>0)}</section>
+      <section class="games-section">${gamesSectionLabel("Games We Recommend","CURATED FOR YOU")}<div class="games-rail">${recommended.map(game=>gameRibbonCard(game,"RECOMMENDED")).join("")}</div></section>
+      <section class="games-section games-arcade">${gamesSectionLabel("Quick Play Arcade","JUMP IN FAST")}<div class="games-rail">${arcade.map(game=>gameRibbonCard(game,"QUICK PLAY","arcade")).join("")}</div></section>
+    </div>
+    <section class="games-all games-section">${gamesSectionLabel("All Games",gameLibrary.length+" TITLES")}<div class="games-grid" id="gamesGrid">${initial.map(gameCardHTML).join("")}</div><div class="no-games" id="noGames">No games found.</div><button class="os-btn games-more" id="gamesMore" type="button" onclick="showMoreGames()" style="display:${initial.length<gameLibrary.length?"block":"none"}">Show more · ${initial.length} of ${gameLibrary.length}</button></section>
   </div>`;
 }
 function gameCardHTML(g){
-  return `<article class="game-card" data-game-id="${g.id}" data-search="${escapeHTML((g.name+" "+g.developer+" "+(g.section||"")).toLowerCase())}" onclick="openGame('${g.id}')">
+  return `<article class="game-card game-grid-card" data-game-id="${g.id}" data-search="${escapeHTML((g.name+" "+g.developer+" "+(g.section||"")).toLowerCase())}" onclick="openGame('${g.id}')">
     <img class="game-thumb" loading="lazy" decoding="async" src="${g.thumb}" alt="${escapeHTML(g.name)}" onerror="this.onerror=null;this.src='favicon.png'">
     <div class="game-info"><div><div class="game-name">${escapeHTML(g.name)}</div><div class="game-dev">${escapeHTML(g.developer)}</div></div><div class="play-pill">▶</div></div>
   </article>`;
@@ -1624,6 +1699,8 @@ function gameCardHTML(g){
 function filterGames(q){
   gameSearchQuery=String(q||"");
   gameVisibleLimit=GAME_RENDER_BATCH;
+  const shell=document.getElementById("gamesShell");
+  if(shell)shell.classList.toggle("games-searching",Boolean(gameSearchQuery.trim()));
   renderGameResults();
 }
 function showMoreGames(){
@@ -1653,6 +1730,7 @@ function launchGenesisMiniFallback(game, frame, loader){
 async function openGame(gameId){
   const g=gameLibrary.find(x=>x.id===gameId);
   if(!g)return;
+  rememberGame(g);
 
   if(g.page){
     location.href=new URL(g.page,location.href).href;
@@ -2798,6 +2876,8 @@ async function refreshDeactivateOS(){
   const list = document.getElementById("genesisDeviceList");
   const history = document.getElementById("genesisActionHistory");
   const summary = document.getElementById("genesisActiveSummary");
+  const activeIds = document.getElementById("genesisActiveIds");
+  const inactiveIds = document.getElementById("genesisInactiveIds");
   if(!list || !history) return;
 
   try{
@@ -2808,9 +2888,11 @@ async function refreshDeactivateOS(){
 
     const active = (devices || []).filter(d=>d.active);
     const inactive = (devices || []).filter(d=>!d.active);
-    if(summary) summary.textContent = active.length
-      ? `Active now (${active.length}): ${active.map(d=>`ID ${d.display_id}`).join(", ")} · Deactivated (${inactive.length}): ${inactive.map(d=>`ID ${d.display_id}`).join(", ") || "none"}`
-      : `Active now: none · Deactivated (${inactive.length}): ${inactive.map(d=>`ID ${d.display_id}`).join(", ") || "none"}`;
+    const activeText = active.map(d=>`ID ${d.display_id}`).join(", ") || "None";
+    const inactiveText = inactive.map(d=>`ID ${d.display_id}`).join(", ") || "None";
+    if(summary) summary.textContent = `${active.length} active · ${inactive.length} deactivated`;
+    if(activeIds) activeIds.textContent = activeText;
+    if(inactiveIds) inactiveIds.textContent = inactiveText;
     list.innerHTML = (devices || []).map(d=>{
       const isMe = Number(d.display_id) === myId;
       return `<div class="admin-device">

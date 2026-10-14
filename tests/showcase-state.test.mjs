@@ -33,6 +33,8 @@ test('manifest identity, launch, scope, and icons resolve inside a Pages subdire
   assert.equal(new URL(manifest.start_url,base).pathname,'/Genesis/index.html');
   assert.equal(new URL(manifest.scope,base).pathname,'/Genesis/');
   assert.equal(manifest.display,'standalone');
+  assert.equal(manifest.name,'Genesis');
+  assert.equal(manifest.short_name,'Genesis');
   for(const icon of manifest.icons){
     const png=readFileSync(new URL('../'+icon.src,import.meta.url));
     const [width,height]=icon.sizes.split('x').map(Number);

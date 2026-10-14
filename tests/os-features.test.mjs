@@ -57,6 +57,38 @@ test("game HTML keeps an existing asset base",()=>{
   assert.match(context.result.injected,/<base href="https:\/\/source\.example\/folder\/">/);
 });
 
+test("Games tab exposes the storefront showcase while retaining the full catalog",()=>{
+  assert.match(os,/Continue Playing/);
+  assert.match(os,/Games We Recommend/);
+  assert.match(os,/Quick Play Arcade/);
+  assert.match(os,/id="gamesShell"/);
+  assert.match(os,/function showcaseGames/);
+  assert.match(os,/function gameRibbonCard/);
+  assert.match(os,/function gameFeaturedCard/);
+  assert.match(os,/function openGame\(gameId\)/);
+  assert.match(os,/function filterGames\(q\)/);
+  assert.match(os,/launchGenesisMiniFallback/);
+});
+
+test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
+  assert.match(os,/id="genesisActiveIds"/);
+  assert.match(os,/id="genesisInactiveIds"/);
+  assert.match(os,/genesis_devices\?select=display_id,active,last_seen/);
+  assert.match(os,/const activeText = active\.map/);
+  assert.match(os,/const inactiveText = inactive\.map/);
+  assert.match(os,/Deactivated — this ID cannot log in/);
+});
+
+test("Genesis installable branding uses the original logo instead of an OS wordmark",()=>{
+  const install=readFileSync(new URL("../genesis-install.js",import.meta.url),"utf8");
+  const installCss=readFileSync(new URL("../genesis-install.css",import.meta.url),"utf8");
+  assert.match(os,/<link rel="icon" type="image\/svg\+xml" href="assets\/icons\/genesis\.svg">/);
+  assert.match(install,/assets\/icons\/genesis\.svg/);
+  assert.match(installCss,/\.genesis-install-symbol img/);
+  assert.match(os,/class="about-logo" src="assets\/icons\/genesis\.svg"/);
+  assert.doesNotMatch(os,/about-logo[^\n]*>OS</);
+});
+
 test("announcements can read directly when the optional RPC is absent",()=>{
   assert.match(announcements,/genesis_get_active_announcement/);
   assert.match(announcements,/genesis_announcements\?select=id,message,duration_ms,created_at/);
