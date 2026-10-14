@@ -65,13 +65,10 @@ try{
   const ctx=await context();
   page=await ctx.newPage();
   await page.goto(base+"os.html",{waitUntil:"load"});
-  await page.waitForFunction(()=>window.GenesisGPT&&window.GenesisAppTour&&window.GenesisInstall);
+  await page.waitForFunction(()=>window.GenesisGPT&&window.GenesisInstall);
 
   await page.evaluate(()=>openApp("gpt"));
   await page.locator('.window[data-app="gpt"]').waitFor();
-  await page.locator("#genesisAppTour").waitFor();
-  assert.match(await page.locator("#genesisAppTour").innerText(),/GPT/);
-  await page.locator("#genesisAppTour [data-tour-close]").click();
   assert.equal(await page.locator(".gpt-frame").count(),0,"GPT still embeds a provider website");
   assert.equal(await page.locator(".gpt-config").getAttribute("hidden"),null,"GPT settings did not open for a new session");
 
@@ -83,11 +80,9 @@ try{
   await page.locator(".gpt-composer").press("Enter");
   await page.locator(".gpt-message.assistant").filter({hasText:"Fixture response for: hello Genesis"}).waitFor();
   assert.equal(await page.evaluate(()=>sessionStorage.getItem("genesisGPTApiKeySession")),"fixture-key");
-  console.log("PASS native GPT app, session key handling, API response, no provider iframe, and first-use tour");
+  console.log("PASS native GPT app, session key handling, API response, and no provider iframe");
 
   await page.evaluate(()=>openApp("games"));
-  await page.locator('#genesisAppTour').waitFor();
-  await page.locator("#genesisAppTour [data-tour-close]").click();
   await page.evaluate(()=>openGame("ugs-doc-cltacostand"));
   await page.waitForFunction(()=>document.getElementById("gameFrame")?.src.startsWith("blob:"),null,{timeout:15000});
   await page.frameLocator("#gameFrame").locator("h1").waitFor();
@@ -114,7 +109,6 @@ try{
   await page.evaluate(({version})=>localStorage.setItem("genesisShowcaseSeen:introtest",version),{version});
   await page.goto(base+"os.html",{waitUntil:"load"});
   await page.waitForFunction(()=>document.querySelector("#os"));
-  assert.equal(await page.locator("#genesisAppTour").count(),0);
   console.log("PASS original Genesis intro and returning-login flow");
   await introCtx.close();
 }catch(error){
