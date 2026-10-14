@@ -5,6 +5,7 @@ import vm from "node:vm";
 
 const os = readFileSync(new URL("../os.html",import.meta.url),"utf8");
 const login = readFileSync(new URL("../index.html",import.meta.url),"utf8");
+const intro = readFileSync(new URL("../intro.html",import.meta.url),"utf8");
 const messages = readFileSync(new URL("../genesis-messages.js",import.meta.url),"utf8");
 const announcements = readFileSync(new URL("../genesis-announcements.js",import.meta.url),"utf8");
 
@@ -67,6 +68,11 @@ test("Games tab exposes the storefront showcase while retaining the full catalog
   assert.match(os,/function gameFeaturedCard/);
   assert.match(os,/function openGame\(gameId\)/);
   assert.match(os,/function filterGames\(q\)/);
+  assert.match(os,/function gameFolderOptions\(\)/);
+  assert.match(os,/id="gamesFolderRail"/);
+  assert.match(os,/function selectGameFolder\(folder\)/);
+  assert.match(os,/function toggleGameFavorite\(event,id\)/);
+  assert.doesNotMatch(os,/GENESIS CLOUD/);
   assert.match(os,/launchGenesisMiniFallback/);
 });
 
@@ -79,14 +85,24 @@ test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
   assert.match(os,/Deactivated — this ID cannot log in/);
 });
 
-test("Genesis installable branding uses the original logo instead of an OS wordmark",()=>{
+test("Genesis installable branding uses the original OS icon while the desktop keeps its OS wordmark",()=>{
   const install=readFileSync(new URL("../genesis-install.js",import.meta.url),"utf8");
   const installCss=readFileSync(new URL("../genesis-install.css",import.meta.url),"utf8");
-  assert.match(os,/<link rel="icon" type="image\/svg\+xml" href="assets\/icons\/genesis\.svg">/);
-  assert.match(install,/assets\/icons\/genesis\.svg/);
+  assert.match(login,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-192\.png">/);
+  assert.match(os,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-192\.png">/);
+  assert.match(install,/assets\/icons\/genesis-192\.png/);
   assert.match(installCss,/\.genesis-install-symbol img/);
-  assert.match(os,/class="about-logo" src="assets\/icons\/genesis\.svg"/);
-  assert.doesNotMatch(os,/about-logo[^\n]*>OS</);
+  assert.match(os,/class="watermark">OS<\/div>/);
+  assert.match(os,/class="about-logo">OS<\/div>/);
+  assert.doesNotMatch(os,/genesis\.svg/);
+});
+
+test("Genesis intro uses a real icon and always hands off to the desktop",()=>{
+  assert.match(intro,/assets\/icons\/genesis-192\.png/);
+  assert.doesNotMatch(intro,/data:image\/png;base64/);
+  assert.match(intro,/state\?\.complete\(login\)/);
+  assert.match(intro,/location\.replace\("os\.html"\)/);
+  assert.match(intro,/setTimeout\(openDesktop,4800\)/);
 });
 
 test("announcements can read directly when the optional RPC is absent",()=>{
@@ -184,13 +200,14 @@ test("Messages notification previews preserve actual message text",()=>{
   assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
 });
 
-test("first-use app tours are wired without replacing the original intro",()=>{
+test("first-use app tours are wired with the reliable Genesis intro",()=>{
   const tour=readFileSync(new URL("../genesis-app-tour.js",import.meta.url),"utf8");
   const intro=readFileSync(new URL("../intro.html",import.meta.url),"utf8");
   assert.match(os,/genesis-app-tour\.js/);
   assert.match(os,/GenesisAppTour\?\.show\(appId\)/);
   assert.match(tour,/genesisAppTourSeen:/);
   assert.match(tour,/QUICK TOUR/);
-  assert.match(intro,/class="logo-wrap"/);
+  assert.match(intro,/class="intro-card"/);
+  assert.match(intro,/Skip intro/);
   assert.doesNotMatch(intro,/showcaseAudio/);
 });
