@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
 import vm from "node:vm";
 
 const os = readFileSync(new URL("../os.html",import.meta.url),"utf8");
@@ -97,12 +98,21 @@ test("Genesis installable branding uses the original OS icon while the desktop k
   assert.doesNotMatch(os,/genesis\.svg/);
 });
 
-test("Genesis intro uses a real icon and always hands off to the desktop",()=>{
-  assert.match(intro,/assets\/icons\/genesis-192\.png/);
+test("Genesis intro restores the original Falcon and always hands off to the desktop",()=>{
+  const favicon=readFileSync(new URL("../favicon.png",import.meta.url));
+  assert.equal(
+    createHash("sha256").update(favicon).digest("hex"),
+    "4e882d83705ef81f98270f9d4506353056cd8ee29892d5f8594e492252294713",
+    "the original Falcon logo file changed"
+  );
+  assert.match(intro,/class="icon" src="favicon\.png"/);
+  assert.match(intro,/Genesis Falcon artwork/);
+  assert.match(intro,/class="os-only">OS<\/div>/);
+  assert.doesNotMatch(intro,/assets\/icons\/genesis-192\.png/);
   assert.doesNotMatch(intro,/data:image\/png;base64/);
-  assert.match(intro,/state\?\.complete\(login\)/);
+  assert.doesNotMatch(intro,/genesis-intro-state/);
   assert.match(intro,/location\.replace\("os\.html"\)/);
-  assert.match(intro,/setTimeout\(openDesktop,4800\)/);
+  assert.match(intro,/setTimeout\(finishIntro,9600\)/);
 });
 
 test("announcements can read directly when the optional RPC is absent",()=>{
@@ -200,14 +210,16 @@ test("Messages notification previews preserve actual message text",()=>{
   assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
 });
 
-test("first-use app tours are wired with the reliable Genesis intro",()=>{
+test("first-use app tours are wired with the original Genesis intro",()=>{
   const tour=readFileSync(new URL("../genesis-app-tour.js",import.meta.url),"utf8");
   const intro=readFileSync(new URL("../intro.html",import.meta.url),"utf8");
   assert.match(os,/genesis-app-tour\.js/);
   assert.match(os,/GenesisAppTour\?\.show\(appId\)/);
   assert.match(tour,/genesisAppTourSeen:/);
   assert.match(tour,/QUICK TOUR/);
-  assert.match(intro,/class="intro-card"/);
-  assert.match(intro,/Skip intro/);
+  assert.match(intro,/class="stage"/);
+  assert.match(intro,/Genesis OS startup/);
+  assert.match(intro,/class="logo-wrap"/);
+  assert.doesNotMatch(intro,/intro-card|Skip intro/);
   assert.doesNotMatch(intro,/showcaseAudio/);
 });
