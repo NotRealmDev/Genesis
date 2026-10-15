@@ -30,7 +30,7 @@
       dialog=document.createElement("dialog");
       dialog.className="genesis-install-dialog";
       dialog.setAttribute("aria-labelledby","genesisInstallTitle");
-      const logoURL=new URL("assets/icons/genesis.svg",baseURL).href;
+      const logoURL=new URL("assets/icons/genesis-192.png",baseURL).href;
       dialog.innerHTML=`<form method="dialog"><button class="genesis-install-close" aria-label="Close install help">×</button></form>
         <div class="genesis-install-symbol"><img src="${logoURL}" alt="Genesis logo"></div>
         <h2 id="genesisInstallTitle">Install Genesis</h2>
