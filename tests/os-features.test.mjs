@@ -109,7 +109,7 @@ test("Genesis intro uses the requested Falcon artwork and exact OS letterform",(
   );
   assert.equal(
     createHash("sha256").update(fall).digest("hex"),
-    "3cad256858c9c8c837b871ffd6a05f3d537084e28f8ae0d9ca82d406315bdb86",
+    "d4e43029a3cba34002faa95e3ce2b4b3970e36dbc79f380ac629c127d71d0a0c",
     "the requested seasonal Falcon artwork changed"
   );
   assert.equal(
