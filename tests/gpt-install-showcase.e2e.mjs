@@ -110,8 +110,8 @@ try{
   await page.goto(base+"intro.html",{waitUntil:"load"});
   assert.equal(await page.locator(".stage").count(),1);
   assert.equal(await page.locator(".logo-wrap").count(),1);
-  assert.equal(await page.locator(".icon").getAttribute("src"),"favicon.png");
-  assert.equal(await page.locator(".os-only").innerText(),"OS");
+  assert.equal(await page.locator(".icon").getAttribute("src"),"assets/icons/genesis-fall.png");
+  assert.equal(await page.locator(".os-only").getAttribute("src"),"assets/icons/genesis-fall-os.png");
   await page.evaluate(({version})=>localStorage.setItem("genesisShowcaseSeen:introtest",version),{version});
   await page.goto(base+"os.html",{waitUntil:"load"});
   await page.waitForFunction(()=>document.querySelector("#os"));
