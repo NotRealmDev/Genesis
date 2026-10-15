@@ -8,6 +8,7 @@ const browserTab=readFileSync(new URL("../browser-tab.html",import.meta.url),"ut
 const os=readFileSync(new URL("../os.html",import.meta.url),"utf8");
 const serviceWorker=readFileSync(new URL("../servy.js",import.meta.url),"utf8");
 const prismApi=readFileSync(new URL("../prism.api.js",import.meta.url),"utf8");
+const proxyWorker=readFileSync(new URL("../genesis-proxy-worker.js",import.meta.url),"utf8");
 const gameCatalogSource=readFileSync(new URL("../games-c-s.js",import.meta.url),"utf8");
 const eaglercraft=readFileSync(new URL("../eaglercraft.html",import.meta.url),"utf8");
 
@@ -227,4 +228,20 @@ test("frame recovery clears an old encoded route before rebuilding",()=>{
 
 test("default transport has the current official-demo Wisp plus failover",()=>{
   assert.match(prismSource,/DEFAULT_WISP_URLS\s*=\s*\[[\s\S]*?"wss:\/\/anura\.pro\/"[\s\S]*?"wss:\/\/wisp\.mercurywork\.shop\/"/);
+});
+
+test("cafe Wi-Fi startup races Wisp providers and has an HTTPS last resort",()=>{
+  assert.match(prismSource,/function probeNativeWispEndpoint\(/);
+  assert.match(prismSource,/Promise\.any\(probes\)/);
+  assert.match(prismSource,/const probed=await Promise\.all\(order\.map/);
+  assert.match(prismSource,/WISP_PROBE_TIMEOUT_MS\s*=\s*4500/);
+  assert.match(prismSource,/DEFAULT_HTTP_PROXY_URLS/);
+  assert.match(prismSource,/class HttpProxyTransport/);
+  assert.match(prismSource,/profile:"https-fallback"/);
+  assert.match(prismSource,/getHttpProxyUrls\(\)/);
+  assert.match(prismSource,/supports GET and HEAD requests only/);
+  assert.match(browserTab,/HTTPS proxy fallback/);
+  assert.match(os,/proxy-config\.js/);
+  assert.match(proxyWorker,/request\.method === "OPTIONS"/);
+  assert.match(proxyWorker,/access-control-allow-origin/);
 });

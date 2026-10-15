@@ -572,6 +572,7 @@ button{color:inherit}
 </script>
   <link rel="icon" type="image/png" href="assets/icons/genesis-192.png">
 <script src="supabase-config.js"></script>
+<script src="proxy-config.js"></script>
 <script src="prism.js" defer></script>
 <script src="prism.api.js" defer></script>
 <script src="libby.js" defer></script>
@@ -2069,7 +2070,10 @@ async function ensureGenesisPrism(win){
     if(openWindows.browser!==win) throw new Error("Browser window was closed.");
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
-    if(status) status.textContent="Ready · Scramjet proxy connected";
+    const profile=runtime.diagnostics?.().transportProfile;
+    if(status) status.textContent=profile==="https-fallback"
+      ?"Ready · HTTPS proxy fallback connected"
+      :"Ready · Scramjet proxy connected";
     return prismFrame;
   }catch(err){
     console.error("Genesis Prism failed to start",err);
