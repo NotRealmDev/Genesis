@@ -108,14 +108,15 @@ try{
   const introCtx=await context({seen:false,user:"IntroTest"});
   page=await introCtx.newPage();
   await page.goto(base+"intro.html",{waitUntil:"load"});
-  assert.equal(await page.locator(".intro-card").count(),1);
-  assert.equal(await page.locator("#showcaseAudio").count(),0,"The cinematic showcase intro is still present");
   assert.equal(await page.locator(".stage").count(),1);
+  assert.equal(await page.locator(".logo-wrap").count(),1);
+  assert.equal(await page.locator(".icon").getAttribute("src"),"favicon.png");
+  assert.equal(await page.locator(".os-only").innerText(),"OS");
   await page.evaluate(({version})=>localStorage.setItem("genesisShowcaseSeen:introtest",version),{version});
   await page.goto(base+"os.html",{waitUntil:"load"});
   await page.waitForFunction(()=>document.querySelector("#os"));
   assert.equal(await page.locator("#genesisAppTour").count(),0);
-  console.log("PASS original Genesis intro and returning-login flow");
+  console.log("PASS original Falcon Genesis intro and returning-login flow");
   await introCtx.close();
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:resolve(output,"gpt-install-showcase-failure.png")}).catch(()=>{});
