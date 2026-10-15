@@ -5,9 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>Genesis OS</title>
 <meta name="theme-color" content="#000000">
-<link rel="preload" as="image" href="favicon.png" fetchpriority="high">
-<link rel="icon" type="image/png" href="favicon.png">
-<link rel="apple-touch-icon" href="favicon.png">
+<link rel="preload" as="image" href="assets/icons/genesis-fall.png" fetchpriority="high">
+<link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
+<link rel="apple-touch-icon" href="assets/icons/genesis-fall.png">
 <style>
   * {
     box-sizing: border-box;
@@ -40,7 +40,7 @@
   .logo-wrap {
     position: absolute;
     width: min(72vmin, 760px);
-    aspect-ratio: 1280 / 1229;
+    aspect-ratio: 1;
     transform: scale(1.24);
     animation: cameraMove 9.6s cubic-bezier(.16,.73,.22,1) forwards;
     will-change: transform;
@@ -58,7 +58,7 @@
     transform: translateZ(0);
   }
 
-  /* The original Genesis Falcon artwork. Keep this reference stable. */
+  /* The user-provided seasonal Falcon artwork. Keep this reference stable. */
   .icon {
     object-fit: contain;
     opacity: 0;
@@ -66,17 +66,9 @@
     animation: iconLife 9.6s cubic-bezier(.22,.7,.2,1) forwards;
   }
 
-  /* The original white OS hand-off, kept as a text mark so the Falcon file is untouched. */
+  /* The exact OS letterform extracted from the same user-provided artwork. */
   .os-only {
-    display: grid;
-    place-items: center;
-    color: #fff;
-    font-family: Arial, Helvetica, sans-serif;
-    font-size: clamp(6rem, 27vmin, 20rem);
-    font-weight: 900;
-    letter-spacing: -.13em;
-    line-height: .78;
-    padding-right: .13em;
+    object-fit: contain;
     opacity: 0;
     filter: blur(2px);
     animation: osLife 9.6s cubic-bezier(.22,.72,.18,1) forwards;
@@ -257,8 +249,8 @@
     <div class="glow" aria-hidden="true"></div>
 
     <div class="logo-wrap" aria-hidden="true">
-      <img class="icon" src="favicon.png" alt="">
-      <div class="os-only">OS</div>
+      <img class="icon" src="assets/icons/genesis-fall.png" alt="">
+      <img class="os-only" src="assets/icons/genesis-fall-os.png" alt="">
     </div>
 
     <div class="vignette" aria-hidden="true"></div>
