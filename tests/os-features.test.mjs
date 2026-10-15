@@ -98,16 +98,28 @@ test("Genesis installable branding uses the original OS icon while the desktop k
   assert.doesNotMatch(os,/genesis\.svg/);
 });
 
-test("Genesis intro restores the original Falcon and always hands off to the desktop",()=>{
+test("Genesis intro uses the requested Falcon artwork and exact OS letterform",()=>{
   const favicon=readFileSync(new URL("../favicon.png",import.meta.url));
+  const fall=readFileSync(new URL("../assets/icons/genesis-fall.png",import.meta.url));
+  const fallOS=readFileSync(new URL("../assets/icons/genesis-fall-os.png",import.meta.url));
   assert.equal(
     createHash("sha256").update(favicon).digest("hex"),
     "4e882d83705ef81f98270f9d4506353056cd8ee29892d5f8594e492252294713",
     "the original Falcon logo file changed"
   );
-  assert.match(intro,/class="icon" src="favicon\.png"/);
-  assert.match(intro,/Genesis Falcon artwork/);
-  assert.match(intro,/class="os-only">OS<\/div>/);
+  assert.equal(
+    createHash("sha256").update(fall).digest("hex"),
+    "3cad256858c9c8c837b871ffd6a05f3d537084e28f8ae0d9ca82d406315bdb86",
+    "the requested seasonal Falcon artwork changed"
+  );
+  assert.equal(
+    createHash("sha256").update(fallOS).digest("hex"),
+    "b4d1bba1060743b657a7186a263d379340bfcf962ec0ef39e29921ae10e72bac",
+    "the extracted OS letterform changed"
+  );
+  assert.match(intro,/class="icon" src="assets\/icons\/genesis-fall\.png"/);
+  assert.match(intro,/seasonal Falcon artwork/);
+  assert.match(intro,/class="os-only" src="assets\/icons\/genesis-fall-os\.png"/);
   assert.doesNotMatch(intro,/assets\/icons\/genesis-192\.png/);
   assert.doesNotMatch(intro,/data:image\/png;base64/);
   assert.doesNotMatch(intro,/genesis-intro-state/);
