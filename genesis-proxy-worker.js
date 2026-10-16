@@ -16,6 +16,12 @@
  */
 
 const ALLOWED_METHODS = new Set(["GET", "HEAD"]);
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-methods": "GET, HEAD, OPTIONS",
+  "access-control-allow-headers": "content-type, accept, accept-language",
+  "cache-control": "no-store"
+};
 
 function isIPv4(host) {
   return /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host);
@@ -209,9 +215,16 @@ export default {
   async fetch(request) {
     const incoming = new URL(request.url);
 
+    if (request.method === "OPTIONS") {
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    }
+
     if (incoming.pathname === "/health") {
       return new Response("Genesis Proxy OK", {
-        headers: { "content-type": "text/plain; charset=utf-8" }
+        headers: {
+          ...CORS_HEADERS,
+          "content-type": "text/plain; charset=utf-8"
+        }
       });
     }
 
@@ -226,7 +239,7 @@ export default {
     if (!raw) {
       return new Response(
         "Genesis Proxy is online. Use ?url=https%3A%2F%2Fexample.com",
-        { headers: { "content-type": "text/plain; charset=utf-8" } }
+        { headers: { ...CORS_HEADERS, "content-type": "text/plain; charset=utf-8" } }
       );
     }
 
