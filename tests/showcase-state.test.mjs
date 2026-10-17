@@ -35,6 +35,7 @@ test('manifest identity, launch, scope, and icons resolve inside a Pages subdire
   assert.equal(manifest.display,'standalone');
   assert.equal(manifest.name,'Genesis');
   assert.equal(manifest.short_name,'Genesis');
+  assert.deepEqual(manifest.icons.map(icon=>icon.src),['assets/icons/genesis-fall.png']);
   for(const icon of manifest.icons){
     const png=readFileSync(new URL('../'+icon.src,import.meta.url));
     const [width,height]=icon.sizes.split('x').map(Number);

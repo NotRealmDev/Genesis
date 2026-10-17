@@ -8,9 +8,19 @@
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
   ];
-  const BUILD_ID = "2026-09-23-wisp-preference-r17";
+  // The HTTPS proxy is intentionally the last resort. It keeps basic pages
+  // usable on guest networks that block every WebSocket provider, while Wisp
+  // remains the preferred transport for full Scramjet compatibility.
+  const DEFAULT_HTTP_PROXY_URLS = [
+    "https://genesis-proxy.bernye-eugene7.workers.dev/"
+  ];
+  const BUILD_ID = "2026-10-15-cafe-wifi-failover-r1";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
+  const WISP_PROBE_TIMEOUT_MS = 4500;
+  const WISP_INIT_TIMEOUT_MS = 12000;
+  const WISP_HEALTH_TIMEOUT_MS = 8000;
+  const HTTP_PROXY_HEALTH_TIMEOUT_MS = 8000;
 
   const currentScript = document.currentScript;
   const BASE_URL = new URL("./", currentScript?.src || location.href);
@@ -56,6 +66,15 @@
     }catch{return "";}
   }
 
+  function normalizeHttpProxyUrl(value){
+    try{
+      const parsed=new URL(String(value||"").trim());
+      if(parsed.protocol!=="https:") return "";
+      if(!parsed.pathname.endsWith("/")) parsed.pathname += "/";
+      return parsed.href;
+    }catch{return "";}
+  }
+
   function getWispUrls(){
     const urls=[];
     let custom="";
@@ -74,6 +93,22 @@
       const index=urls.indexOf(previous);
       if(index>0 && !custom)urls.splice(0,0,urls.splice(index,1)[0]);
     }catch{}
+    return urls;
+  }
+
+  function getHttpProxyUrls(){
+    const urls=[];
+    const values=[];
+    try{ values.push(localStorage.getItem("genesisProxyUrl")); }catch{}
+    try{
+      values.push(window.GENESIS_PROXY?.endpoint);
+      values.push(...(window.GENESIS_PROXY?.endpoints||[]));
+    }catch{}
+    values.push(...DEFAULT_HTTP_PROXY_URLS);
+    for(const value of values){
+      const normalized=normalizeHttpProxyUrl(value);
+      if(normalized && !urls.includes(normalized)) urls.push(normalized);
+    }
     return urls;
   }
 
@@ -117,11 +152,36 @@
     return officialWispModulePromise;
   }
 
-  async function probeWispEndpoint(websocket){
+  function probeNativeWispEndpoint(websocket,timeoutMs=WISP_PROBE_TIMEOUT_MS){
+    const Socket=window.WebSocket;
+    if(typeof Socket!=="function") return Promise.resolve({ok:false,verified:false,detail:"WebSocket API unavailable"});
+    return new Promise(resolve=>{
+      let settled=false;
+      let socket=null;
+      const finish=(ok,detail="")=>{
+        if(settled) return;
+        settled=true;
+        clearTimeout(timer);
+        try{ socket?.close?.(); }catch{}
+        resolve({ok,verified:false,detail});
+      };
+      const timer=setTimeout(()=>finish(false,"native WebSocket probe timed out"),timeoutMs);
+      try{
+        socket=new Socket(websocket);
+        socket.onopen=()=>finish(true,"native WebSocket opened");
+        socket.onerror=()=>finish(false,"native WebSocket handshake failed");
+        socket.onclose=()=>{ if(!settled) finish(false,"native WebSocket closed before opening"); };
+      }catch(err){
+        finish(false,err?.message||String(err));
+      }
+    });
+  }
+
+  async function probeOfficialWispEndpoint(websocket){
     // A stalled CDN import must not block every endpoint before its handshake
-    // timeout has even started. Libcurl can initialize without this extra probe.
-    const official=await withTimeout(loadOfficialWispClient(),5000,"Optional Wisp probe library timed out.").catch(()=>null);
-    if(!official) return {ok:true,verified:false};
+    // timeout has even started. Native WebSocket probing runs in parallel.
+    const official=await withTimeout(loadOfficialWispClient(),4000,"Optional Wisp probe library timed out.").catch(()=>null);
+    if(!official) return {ok:false,verified:false,detail:"official Wisp probe unavailable"};
 
     return new Promise(resolve=>{
       let settled=false;
@@ -133,7 +193,7 @@
         try{ connection?.close?.(); }catch{}
         resolve({ok,verified:true,detail});
       };
-      const timer=setTimeout(()=>finish(false,"official Wisp handshake timed out"),6000);
+      const timer=setTimeout(()=>finish(false,"official Wisp handshake timed out"),WISP_PROBE_TIMEOUT_MS);
       try{
         connection=new official.ClientConnection(websocket,{wisp_version:2});
         connection.onopen=()=>finish(true,"official Wisp handshake succeeded");
@@ -143,6 +203,21 @@
         finish(false,err?.message||String(err));
       }
     });
+  }
+
+  async function probeWispEndpoint(websocket){
+    const probes=[
+      probeNativeWispEndpoint(websocket),
+      probeOfficialWispEndpoint(websocket)
+    ].map(probe=>probe.then(result=>result.ok?result:Promise.reject(new Error(result.detail||"Wisp probe failed"))));
+    try{
+      // Return as soon as either the native socket or official protocol probe
+      // succeeds. A blocked provider therefore cannot delay a healthy one.
+      return await Promise.any(probes);
+    }catch(error){
+      const details=(error?.errors||[]).map(item=>item?.message||String(item)).filter(Boolean);
+      return {ok:false,verified:false,detail:details.join("; ")||"Wisp endpoint did not accept a connection"};
+    }
   }
 
   function waitForActivated(worker,timeoutMs=7000){
@@ -395,6 +470,9 @@
         youtubeMediaLastContentRange:"",
         youtubeMediaWisp:"",
         youtubeMediaTrace:[],
+        endpointProbes:0,
+        endpointProbeFailures:0,
+        endpointAttempts:0,
         active:0,
         lastStatus:0,
         lastHost:"",
@@ -413,21 +491,21 @@
       try{ window.dispatchEvent(new CustomEvent("genesis:proxy-event",{detail})); }catch{}
     }
 
-    async makeClient(index,verifyRoute=true){
+    async makeClient(index,verifyRoute=true,knownProbe=null){
       const websocket=this.wispUrls[index];
-      const probe=await probeWispEndpoint(websocket);
+      const probe=knownProbe||await probeWispEndpoint(websocket);
       if(!probe.ok) throw new Error("Wisp handshake failed at "+websocket+": "+probe.detail);
 
       // This is the same constructor shape used by Scramjet's official
       // bootstrap. Libcurl supplies HTTP, media and WebSocket traffic over Wisp.
       const client=new this.Transport({wisp:websocket});
       try{
-      await withTimeout(client.init(),18000,"The Genesis Wisp transport could not start at "+websocket);
+      await withTimeout(client.init(),WISP_INIT_TIMEOUT_MS,"The Genesis Wisp transport could not start at "+websocket);
 
       if(verifyRoute){
         const health=await withTimeout(
           client.request(new URL(TRANSPORT_HEALTH_URL),"HEAD",null,[["accept","*/*"]],undefined),
-          12000,
+          WISP_HEALTH_TIMEOUT_MS,
           "The Wisp endpoint opened but could not reach the web."
         );
         const ok=health && Number(health.status)>=200 && Number(health.status)<500;
@@ -446,13 +524,29 @@
 
     async init(){
       let lastError=null;
-      for(let offset=0;offset<this.wispUrls.length;offset++){
-        const index=(this.startIndex+offset)%this.wispUrls.length;
+      const order=Array.from({length:this.wispUrls.length},(_,offset)=>(this.startIndex+offset)%this.wispUrls.length);
+      const probed=await Promise.all(order.map(async index=>{
+        this.stats.endpointProbes++;
         try{
-          const result=await this.makeClient(index,true);
-          this.client=result.client;
+          const result=await probeWispEndpoint(this.wispUrls[index]);
+          if(!result.ok)this.stats.endpointProbeFailures++;
+          return {index,result};
+        }catch(error){
+          this.stats.endpointProbeFailures++;
+          return {index,result:{ok:false,verified:false,detail:error?.message||String(error)}};
+        }
+      }));
+      // Only initialize routes that accepted a socket probe. A blocked cafe
+      // network therefore falls through to the next provider immediately
+      // instead of waiting on Libcurl to time out against the same host.
+      const candidates=probed.filter(entry=>entry.result.ok);
+      for(const {index,result} of candidates){
+        this.stats.endpointAttempts++;
+        try{
+          const transportResult=await this.makeClient(index,true,result);
+          this.client=transportResult.client;
           this.activeIndex=index;
-          this.officialVerified=result.verified;
+          this.officialVerified=transportResult.verified;
           this.ready=true;
           try{localStorage.setItem(LAST_WISP_KEY,this.activeWisp)}catch{}
           this.emit("ready");
@@ -615,18 +709,145 @@
     }
   }
 
+  class HttpProxyTransport {
+    constructor(endpoint){
+      this.endpoint=normalizeHttpProxyUrl(endpoint);
+      this.ready=false;
+      this.stats={
+        logicalRequests:0,
+        completed:0,
+        failed:0,
+        active:0,
+        lastStatus:0,
+        lastHost:"",
+        lastError:"",
+        lastEventAt:0
+      };
+    }
+
+    proxyUrl(remote){
+      const url=new URL(this.endpoint);
+      url.searchParams.set("url",remote.href);
+      return url.href;
+    }
+
+    async init(){
+      if(!this.endpoint) throw new Error("Genesis has no valid HTTPS proxy fallback configured.");
+      const probe=new URL(this.endpoint);
+      probe.searchParams.set("url",TRANSPORT_HEALTH_URL);
+      const response=await withTimeout(
+        fetch(probe.href,{method:"HEAD",redirect:"manual",credentials:"omit",cache:"no-store"}),
+        HTTP_PROXY_HEALTH_TIMEOUT_MS,
+        "The HTTPS Genesis proxy fallback did not respond."
+      );
+      const status=Number(response?.status)||0;
+      await releaseResponseBody(response);
+      if(status<200 || status>=500) throw new Error("The HTTPS Genesis proxy fallback returned "+(status||"an invalid response")+".");
+      this.ready=true;
+      return this;
+    }
+
+    async request(remote,method,body,headers,signal){
+      if(!this.ready) throw new Error("The HTTPS Genesis proxy fallback is not ready.");
+      const verb=String(method||"GET").toUpperCase();
+      if(verb!=="GET" && verb!=="HEAD"){
+        throw new Error("The HTTPS Genesis proxy fallback supports GET and HEAD requests only.");
+      }
+      const forwarded=new Headers();
+      for(const [name,value] of headers||[]){
+        if(/^(?:authorization|cookie|host|origin|referer)$/i.test(name)) continue;
+        try{ forwarded.set(name,value); }catch{}
+      }
+      this.stats.logicalRequests++;
+      this.stats.active++;
+      this.stats.lastHost=remote.hostname;
+      this.stats.lastEventAt=Date.now();
+      try{
+        const response=await fetch(this.proxyUrl(remote),{
+          method:verb,
+          headers:forwarded,
+          redirect:"manual",
+          credentials:"omit",
+          cache:"no-store",
+          signal
+        });
+        this.stats.completed++;
+        this.stats.lastStatus=Number(response?.status)||0;
+        this.stats.lastError="";
+        return {
+          body:response.body,
+          headers:[...response.headers],
+          status:response.status,
+          statusText:response.statusText
+        };
+      }catch(error){
+        this.stats.failed++;
+        this.stats.lastError=error?.message||String(error);
+        throw error;
+      }finally{
+        this.stats.active=Math.max(0,this.stats.active-1);
+      }
+    }
+
+    connect(){
+      throw new Error("The HTTPS Genesis proxy fallback does not support WebSocket requests.");
+    }
+
+    async healthCheck(){
+      if(!this.ready) await this.init();
+      return {ok:true,status:200,endpoint:this.endpoint};
+    }
+
+    diagnostics(){
+      return {
+        ...this.stats,
+        endpoint:this.endpoint,
+        ready:this.ready,
+        routePolicy:"https-fallback",
+        websocketSupport:false
+      };
+    }
+
+    async close(){ this.ready=false; }
+  }
+
   async function createTransport(wispUrls,startIndex=0){
     if(!wispUrls.length) throw new Error("Genesis has no valid Wisp transport endpoints configured.");
     const Transport=window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
     const transport=new ResilientWispTransport(Transport,wispUrls,startIndex);
-    await transport.init();
-    return {
-      transport,
-      connections:null,
-      websocket:transport.activeWisp,
-      wispIndex:transport.activeIndex,
-      officialVerified:transport.officialVerified
-    };
+    try{
+      await transport.init();
+      return {
+        transport,
+        profile:"wisp-failover",
+        connections:null,
+        websocket:transport.activeWisp,
+        wispIndex:transport.activeIndex,
+        officialVerified:transport.officialVerified
+      };
+    }catch(wispError){
+      await transport.close();
+      console.warn("Genesis Wisp providers were unavailable; trying the HTTPS proxy fallback.",wispError);
+      let lastError=wispError;
+      for(const endpoint of getHttpProxyUrls()){
+        const fallback=new HttpProxyTransport(endpoint);
+        try{
+          await fallback.init();
+          return {
+            transport:fallback,
+            profile:"https-fallback",
+            connections:null,
+            websocket:"",
+            wispIndex:-1,
+            officialVerified:false
+          };
+        }catch(error){
+          lastError=error;
+          await fallback.close();
+        }
+      }
+      throw new Error("Genesis could not connect to any Wisp provider or HTTPS proxy fallback. "+(lastError?.message||String(lastError)));
+    }
   }
 
   const GenesisPrism = {
@@ -785,7 +1006,7 @@
 
         const transportResult=await createTransport(this.wispUrls,this.wispIndex);
         this.transport=transportResult.transport;
-        this.transportProfile="official-default";
+        this.transportProfile=transportResult.profile||"wisp-failover";
         this.wispIndex=transportResult.wispIndex;
         this.activeWisp=transportResult.websocket;
         this.officialWispVerified=!!transportResult.officialVerified;
@@ -922,7 +1143,7 @@
       return {
         build:BUILD_ID,
         searchEngine:"Brave Search",
-        websiteTransport:"Wisp",
+        websiteTransport:this.transportProfile==="https-fallback"?"HTTPS proxy fallback":"Wisp",
         sessionPersistence:"indexeddb-cookies-and-origin-storage",
         scramjetFlags:{sourcemaps:false},
         officialWispClient:"@mercuryworkshop/wisp-js@0.5.0",
@@ -933,6 +1154,7 @@
         controlled:!!navigator.serviceWorker?.controller,
         transport:!!this.transport,
         transportProfile:this.transportProfile,
+        httpProxyFallback:this.transportProfile==="https-fallback",
         requests:this.transport?.diagnostics?.() || null,
         wisp:this.wisp,
         wispIndex:this.wispIndex,
