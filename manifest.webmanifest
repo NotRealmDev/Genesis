@@ -9,8 +9,6 @@
   "background_color": "#080d16",
   "theme_color": "#080d16",
   "icons": [
-    {"src": "assets/icons/genesis-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
-    {"src": "assets/icons/genesis-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
-    {"src": "assets/icons/genesis-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {"src": "assets/icons/genesis-fall.png", "sizes": "1254x1254", "type": "image/png", "purpose": "any"}
   ]
 }

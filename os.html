@@ -7,8 +7,8 @@
 <meta name="application-name" content="Genesis">
 <meta name="theme-color" content="#080d16">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/png" href="assets/icons/genesis-192.png">
-<link rel="apple-touch-icon" href="assets/icons/genesis-192.png">
+<link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
+<link rel="apple-touch-icon" href="assets/icons/genesis-fall.png">
 <link rel="stylesheet" href="genesis-install.css">
 <link rel="stylesheet" href="genesis-gpt.css">
 <script src="genesis-install.js" defer></script>
@@ -40,7 +40,11 @@ button{color:inherit}
 #os:after{width:480px;height:480px;right:3%;bottom:-220px;background:hsla(calc(var(--accent) + 58),85%,55%,.15);animation-delay:-7s}
 @keyframes floatGlow{to{transform:translate3d(55px,-35px,0) scale(1.12)}}
 .wallpaper-grid{position:absolute;inset:0;pointer-events:none;opacity:.13;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:50px 50px;mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 75%,transparent)}
-.watermark{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);font-size:clamp(82px,14vw,190px);font-weight:900;letter-spacing:-12px;color:rgba(255,255,255,.026);pointer-events:none}
+.desktop-tools{position:absolute;right:250px;top:24px;z-index:20;display:flex;gap:8px}
+.desktop-tool{height:34px;padding:0 12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.86);font-size:10px;cursor:pointer;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 25px rgba(0,0,0,.16);transition:.18s}
+.desktop-tool:hover{background:rgba(255,255,255,.14);transform:translateY(-1px)}
+.watermark{position:absolute;left:50%;top:47%;width:clamp(150px,18vw,260px);aspect-ratio:1;transform:translate(-50%,-50%);opacity:.055;pointer-events:none}
+.watermark img{display:block;width:100%;height:100%;object-fit:contain;filter:saturate(1.08) brightness(1.1)}
 .desktop{position:absolute;inset:0 230px 96px 0;padding:30px}
 .desktop-icon{position:absolute;width:90px;height:104px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:default;touch-action:none}
 .desktop-icon.dragging{z-index:9999;opacity:.85;filter:brightness(1.17)}
@@ -49,6 +53,19 @@ button{color:inherit}
 .desktop-icon:hover .app-icon{transform:translateY(-4px) scale(1.05);background:rgba(255,255,255,.14)}
 .app-icon svg{width:31px;height:31px;stroke:#fff;fill:none;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}
 .app-name{font-size:12px;font-weight:500;white-space:nowrap;text-shadow:0 2px 4px rgba(0,0,0,.9)}
+.desktop-folder{position:absolute;width:94px;height:108px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:default;touch-action:none;user-select:none}
+.desktop-folder.dragging{z-index:9999;opacity:.85;filter:brightness(1.17)}
+.desktop-folder.selected .desktop-folder-mark{background:rgba(255,255,255,.17);border-color:rgba(255,255,255,.28)}
+.desktop-folder-mark{position:relative;width:62px;height:62px;border-radius:20px;display:grid;place-items:center;background:linear-gradient(145deg,hsla(var(--accent),80%,67%,.72),hsla(var(--accent),70%,42%,.46));border:1px solid hsla(var(--accent),80%,80%,.40);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:inset 0 1px rgba(255,255,255,.24),0 14px 34px rgba(0,0,0,.25);transition:.24s cubic-bezier(.2,.8,.2,1)}
+.desktop-folder:hover .desktop-folder-mark{transform:translateY(-4px) scale(1.05);background:linear-gradient(145deg,hsla(var(--accent),85%,72%,.86),hsla(var(--accent),72%,47%,.58))}
+.desktop-folder-mark svg{width:31px;height:31px;fill:none;stroke:#fff;stroke-width:1.55;stroke-linecap:round;stroke-linejoin:round}
+.desktop-folder-badge{position:absolute;right:-5px;top:-5px;min-width:19px;height:19px;padding:0 5px;display:grid;place-items:center;border-radius:999px;background:rgba(9,13,23,.88);border:1px solid rgba(255,255,255,.23);color:#fff;font-size:9px;font-weight:750}
+.desktop-folder-name{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:500;text-shadow:0 2px 4px rgba(0,0,0,.9)}
+.desktop-context-menu{position:fixed;z-index:10000;min-width:190px;padding:6px;border:1px solid rgba(255,255,255,.14);border-radius:15px;background:rgba(10,15,25,.92);backdrop-filter:blur(26px) saturate(150%);-webkit-backdrop-filter:blur(26px) saturate(150%);box-shadow:0 20px 55px rgba(0,0,0,.42);opacity:0;transform:scale(.96);transform-origin:top left;pointer-events:none;transition:opacity .14s,transform .14s}
+.desktop-context-menu.open{opacity:1;transform:none;pointer-events:auto}
+.desktop-context-menu button{display:flex;width:100%;align-items:center;gap:9px;height:34px;padding:0 10px;border:0;border-radius:9px;background:transparent;color:rgba(255,255,255,.88);font-size:11px;text-align:left;cursor:pointer}
+.desktop-context-menu button:hover{background:rgba(255,255,255,.11)}
+.desktop-context-menu button[hidden]{display:none}
 
 .sidebar{
  position:absolute;top:16px;right:16px;bottom:16px;width:205px;padding:22px;border-radius:28px;
@@ -88,7 +105,15 @@ button{color:inherit}
 
 .notes{height:100%;padding:22px}.notes textarea{width:100%;height:100%;resize:none;border:0;outline:0;background:transparent;color:#fff;font-size:15px;line-height:1.65}
 .settings label{display:block;font-size:12px;color:var(--muted);margin-bottom:9px}.setting{margin-bottom:22px}.setting input[type=range]{width:100%}.os-btn{border:1px solid rgba(255,255,255,.09);border-radius:12px;padding:10px 14px;background:rgba(255,255,255,.07);cursor:pointer;transition:.18s}.os-btn:hover{background:rgba(255,255,255,.13)}
-.about{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.about-logo{font-size:82px;font-weight:900;letter-spacing:-8px}.realm-credit{margin-top:18px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);font-size:14px}
+.about{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}.about-logo{width:96px;height:96px;margin-bottom:4px}.about-logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:24px;box-shadow:0 15px 34px rgba(0,0,0,.28)}.realm-credit{margin-top:18px;padding:8px 15px;border-radius:999px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.09);font-size:14px}
+.folder-window{height:100%;padding:22px;background:linear-gradient(145deg,rgba(255,255,255,.035),transparent)}
+.folder-window-head{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:18px}.folder-window-head h2{margin:0;font-size:22px;letter-spacing:-.04em}.folder-window-head p{margin:5px 0 0;color:var(--muted);font-size:11px}.folder-window-count{color:var(--muted);font-size:10px;white-space:nowrap}
+.folder-app-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:11px}.folder-app-card{position:relative;min-height:108px;padding:14px;border:1px solid rgba(255,255,255,.09);border-radius:17px;background:rgba(255,255,255,.05);color:#fff;text-align:left;cursor:pointer;transition:.18s}.folder-app-card:hover{background:rgba(255,255,255,.11);transform:translateY(-2px)}.folder-app-icon{width:38px;height:38px;margin-bottom:10px;display:grid;place-items:center;border-radius:12px;background:rgba(255,255,255,.10)}.folder-app-icon svg{width:22px;height:22px;stroke:#fff;fill:none;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round}.folder-app-name{font-size:11px;font-weight:650}.folder-app-remove{position:absolute;right:8px;top:8px;width:22px;height:22px;border:1px solid rgba(255,255,255,.12);border-radius:50%;background:rgba(0,0,0,.22);color:rgba(255,255,255,.66);cursor:pointer}.folder-app-remove:hover{background:rgba(255,95,87,.24);color:#fff}.folder-empty{padding:32px 18px;border:1px dashed rgba(255,255,255,.15);border-radius:16px;color:var(--muted);font-size:12px;text-align:center}.folder-empty strong{display:block;margin-bottom:6px;color:#fff;font-size:13px}
+
+.genify-shell{height:100%;min-height:100%;overflow:auto;padding:25px;background:linear-gradient(145deg,#071812,#07110e 55%,#050907);color:#eefcf3}.genify-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}.genify-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#48f28b,#13a957);box-shadow:0 12px 28px rgba(31,211,100,.24)}.genify-mark svg{width:28px;height:28px;fill:none;stroke:#06150b;stroke-width:2.8;stroke-linecap:round}.genify-brand{font-size:20px;font-weight:780;letter-spacing:-.05em}.genify-subtitle{margin-top:3px;color:rgba(224,255,234,.58);font-size:10px}.genify-search{width:100%;height:40px;margin-bottom:19px;padding:0 14px;border:1px solid rgba(141,255,185,.16);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;outline:0}.genify-search::placeholder{color:rgba(224,255,234,.40)}.genify-section-title{display:flex;justify-content:space-between;align-items:center;margin:20px 0 11px;font-size:12px;font-weight:700}.genify-section-title span{color:rgba(224,255,234,.48);font-size:9px;font-weight:500}.genify-chips{display:flex;gap:8px;overflow:auto;padding-bottom:2px}.genify-chip{flex:none;padding:8px 11px;border:1px solid rgba(141,255,185,.15);border-radius:999px;background:rgba(255,255,255,.055);color:#d9fce5;font-size:10px;cursor:pointer}.genify-chip.active,.genify-chip:hover{background:#39db7e;border-color:#39db7e;color:#04130a}.genify-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px}.genify-card{min-height:153px;padding:12px;border:1px solid rgba(141,255,185,.13);border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.025));cursor:pointer;transition:.18s}.genify-card:hover{transform:translateY(-3px);border-color:rgba(141,255,185,.32);background:rgba(255,255,255,.11)}.genify-art{height:86px;margin-bottom:10px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#193d2b,#0a1710);font-size:25px}.genify-card strong{display:block;font-size:11px}.genify-card small{display:block;margin-top:4px;color:rgba(224,255,234,.50);font-size:9px}.genify-now{margin-top:20px;padding:11px 13px;border:1px solid rgba(141,255,185,.14);border-radius:13px;background:rgba(30,204,102,.10);color:#c9f9d9;font-size:10px}.genify-now b{color:#fff}
+
+.genflix-shell{position:relative;height:100%;min-height:100%;overflow:hidden;background:#050505;color:#fff}.genflix-splash{position:absolute;inset:0;z-index:3;display:grid;place-items:center;background:radial-gradient(circle at 50% 44%,rgba(232,30,48,.25),transparent 31%),#050505;opacity:1;transition:opacity .65s ease}.genflix-splash.done{opacity:0;pointer-events:none}.genflix-g{font-size:clamp(110px,22vw,210px);font-weight:950;line-height:.8;letter-spacing:-.16em;padding-right:.16em;color:#e50914;text-shadow:0 0 45px rgba(229,9,20,.44);transform:scale(.74);opacity:0;animation:genflixLogo 1.35s cubic-bezier(.2,.8,.2,1) forwards}.genflix-splash small{display:block;margin-top:28px;color:rgba(255,255,255,.52);font-size:10px;letter-spacing:.34em;text-transform:uppercase;text-align:center;opacity:0;animation:genflixCaption .55s ease .55s forwards}@keyframes genflixLogo{0%{opacity:0;transform:scale(.74) rotate(-7deg);filter:blur(16px)}55%{opacity:1;transform:scale(1.08) rotate(2deg);filter:blur(0)}100%{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}}@keyframes genflixCaption{to{opacity:1}}
+.genflix-profiles{position:absolute;inset:0;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 50% 36%,rgba(229,9,20,.15),transparent 33%),linear-gradient(145deg,#080808,#121212);opacity:0;transform:translateY(12px);transition:opacity .55s ease,transform .55s ease}.genflix-profiles.visible{opacity:1;transform:none}.genflix-profile-wrap{text-align:center}.genflix-profile-wrap h2{margin:0 0 22px;font-size:clamp(22px,4vw,31px);font-weight:650;letter-spacing:-.04em}.genflix-profile-list{display:flex;justify-content:center;gap:19px}.genflix-profile{width:112px;border:0;background:transparent;color:#fff;cursor:pointer}.genflix-avatar{width:104px;height:104px;margin:0 auto 10px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,#e50914,#6e060d);box-shadow:0 12px 30px rgba(0,0,0,.38);font-size:34px;font-weight:850;transition:.18s}.genflix-profile:hover .genflix-avatar{outline:3px solid #fff;outline-offset:3px;transform:scale(1.04)}.genflix-profile span{font-size:11px;color:#d8d8d8}.genflix-home{height:100%;overflow:auto;padding:24px;background:linear-gradient(180deg,#130709,#070707 35%)}.genflix-home[hidden],.genflix-profiles[hidden]{display:none}.genflix-home-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.genflix-home-brand{display:flex;align-items:center;gap:9px;color:#fff;font-size:18px;font-weight:850;letter-spacing:-.06em}.genflix-home-brand b{color:#e50914;font-size:26px}.genflix-profile-pill{padding:7px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.07);font-size:9px}.genflix-hero{margin-top:24px;padding:26px 22px;border-radius:17px;background:linear-gradient(105deg,rgba(229,9,20,.84),rgba(92,5,11,.30)),linear-gradient(145deg,#311015,#090909);box-shadow:0 18px 38px rgba(0,0,0,.30)}.genflix-hero small{color:rgba(255,255,255,.70);font-size:9px;letter-spacing:.16em}.genflix-hero h2{margin:8px 0 5px;font-size:29px;letter-spacing:-.05em}.genflix-hero p{max-width:390px;margin:0;color:rgba(255,255,255,.72);font-size:11px;line-height:1.5}.genflix-row{display:flex;gap:11px;overflow:auto;margin-top:20px;padding:2px}.genflix-tile{flex:0 0 145px;height:84px;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid rgba(255,255,255,.10);border-radius:13px;background:linear-gradient(145deg,#222,#0e0e0e);color:#fff;text-align:left}.genflix-tile:nth-child(2){background:linear-gradient(145deg,#123f5a,#0b1118)}.genflix-tile:nth-child(3){background:linear-gradient(145deg,#4d2812,#15100c)}.genflix-tile small{color:rgba(255,255,255,.54);font-size:8px}.genflix-tile strong{margin-top:4px;font-size:11px}
 
 .games{height:100%;min-height:100%;overflow:auto;padding:24px 28px 36px;background:#050505;color:#f6f6f8;scrollbar-color:rgba(255,255,255,.25) transparent}
 .games::-webkit-scrollbar{width:9px;height:9px}.games::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}.games::-webkit-scrollbar-track{background:transparent}
@@ -103,7 +128,7 @@ button{color:inherit}
 
 .player{height:100%;display:flex;flex-direction:column;background:#020305}.player-toolbar{height:50px;display:flex;align-items:center;gap:9px;padding:7px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}.player-toolbar .os-btn{padding:7px 11px}.player-name{flex:1;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-stage{position:relative;flex:1;min-height:0;background:#000}.player-frame{display:block;width:100%;height:100%;border:0;background:#000}.loader{position:absolute;inset:0;display:grid;place-items:center;background:#05070b;z-index:2;pointer-events:none;transition:.35s}.loader.hidden{opacity:0}.loader-inner{text-align:center;color:var(--muted);font-size:12px}.spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#fff;animation:spin .7s linear infinite;margin:0 auto 12px}@keyframes spin{to{transform:rotate(360deg)}}
 
-.browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{min-height:56px;height:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px;flex:none}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1;min-width:160px}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:25px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.browser-stage{position:relative;flex:1;min-height:0;background:#070a11}.browser-frame{display:block;width:100%;height:100%;border:0;background:#070a11}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{font-size:72px;font-weight:900;letter-spacing:-7px}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}
+.browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{min-height:56px;height:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px;flex:none}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1;min-width:160px}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:25px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.browser-stage{position:relative;flex:1;min-height:0;background:#070a11}.browser-frame{display:block;width:100%;height:100%;border:0;background:#070a11}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{width:118px;height:118px;margin:0 auto 12px}.browser-home .logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:30px;box-shadow:0 16px 38px rgba(0,0,0,.30)}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}
 
 .browser-official-frame{display:none}
 
@@ -229,7 +254,7 @@ button{color:inherit}
 }
 
 @media(max-width:800px){
- .sidebar{display:none}.desktop{right:0}.dock-wrap{left:50%}
+ .sidebar{display:none}.desktop{right:0}.desktop-tools{right:24px}.dock-wrap{left:50%}
  .window,.window.maximized{left:12px!important;top:12px!important;width:calc(100vw - 24px)!important;height:calc(100vh - 105px)!important;transform:none!important;resize:none}
  .games{padding:18px 16px 28px}.games-appbar{margin-bottom:22px}.games-top{align-items:stretch;flex-direction:column;gap:13px}.games-title-wrap{min-width:0}.game-search-wrap{width:100%}.games-featured-card,.games-featured-content{min-height:255px}.games-featured-content{padding:24px 22px}.games-featured-content h2{font-size:27px}.games-featured-progress{right:18px;bottom:17px;width:130px}.game-ribbon-card{flex-basis:224px;width:224px;height:158px}.games-arcade .game-ribbon-card{flex-basis:198px;width:198px;height:135px}.games-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr));gap:11px}.games-grid .game-thumb{height:112px}.game-info{padding:9px 10px}.game-name{font-size:12px}
 }
@@ -570,8 +595,9 @@ button{color:inherit}
   location.replace("index.html");
 })();
 </script>
-  <link rel="icon" type="image/png" href="assets/icons/genesis-192.png">
+  <link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
 <script src="supabase-config.js"></script>
+<script src="proxy-config.js"></script>
 <script src="prism.js" defer></script>
 <script src="prism.api.js" defer></script>
 <script src="libby.js" defer></script>
@@ -584,7 +610,11 @@ button{color:inherit}
   <div id="genesisVisitorId" class="genesis-id-badge">ID ···</div>
   <div id="genesisAnnouncement" class="genesis-announcement"></div>
   <div class="wallpaper-grid"></div>
-  <div class="watermark">OS</div>
+  <div class="watermark" aria-hidden="true"><img src="assets/icons/genesis-fall.png" alt=""></div>
+
+  <div class="desktop-tools" aria-label="Desktop actions">
+    <button class="desktop-tool" id="newFolderButton" type="button">＋ Folder</button>
+  </div>
 
   <main id="desktop" class="desktop">
     <div class="desktop-icon" data-app="gpt" style="left:430px;top:30px">
@@ -618,6 +648,13 @@ button{color:inherit}
       <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/></svg><span class="gm-app-badge" data-messages-badge></span></div><div class="app-name">Messages</div>
     </div>
 
+    <div class="desktop-icon" data-app="genify" style="left:330px;top:260px">
+      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M7 6.5v9.4M7 6.5c5.9-2.2 10.4-.5 10.4 2.8v7.2M7 11.2c3.8-1.5 7.1-.5 10.4 1.5M7 15.9c2.1-.8 4.2-.5 6.1.4"/></svg></div><div class="app-name">Genify</div>
+    </div>
+    <div class="desktop-icon" data-app="genflix" style="left:430px;top:260px">
+      <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M8 4.5h8l-3.7 5.7 4.6 9.3H8l3.7-9.3z"/></svg></div><div class="app-name">Genflix</div>
+    </div>
+
     <div class="desktop-icon admin-only-icon" data-admin-only="1" data-app="announcement" style="left:330px;top:30px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M4 11v2a2 2 0 0 0 2 2h2l3 4V5L8 9H6a2 2 0 0 0-2 2z"/><path d="M15 9a4 4 0 0 1 0 6M18 6a8 8 0 0 1 0 12"/></svg></div><div class="app-name">Announcements</div>
     </div>
@@ -626,6 +663,13 @@ button{color:inherit}
     </div>
 
   </main>
+
+  <div class="desktop-context-menu" id="desktopContextMenu" role="menu" aria-label="Desktop actions">
+    <button type="button" data-desktop-action="new-folder">＋ New Folder</button>
+    <button type="button" data-desktop-action="rename-folder" hidden>Rename Folder</button>
+    <button type="button" data-desktop-action="empty-folder" hidden>Move Apps to Desktop</button>
+    <button type="button" data-desktop-action="delete-folder" hidden>Delete Folder</button>
+  </div>
 
   <aside class="sidebar">
     <canvas id="welcomeFireworks" class="welcome-fireworks" aria-hidden="true"></canvas>
@@ -1440,6 +1484,78 @@ function genesisUpdateMusicUI(){
 }
 
 
+const GENIFY_PLAYLISTS = [
+  {title:"Late Night Drive",meta:"12 tracks",art:"✦"},
+  {title:"Glass House",meta:"24 tracks",art:"◌"},
+  {title:"Focus Flow",meta:"18 tracks",art:"⌁"},
+  {title:"Genesis Radio",meta:"Made for you",art:"G"}
+];
+
+function genifyHTML(){
+  return `<div class="genify-shell">
+    <div class="genify-header"><div class="genify-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M8 8v12M8 8c8-3 15-1 15 4v10M8 14c5-2 10-1 15 2M8 20c3-1 6-1 9 .3"/></svg></div><div><div class="genify-brand">Genify</div><div class="genify-subtitle">Your sound, in Genesis</div></div></div>
+    <input class="genify-search" type="search" placeholder="What do you want to listen to?" aria-label="Search Genify">
+    <div class="genify-section-title">Made for you <span>ORIGINAL PLAYLISTS</span></div>
+    <div class="genify-chips"><button class="genify-chip active" type="button">All</button><button class="genify-chip" type="button">Chill</button><button class="genify-chip" type="button">Focus</button><button class="genify-chip" type="button">Energy</button></div>
+    <div class="genify-section-title">Your playlists <span>${GENIFY_PLAYLISTS.length} COLLECTIONS</span></div>
+    <div class="genify-card-grid">${GENIFY_PLAYLISTS.map(item=>`<button class="genify-card" type="button" data-genify-title="${escapeHTML(item.title)}"><span class="genify-art">${item.art}</span><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.meta)}</small></button>`).join("")}</div>
+    <div class="genify-now" id="genifyNow">Select a playlist to start listening · <b>Genify</b></div>
+  </div>`;
+}
+
+function initGenify(win){
+  const now=win.querySelector("#genifyNow");
+  win.querySelectorAll("[data-genify-title]").forEach(card=>card.addEventListener("click",()=>{
+    if(now) now.innerHTML=`Now queued · <b>${escapeHTML(card.dataset.genifyTitle||"Genify playlist")}</b>`;
+  }));
+  const search=win.querySelector(".genify-search");
+  if(search) search.addEventListener("input",()=>{
+    const query=search.value.trim().toLowerCase();
+    win.querySelectorAll("[data-genify-title]").forEach(card=>{
+      card.hidden=!!query && !String(card.dataset.genifyTitle||"").toLowerCase().includes(query);
+    });
+  });
+  win.querySelectorAll(".genify-chip").forEach(chip=>chip.addEventListener("click",()=>{
+    win.querySelectorAll(".genify-chip").forEach(item=>item.classList.toggle("active",item===chip));
+  }));
+}
+
+function genflixHTML(){
+  return `<div class="genflix-shell">
+    <div class="genflix-splash" aria-hidden="true"><div><div class="genflix-g">G</div><small>Genesis presents</small></div></div>
+    <section class="genflix-profiles" hidden>
+      <div class="genflix-profile-wrap"><h2>Who is using this account?</h2><div class="genflix-profile-list"><button class="genflix-profile" type="button" data-genflix-profile="GenyBoi"><div class="genflix-avatar">G</div><span>GenyBoi</span></button></div></div>
+    </section>
+    <section class="genflix-home" hidden>
+      <div class="genflix-home-head"><div class="genflix-home-brand"><b>G</b> genflix</div><span class="genflix-profile-pill">GenyBoi</span></div>
+      <div class="genflix-hero"><small>GENESIS ORIGINAL · PLACEHOLDER</small><h2>Something good is coming.</h2><p>Your Genflix home is ready for previews, trailers, and shows as the catalog grows.</p></div>
+      <div class="genflix-section-title">Continue watching</div><div class="genflix-row"><div class="genflix-tile"><small>Preview</small><strong>Glass Desktop</strong></div><div class="genflix-tile"><small>Preview</small><strong>Genesis Arcade</strong></div><div class="genflix-tile"><small>Preview</small><strong>Night Drive</strong></div></div>
+      <div class="genflix-section-title">Because you watched Genesis</div><div class="genflix-row"><div class="genflix-tile"><small>Coming soon</small><strong>New releases</strong></div><div class="genflix-tile"><small>Coming soon</small><strong>Featured</strong></div></div>
+    </section>
+  </div>`;
+}
+
+function initGenflix(win){
+  const splash=win.querySelector(".genflix-splash");
+  const profiles=win.querySelector(".genflix-profiles");
+  const home=win.querySelector(".genflix-home");
+  const revealProfiles=()=>{
+    if(!splash||!profiles)return;
+    splash.classList.add("done");
+    profiles.hidden=false;
+    const schedule=typeof requestAnimationFrame==="function"?requestAnimationFrame:(callback=>setTimeout(callback,16));
+    schedule(()=>profiles.classList.add("visible"));
+  };
+  const timer=setTimeout(revealProfiles,1450);
+  win.querySelectorAll("[data-genflix-profile]").forEach(button=>button.addEventListener("click",()=>{
+    clearTimeout(timer);
+    profiles?.classList.remove("visible");
+    if(profiles) profiles.hidden=true;
+    if(home) home.hidden=false;
+  }));
+}
+
+
 const apps = {
   store:{title:"Store",content:()=>window.GenesisOverhaul?.storeHTML?.()||`<div class="section"><div class="heading">Store</div><div class="muted">Store is loading…</div></div>`},
   accountSettings:{title:"Account Settings",content:()=>window.GenesisOverhaul?.accountHTML?.()||`<div class="section"><div class="heading">Account Settings</div></div>`},
@@ -1455,11 +1571,13 @@ const apps = {
     <button class="os-btn" onclick="resetIcons()">Reset Desktop Icons</button>
     <button class="os-btn" style="margin-top:10px" onclick="openApp('about')">Open About OS</button>
   </div>`},
-  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo">OS</div><h2>Genesis</h2><div class="muted">Version 1.232 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
+  about:{title:"About OS",content:()=>`<div class="about"><div class="about-logo"><img src="assets/icons/genesis-fall.png" alt="Genesis Falcon"></div><h2>Genesis</h2><div class="muted">Version 1.232 · Glass Desktop Environment</div><div class="realm-credit">Developed By Realm</div><div class="muted" style="font-size:10px;margin-top:10px">Portable Build · ${gameLibrary.length} Games</div></div>`},
   music:{title:"Music",content:musicHTML},
   messages:{title:"Messages",content:messagesHTML},
   games:{title:"Games",content:gamesHTML},
   gameRequest:{title:"Game Request",content:gameRequestHTML},
+  genify:{title:"Genify",content:genifyHTML},
+  genflix:{title:"Genflix",content:genflixHTML},
   announcement:{title:"Announcements",adminOnly:true,content:announcementHTML},
   deactivateOS:{title:"DeactivateOS",adminOnly:true,content:deactivateOSHTML}
 };
@@ -1468,6 +1586,228 @@ let highestZ = 300;
 const openWindows = {};
 const desktop = document.getElementById("desktop");
 const icons = [...document.querySelectorAll(".desktop-icon")];
+
+const DESKTOP_FOLDERS_KEY="genesisDesktopFoldersV1";
+let desktopFolders=loadDesktopFolders();
+let desktopContextTarget=null;
+
+function loadDesktopFolders(){
+  try{
+    const parsed=JSON.parse(localStorage.getItem(DESKTOP_FOLDERS_KEY)||"[]");
+    if(!Array.isArray(parsed))return [];
+    return parsed.map(folder=>({
+      id:String(folder?.id||""),
+      name:String(folder?.name||"Folder").slice(0,40),
+      appIds:Array.isArray(folder?.appIds)?folder.appIds.map(String).filter(Boolean):[],
+      x:Number.isFinite(Number(folder?.x))?Number(folder.x):530,
+      y:Number.isFinite(Number(folder?.y))?Number(folder.y):260
+    })).filter(folder=>folder.id);
+  }catch{return []}
+}
+
+function saveDesktopFolders(){
+  try{localStorage.setItem(DESKTOP_FOLDERS_KEY,JSON.stringify(desktopFolders))}catch{}
+}
+
+function folderById(folderId){return desktopFolders.find(folder=>folder.id===String(folderId))||null}
+function folderForApp(appId){return desktopFolders.find(folder=>folder.appIds.includes(String(appId)))||null}
+function iconForApp(appId){return icons.find(icon=>icon.dataset.app===String(appId))||null}
+function appTitle(appId){return apps[appId]?.title||String(appId)}
+
+function folderIconMarkup(){
+  return `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v10H3zM3 7V5h7l2 2"/></svg>`;
+}
+
+function folderHTML(folderId){
+  const folder=folderById(folderId);
+  if(!folder)return `<div class="folder-window"><div class="folder-empty"><strong>Folder unavailable</strong>This folder no longer exists.</div></div>`;
+  const validApps=folder.appIds.filter(appId=>apps[appId]);
+  return `<div class="folder-window">
+    <div class="folder-window-head"><div><h2>${escapeHTML(folder.name)}</h2><p>Drag desktop apps here to keep them together.</p></div><span class="folder-window-count">${validApps.length} app${validApps.length===1?"":"s"}</span></div>
+    ${validApps.length?`<div class="folder-app-grid">${validApps.map(appId=>{
+      const source=iconForApp(appId)?.querySelector(".app-icon")?.innerHTML||folderIconMarkup();
+      return `<div class="folder-app-card" role="button" tabindex="0" data-folder-open="${escapeHTML(appId)}"><span class="folder-app-icon">${source}</span><span class="folder-app-name">${escapeHTML(appTitle(appId))}</span><button class="folder-app-remove" type="button" data-folder-remove="${escapeHTML(appId)}" aria-label="Move ${escapeHTML(appTitle(appId))} to desktop">↗</button></div>`;
+    }).join("")}</div>`:`<div class="folder-empty"><strong>This folder is empty</strong>Drag an app onto the folder or use the desktop menu to organize it.</div>`}
+  </div>`;
+}
+
+function refreshDesktopFolderWindow(folderId){
+  const win=openWindows["folder:"+folderId];
+  if(!win)return;
+  win.querySelector(".window-content").innerHTML=folderHTML(folderId);
+  bindDesktopFolderWindow(win,folderId);
+}
+
+function bindDesktopFolderWindow(win,folderId){
+  win.querySelectorAll("[data-folder-open]").forEach(button=>button.addEventListener("click",event=>{
+    if(event.target.closest("[data-folder-remove]"))return;
+    openApp(button.dataset.folderOpen);
+  }));
+  win.querySelectorAll("[data-folder-open]").forEach(button=>button.addEventListener("keydown",event=>{
+    if((event.key==="Enter"||event.key===" ")&&!event.target.closest("[data-folder-remove]")){event.preventDefault();openApp(button.dataset.folderOpen)}
+  }));
+  win.querySelectorAll("[data-folder-remove]").forEach(button=>button.addEventListener("click",event=>{
+    event.stopPropagation();
+    removeAppFromFolder(button.dataset.folderRemove,folderId);
+  }));
+}
+
+function openDesktopFolder(folderId){
+  const folder=folderById(folderId);
+  if(!folder)return;
+  const key="folder:"+folder.id;
+  const existing=openWindows[key];
+  if(existing){existing.classList.remove("minimized");focusWindow(existing);return}
+  const win=document.createElement("section");
+  win.className="window";
+  win.dataset.app="folder";
+  win.dataset.folderId=folder.id;
+  win.innerHTML=`<div class="window-header"><div class="window-controls"><button class="window-control close" aria-label="Close"></button><button class="window-control minimize" aria-label="Minimize"></button><button class="window-control maximize" aria-label="Maximize"></button></div><div class="window-title">${escapeHTML(folder.name)}</div></div><div class="window-content">${folderHTML(folder.id)}</div>`;
+  document.getElementById("os").appendChild(win);
+  openWindows[key]=win;
+  focusWindow(win);makeWindowDraggable(win);bindDesktopFolderWindow(win,folder.id);
+  win.querySelector(".close").onclick=event=>{event.stopPropagation();closeWindow(key,win)};
+  win.querySelector(".minimize").onclick=event=>{event.stopPropagation();win.classList.add("minimized")};
+  win.querySelector(".maximize").onclick=event=>{event.stopPropagation();toggleMaximize(win)};
+  win.addEventListener("pointerdown",()=>focusWindow(win));
+}
+
+function removeAppFromFolder(appId,folderId){
+  const folder=folderById(folderId);
+  if(!folder)return;
+  folder.appIds=folder.appIds.filter(id=>id!==String(appId));
+  saveDesktopFolders();
+  const icon=iconForApp(appId);
+  if(icon)icon.style.display="";
+  updateDesktopFolder(folder);
+  refreshDesktopFolderWindow(folder.id);
+}
+
+function moveAppToFolder(appId,folderId){
+  const folder=folderById(folderId);
+  if(!folder || !apps[appId])return;
+  desktopFolders.forEach(item=>{item.appIds=item.appIds.filter(id=>id!==String(appId))});
+  if(!folder.appIds.includes(String(appId)))folder.appIds.push(String(appId));
+  saveDesktopFolders();
+  const icon=iconForApp(appId);
+  if(icon){icon.classList.remove("selected");icon.style.display="none"}
+  desktopFolders.forEach(updateDesktopFolder);
+  refreshDesktopFolderWindow(folder.id);
+}
+
+function moveFolderAppsToDesktop(folderId){
+  const folder=folderById(folderId);
+  if(!folder)return;
+  const ids=[...folder.appIds];
+  folder.appIds=[];
+  saveDesktopFolders();
+  ids.forEach(appId=>{const icon=iconForApp(appId);if(icon)icon.style.display=""});
+  updateDesktopFolder(folder);refreshDesktopFolderWindow(folder.id);closeDesktopContextMenu();
+}
+
+function deleteDesktopFolder(folderId){
+  const folder=folderById(folderId);
+  if(!folder)return;
+  moveFolderAppsToDesktop(folderId);
+  desktopFolders=desktopFolders.filter(item=>item.id!==String(folderId));
+  saveDesktopFolders();
+  document.querySelectorAll(".desktop-folder").forEach(element=>{if(element.dataset.folderId===String(folderId))element.remove()});
+  const win=openWindows["folder:"+folderId];
+  if(win)closeWindow("folder:"+folderId,win);
+  closeDesktopContextMenu();
+}
+
+function updateDesktopFolder(folder){
+  const element=[...document.querySelectorAll(".desktop-folder")].find(item=>item.dataset.folderId===String(folder.id));
+  if(!element)return;
+  element.querySelector(".desktop-folder-name").textContent=folder.name;
+  element.querySelector(".desktop-folder-badge").textContent=String(folder.appIds.length);
+  element.querySelector(".desktop-folder-badge").hidden=!folder.appIds.length;
+}
+
+function nextDesktopFolderPosition(){
+  const used=[...icons,...document.querySelectorAll(".desktop-folder")].map(item=>({x:parseFloat(item.style.left)||0,y:parseFloat(item.style.top)||0}));
+  const candidates=[];
+  for(let row=0;row<5;row++)for(let col=3;col<8;col++)candidates.push({x:30+col*100,y:30+row*115});
+  return candidates.find(candidate=>!used.some(item=>Math.abs(item.x-candidate.x)<70&&Math.abs(item.y-candidate.y)<75))||{x:30,y:490};
+}
+
+function bindDesktopFolder(element){
+  const folderId=element.dataset.folderId;
+  let dragging=false,moved=false,sx=0,sy=0,bx=0,by=0;
+  element.addEventListener("pointerdown",event=>{
+    if(event.button!==0)return;
+    document.querySelectorAll(".desktop-folder").forEach(item=>item.classList.remove("selected"));
+    element.classList.add("selected");dragging=true;moved=false;sx=event.clientX;sy=event.clientY;bx=parseFloat(element.style.left)||0;by=parseFloat(element.style.top)||0;element.classList.add("dragging");element.setPointerCapture(event.pointerId);
+  });
+  element.addEventListener("pointermove",event=>{
+    if(!dragging)return;
+    const dx=event.clientX-sx,dy=event.clientY-sy;if(Math.abs(dx)>3||Math.abs(dy)>3)moved=true;
+    const x=Math.max(0,Math.min(desktop.clientWidth-element.offsetWidth,bx+dx));
+    const y=Math.max(0,Math.min(desktop.clientHeight-element.offsetHeight,by+dy));
+    element.style.left=x+"px";element.style.top=y+"px";
+  });
+  element.addEventListener("pointerup",()=>{
+    dragging=false;element.classList.remove("dragging");
+    if(moved){const folder=folderById(folderId);if(folder){folder.x=parseFloat(element.style.left)||0;folder.y=parseFloat(element.style.top)||0;saveDesktopFolders()}}
+  });
+  element.addEventListener("dblclick",()=>{if(!moved)openDesktopFolder(folderId)});
+  element.addEventListener("contextmenu",event=>{event.preventDefault();showDesktopContextMenu(event.clientX,event.clientY,folderId)});
+}
+
+function renderDesktopFolders(){
+  desktop.querySelectorAll(".desktop-folder").forEach(element=>element.remove());
+  desktopFolders.forEach(folder=>{
+    const element=document.createElement("div");
+    element.className="desktop-folder";
+    element.dataset.folderId=folder.id;
+    const position=nextDesktopFolderPosition();
+    element.style.left=(Number.isFinite(folder.x)?folder.x:position.x)+"px";
+    element.style.top=(Number.isFinite(folder.y)?folder.y:position.y)+"px";
+    element.innerHTML=`<div class="desktop-folder-mark">${folderIconMarkup()}<span class="desktop-folder-badge" hidden></span></div><div class="desktop-folder-name"></div>`;
+    desktop.appendChild(element);bindDesktopFolder(element);updateDesktopFolder(folder);
+  });
+  desktopFolders.forEach(folder=>{folder.appIds.forEach(appId=>{const icon=iconForApp(appId);if(icon)icon.style.display="none"})});
+}
+
+function createDesktopFolder(){
+  const name=prompt("Name this folder","New Folder");
+  if(name===null)return;
+  const clean=String(name).trim().slice(0,40)||"New Folder";
+  const position=nextDesktopFolderPosition();
+  const folder={id:"folder-"+Date.now().toString(36)+Math.random().toString(36).slice(2,7),name:clean,appIds:[],x:position.x,y:position.y};
+  desktopFolders.push(folder);saveDesktopFolders();renderDesktopFolders();closeDesktopContextMenu();
+}
+
+function renameDesktopFolder(folderId){
+  const folder=folderById(folderId);if(!folder)return;
+  const name=prompt("Rename folder",folder.name);if(name===null)return;
+  folder.name=String(name).trim().slice(0,40)||folder.name;saveDesktopFolders();updateDesktopFolder(folder);
+  const win=openWindows["folder:"+folder.id];
+  if(win){win.querySelector(".window-title").textContent=folder.name;refreshDesktopFolderWindow(folder.id)}
+  closeDesktopContextMenu();
+}
+
+function showDesktopContextMenu(x,y,folderId=null){
+  const menu=document.getElementById("desktopContextMenu");if(!menu)return;
+  desktopContextTarget=folderId?String(folderId):null;
+  menu.querySelector('[data-desktop-action="rename-folder"]').hidden=!desktopContextTarget;
+  menu.querySelector('[data-desktop-action="empty-folder"]').hidden=!desktopContextTarget;
+  menu.querySelector('[data-desktop-action="delete-folder"]').hidden=!desktopContextTarget;
+  menu.classList.add("open");
+  const left=Math.min(Math.max(8,x),window.innerWidth-menu.offsetWidth-8);
+  const top=Math.min(Math.max(8,y),window.innerHeight-menu.offsetHeight-8);
+  menu.style.left=left+"px";menu.style.top=top+"px";
+}
+
+function closeDesktopContextMenu(){document.getElementById("desktopContextMenu")?.classList.remove("open");desktopContextTarget=null}
+
+function desktopFolderAtPoint(x,y){
+  return [...desktop.querySelectorAll(".desktop-folder")].find(element=>{
+    const rect=element.getBoundingClientRect();
+    return x>=rect.left&&x<=rect.right&&y>=rect.top&&y<=rect.bottom;
+  })||null;
+}
 
 function openApp(appId){
   const existing = openWindows[appId];
@@ -1499,6 +1839,8 @@ function openApp(appId){
   if(appId==="deactivateOS") setTimeout(refreshDeactivateOS,0);
   if(appId==="announcement") setTimeout(()=>document.getElementById("announcementText")?.focus(),0);
   if(appId==="music") setTimeout(initMusicPlayer,0);
+  if(appId==="genify") setTimeout(()=>initGenify(win),0);
+  if(appId==="genflix") setTimeout(()=>initGenflix(win),0);
   if(appId==="messages") setTimeout(()=>window.GenesisMessages?.init?.(),0);
   if(appId==="store") setTimeout(()=>window.GenesisOverhaul?.applyTheme?.(window.GenesisOverhaul.currentTheme()),0);
 
@@ -1588,13 +1930,33 @@ icons.forEach(icon=>{
     const y=Math.max(0,Math.min(desktop.clientHeight-icon.offsetHeight,by+dy));
     icon.style.left=x+"px";icon.style.top=y+"px";
   });
-  icon.addEventListener("pointerup",()=>{
+  icon.addEventListener("pointerup",event=>{
     dragging=false;icon.classList.remove("dragging");
-    if(moved)localStorage.setItem("realmOsIcon_"+id,JSON.stringify({x:parseFloat(icon.style.left),y:parseFloat(icon.style.top)}));
+    if(moved){
+      const target=desktopFolderAtPoint(event.clientX,event.clientY);
+      if(target && target.dataset.folderId) moveAppToFolder(id,target.dataset.folderId);
+      else localStorage.setItem("realmOsIcon_"+id,JSON.stringify({x:parseFloat(icon.style.left),y:parseFloat(icon.style.top)}));
+    }
   });
   icon.addEventListener("dblclick",()=>{if(!moved)openApp(id)});
 });
-desktop.addEventListener("pointerdown",e=>{if(e.target===desktop)icons.forEach(i=>i.classList.remove("selected"))});
+renderDesktopFolders();
+desktop.addEventListener("pointerdown",e=>{if(e.target===desktop){icons.forEach(i=>i.classList.remove("selected"));document.querySelectorAll(".desktop-folder").forEach(item=>item.classList.remove("selected"));closeDesktopContextMenu()}});
+desktop.addEventListener("contextmenu",event=>{
+  if(event.target.closest(".desktop-icon")||event.target.closest(".desktop-folder"))return;
+  event.preventDefault();showDesktopContextMenu(event.clientX,event.clientY);
+});
+document.getElementById("newFolderButton")?.addEventListener("click",createDesktopFolder);
+document.getElementById("desktopContextMenu")?.addEventListener("click",event=>{
+  const action=event.target.closest("[data-desktop-action]")?.dataset.desktopAction;
+  if(!action)return;
+  if(action==="new-folder")createDesktopFolder();
+  if(action==="rename-folder")renameDesktopFolder(desktopContextTarget);
+  if(action==="empty-folder")moveFolderAppsToDesktop(desktopContextTarget);
+  if(action==="delete-folder")deleteDesktopFolder(desktopContextTarget);
+});
+document.addEventListener("pointerdown",event=>{if(!event.target.closest("#desktopContextMenu")&&!event.target.closest(".desktop-folder")&&!event.target.closest("#newFolderButton"))closeDesktopContextMenu()});
+window.addEventListener("keydown",event=>{if(event.key==="Escape")closeDesktopContextMenu()});
 
 function setDockRunning(appId,on){
   const el=document.querySelector(`[data-dock-app="${appId}"]`);
@@ -1915,7 +2277,7 @@ function browserHTML(){
 
       <div class="browser-home" id="browserHome">
         <div>
-          <div class="logo">OS</div>
+          <div class="logo"><img src="assets/icons/genesis-fall.png" alt="Genesis Falcon"></div>
           <h2>Browser</h2>
           <p>
             Search or enter a website above. Genesis uses <b>Brave Search</b> and loads every website through the same <b>Scramjet + Wisp</b> browser.
@@ -2069,7 +2431,10 @@ async function ensureGenesisPrism(win){
     if(openWindows.browser!==win) throw new Error("Browser window was closed.");
     browserState.prismFrame=prismFrame;
     browserState.prismError="";
-    if(status) status.textContent="Ready · Scramjet proxy connected";
+    const profile=runtime.diagnostics?.().transportProfile;
+    if(status) status.textContent=profile==="https-fallback"
+      ?"Ready · HTTPS proxy fallback connected"
+      :"Ready · Scramjet proxy connected";
     return prismFrame;
   }catch(err){
     console.error("Genesis Prism failed to start",err);

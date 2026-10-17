@@ -86,16 +86,45 @@ test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
   assert.match(os,/Deactivated — this ID cannot log in/);
 });
 
-test("Genesis installable branding uses the original OS icon while the desktop keeps its OS wordmark",()=>{
+test("Genesis branding keeps the requested fall Falcon through login, OS, and install",()=>{
   const install=readFileSync(new URL("../genesis-install.js",import.meta.url),"utf8");
   const installCss=readFileSync(new URL("../genesis-install.css",import.meta.url),"utf8");
-  assert.match(login,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-192\.png">/);
-  assert.match(os,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-192\.png">/);
-  assert.match(install,/assets\/icons\/genesis-192\.png/);
+  assert.match(login,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-fall\.png">/);
+  assert.match(os,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-fall\.png">/);
+  assert.match(install,/assets\/icons\/genesis-fall\.png/);
   assert.match(installCss,/\.genesis-install-symbol img/);
-  assert.match(os,/class="watermark">OS<\/div>/);
-  assert.match(os,/class="about-logo">OS<\/div>/);
+  assert.match(os,/class="watermark"[^>]*><img src="assets\/icons\/genesis-fall\.png"/);
+  assert.match(os,/class="about-logo"><img src="assets\/icons\/genesis-fall\.png"/);
+  assert.match(os,/class="logo"><img src="assets\/icons\/genesis-fall\.png"/);
   assert.doesNotMatch(os,/genesis\.svg/);
+});
+
+test("desktop folders persist app placement without expanding the dock",()=>{
+  assert.match(os,/id="newFolderButton"/);
+  assert.match(os,/id="desktopContextMenu"/);
+  assert.match(os,/DESKTOP_FOLDERS_KEY="genesisDesktopFoldersV1"/);
+  assert.match(os,/function createDesktopFolder\(/);
+  assert.match(os,/function moveAppToFolder\(/);
+  assert.match(os,/function openDesktopFolder\(/);
+  assert.match(os,/function moveFolderAppsToDesktop\(/);
+  assert.match(os,/Drag desktop apps here to keep them together/);
+  assert.doesNotMatch(os,/data-dock-app="(?:genify|genflix)"/);
+});
+
+test("Genify and Genflix are desktop-only original app surfaces",()=>{
+  assert.match(os,/data-app="genify"/);
+  assert.match(os,/data-app="genflix"/);
+  assert.match(os,/genify:\{title:"Genify",content:genifyHTML\}/);
+  assert.match(os,/genflix:\{title:"Genflix",content:genflixHTML\}/);
+  assert.match(os,/function genifyHTML\(/);
+  assert.match(os,/function initGenify\(/);
+  assert.match(os,/function genflixHTML\(/);
+  assert.match(os,/function initGenflix\(/);
+  assert.match(os,/Who is using this account\?/);
+  assert.match(os,/GenyBoi/);
+  assert.match(os,/Genesis presents/);
+  assert.match(os,/genify-mark/);
+  assert.doesNotMatch(os,/spotify\.com|netflix\.com/i);
 });
 
 test("Genesis intro uses the requested Falcon artwork and exact OS letterform",()=>{
