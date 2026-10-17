@@ -93,7 +93,7 @@ test("Genesis branding keeps the requested fall Falcon through login, OS, and in
   assert.match(os,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-fall\.png">/);
   assert.match(install,/assets\/icons\/genesis-fall\.png/);
   assert.match(installCss,/\.genesis-install-symbol img/);
-  assert.match(os,/class="watermark"[^>]*><img src="assets\/icons\/genesis-fall\.png"/);
+  assert.match(os,/class="watermark"[^>]*>OS<\/div>/);
   assert.match(os,/class="about-logo"><img src="assets\/icons\/genesis-fall\.png"/);
   assert.match(os,/class="logo"><img src="assets\/icons\/genesis-fall\.png"/);
   assert.doesNotMatch(os,/genesis\.svg/);

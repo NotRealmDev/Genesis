@@ -43,8 +43,7 @@ button{color:inherit}
 .desktop-tools{position:absolute;right:250px;top:24px;z-index:20;display:flex;gap:8px}
 .desktop-tool{height:34px;padding:0 12px;border:1px solid rgba(255,255,255,.12);border-radius:12px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.86);font-size:10px;cursor:pointer;backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 10px 25px rgba(0,0,0,.16);transition:.18s}
 .desktop-tool:hover{background:rgba(255,255,255,.14);transform:translateY(-1px)}
-.watermark{position:absolute;left:50%;top:47%;width:clamp(150px,18vw,260px);aspect-ratio:1;transform:translate(-50%,-50%);opacity:.055;pointer-events:none}
-.watermark img{display:block;width:100%;height:100%;object-fit:contain;filter:saturate(1.08) brightness(1.1)}
+.watermark{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);font-size:clamp(82px,14vw,190px);font-weight:900;letter-spacing:-12px;color:rgba(255,255,255,.026);pointer-events:none}
 .desktop{position:absolute;inset:0 230px 96px 0;padding:30px}
 .desktop-icon{position:absolute;width:90px;height:104px;display:flex;flex-direction:column;align-items:center;gap:7px;cursor:default;touch-action:none}
 .desktop-icon.dragging{z-index:9999;opacity:.85;filter:brightness(1.17)}
@@ -612,7 +611,7 @@ button{color:inherit}
   <div id="genesisVisitorId" class="genesis-id-badge">ID ···</div>
   <div id="genesisAnnouncement" class="genesis-announcement"></div>
   <div class="wallpaper-grid"></div>
-  <div class="watermark" aria-hidden="true"><img src="assets/icons/genesis-fall.png" alt=""></div>
+  <div class="watermark" aria-hidden="true">OS</div>
 
   <div class="desktop-tools" aria-label="Desktop actions">
     <button class="desktop-tool" id="newFolderButton" type="button">＋ Folder</button>

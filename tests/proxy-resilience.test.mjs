@@ -248,7 +248,7 @@ test("cafe Wi-Fi startup races Wisp providers and has an HTTPS last resort",()=>
 
 test("fallback branding stays on the same fall Falcon after OS handoff",()=>{
   assert.match(os,/<link rel="icon" type="image\/png" href="assets\/icons\/genesis-fall\.png">/);
-  assert.match(os,/class="watermark"[^>]*><img src="assets\/icons\/genesis-fall\.png"/);
+  assert.match(os,/class="watermark"[^>]*>OS<\/div>/);
   assert.match(os,/class="about-logo"><img src="assets\/icons\/genesis-fall\.png"/);
   assert.match(prismSource,/profile:"https-fallback"/);
 });
