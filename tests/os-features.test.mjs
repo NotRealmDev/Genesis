@@ -99,7 +99,7 @@ test("Genesis branding keeps the requested fall Falcon through login, OS, and in
   assert.doesNotMatch(os,/genesis\.svg/);
 });
 
-test("desktop folders persist app placement without expanding the dock",()=>{
+test("desktop folders persist app placement while Genify uses the Store dock slot",()=>{
   assert.match(os,/id="newFolderButton"/);
   assert.match(os,/id="desktopContextMenu"/);
   assert.match(os,/DESKTOP_FOLDERS_KEY="genesisDesktopFoldersV1"/);
@@ -108,11 +108,13 @@ test("desktop folders persist app placement without expanding the dock",()=>{
   assert.match(os,/function openDesktopFolder\(/);
   assert.match(os,/function moveFolderAppsToDesktop\(/);
   assert.match(os,/Drag desktop apps here to keep them together/);
-  assert.doesNotMatch(os,/data-dock-app="(?:genify|genflix)"/);
+  assert.match(os,/data-dock-app="genify"/);
+  assert.doesNotMatch(os,/data-dock-app="store"/);
+  assert.doesNotMatch(os,/data-dock-app="genflix"/);
 });
 
-test("Genify and Genflix are desktop-only original app surfaces",()=>{
-  assert.match(os,/data-app="genify"/);
+test("Genify and Genflix use original app surfaces",()=>{
+  assert.match(os,/data-dock-app="genify"/);
   assert.match(os,/data-app="genflix"/);
   assert.match(os,/genify:\{title:"Genify",content:genifyHTML\}/);
   assert.match(os,/genflix:\{title:"Genflix",content:genflixHTML\}/);
@@ -174,7 +176,8 @@ test("retired VM and Test apps are not loaded and About OS reports 1.232",()=>{
 
 test("Genesis overhaul exposes Store themes account username and DNS settings",()=>{
   const overhaul = readFileSync(new URL("../genesis-overhaul.js",import.meta.url),"utf8");
-  assert.match(os,/data-dock-app="store"/);
+  assert.match(os,/data-app="store"/);
+  assert.match(os,/store:\{title:"Store"/);
   assert.match(os,/genesis-overhaul\.js/);
   assert.match(overhaul,/Sunset/);
   assert.match(overhaul,/Chill/);
