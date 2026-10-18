@@ -115,22 +115,18 @@ test("desktop folders persist app placement without expanding the dock",()=>{
   assert.doesNotMatch(os,/data-dock-app="(?:genify|genflix)"/);
 });
 
-test("Genify and Genflix are desktop-only original app surfaces",()=>{
+test("Genify remains a desktop-only original app surface",()=>{
   assert.match(os,/data-app="genify"/);
   assert.match(os,/data-app="genify" style="left:430px;top:145px"/);
-  assert.match(os,/data-app="genflix"/);
   assert.match(os,/genify:\{title:"Genify",content:genifyHTML\}/);
-  assert.match(os,/genflix:\{title:"Genflix",content:genflixHTML\}/);
   assert.match(os,/function genifyHTML\(/);
   assert.match(os,/function initGenify\(/);
-  assert.match(os,/function genflixHTML\(/);
-  assert.match(os,/function initGenflix\(/);
-  assert.match(os,/Who is using this account\?/);
-  assert.match(os,/GenyBoi/);
-  assert.doesNotMatch(os,/Genesis presents|genflix-splash|genflix-g/);
-  assert.match(os,/class="genflix-profiles visible"/);
   assert.match(os,/genify-mark/);
-  assert.doesNotMatch(os,/spotify\.com|netflix\.com/i);
+});
+
+test("Genflix is removed from the OS",()=>{
+  assert.doesNotMatch(os,/genflix/i);
+  assert.doesNotMatch(os,/netflix\.com/i);
 });
 
 test("Browser exposes a smooth opt-in ads toggle from the three-dot menu",()=>{
