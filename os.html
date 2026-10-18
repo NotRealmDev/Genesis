@@ -3395,7 +3395,7 @@ async function refreshDeactivateOS(){
   if(!list || !history) return;
 
   try{
-    const devices = await genesisPublicGet(
+    const devices = await genesisAdminRequest(
       "genesis_devices?select=display_id,active,last_seen&order=display_id.asc"
     );
     const myId = Number(localStorage.getItem("genesisDisplayId"));
@@ -3426,7 +3426,7 @@ async function refreshDeactivateOS(){
       </div>`;
     }).join("") || `<div class="muted">No IDs yet.</div>`;
 
-    const actions = await genesisPublicGet(
+    const actions = await genesisAdminRequest(
       "genesis_admin_actions?select=display_id,action,created_at&order=created_at.desc&limit=30"
     );
     history.innerHTML = (actions || []).map(a=>
