@@ -7,7 +7,7 @@ const os=readFileSync(new URL('../os.html',import.meta.url),'utf8');
 const config=readFileSync(new URL('../supabase-config.js',import.meta.url),'utf8');
 
 test('Genesis loads one global UI polish and sound layer',()=>{
-  assert.match(config,/genesis-ui-polish\.js\?build=ui-polish-r2/);
+  assert.match(config,/genesis-ui-polish\.js\?build=ui-polish-r3/);
   assert.match(ui,/global\.GenesisUI=\{sound,startMusic,pauseMusic,canPlayMenuMusic\}/);
   assert.match(ui,/createOscillator\(\)/);
   assert.match(ui,/prefers-reduced-motion:reduce/);

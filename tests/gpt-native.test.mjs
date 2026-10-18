@@ -19,5 +19,8 @@ test("GPT is a native API surface instead of a website frame",()=>{
   assert.match(markup,/class="gpt-app"/);
   assert.match(markup,/ChatGPT API/);
   assert.match(markup,/class="gpt-key"/);
+  assert.match(markup,/gpt-shared-panel/);
+  assert.match(markup,/save-shared/);
+  assert.match(markup,/platform\.openai\.com\/api-keys/);
   assert.doesNotMatch(markup,/iframe|chatgpt\.com|claude\.ai|gemini\.google/);
 });

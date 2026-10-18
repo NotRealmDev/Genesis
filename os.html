@@ -12,7 +12,8 @@
 <link rel="stylesheet" href="genesis-install.css">
 <link rel="stylesheet" href="genesis-gpt.css">
 <script src="genesis-install.js" defer></script>
-<script src="genesis-gpt.js" defer></script>
+<script src="genesis-gpt.js?build=gpt-admin-r1" defer></script>
+<script src="genesis-admin-auth.js" defer></script>
 <style>
 :root{
   --accent:215;
@@ -113,8 +114,7 @@ button{color:inherit}
 
 .genify-shell{height:100%;min-height:100%;overflow:auto;padding:25px;background:linear-gradient(145deg,#071812,#07110e 55%,#050907);color:#eefcf3}.genify-header{display:flex;align-items:center;gap:12px;margin-bottom:24px}.genify-mark{width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:linear-gradient(145deg,#48f28b,#13a957);box-shadow:0 12px 28px rgba(31,211,100,.24)}.genify-mark svg{width:28px;height:28px;fill:none;stroke:#06150b;stroke-width:2.8;stroke-linecap:round}.genify-brand{font-size:20px;font-weight:780;letter-spacing:-.05em}.genify-subtitle{margin-top:3px;color:rgba(224,255,234,.58);font-size:10px}.genify-search{width:100%;height:40px;margin-bottom:19px;padding:0 14px;border:1px solid rgba(141,255,185,.16);border-radius:12px;background:rgba(255,255,255,.06);color:#fff;outline:0}.genify-search::placeholder{color:rgba(224,255,234,.40)}.genify-section-title{display:flex;justify-content:space-between;align-items:center;margin:20px 0 11px;font-size:12px;font-weight:700}.genify-section-title span{color:rgba(224,255,234,.48);font-size:9px;font-weight:500}.genify-chips{display:flex;gap:8px;overflow:auto;padding-bottom:2px}.genify-chip{flex:none;padding:8px 11px;border:1px solid rgba(141,255,185,.15);border-radius:999px;background:rgba(255,255,255,.055);color:#d9fce5;font-size:10px;cursor:pointer}.genify-chip.active,.genify-chip:hover{background:#39db7e;border-color:#39db7e;color:#04130a}.genify-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:11px}.genify-card{min-height:153px;padding:12px;border:1px solid rgba(141,255,185,.13);border-radius:16px;background:linear-gradient(145deg,rgba(255,255,255,.09),rgba(255,255,255,.025));cursor:pointer;transition:.18s}.genify-card:hover{transform:translateY(-3px);border-color:rgba(141,255,185,.32);background:rgba(255,255,255,.11)}.genify-art{height:86px;margin-bottom:10px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(135deg,#193d2b,#0a1710);font-size:25px}.genify-card strong{display:block;font-size:11px}.genify-card small{display:block;margin-top:4px;color:rgba(224,255,234,.50);font-size:9px}.genify-now{margin-top:20px;padding:11px 13px;border:1px solid rgba(141,255,185,.14);border-radius:13px;background:rgba(30,204,102,.10);color:#c9f9d9;font-size:10px}.genify-now b{color:#fff}
 
-.genflix-shell{position:relative;height:100%;min-height:100%;overflow:hidden;background:#050505;color:#fff}.genflix-splash{position:absolute;inset:0;z-index:3;display:grid;place-items:center;background:radial-gradient(circle at 50% 44%,rgba(232,30,48,.25),transparent 31%),#050505;opacity:1;transition:opacity .65s ease}.genflix-splash.done{opacity:0;pointer-events:none}.genflix-g{font-size:clamp(110px,22vw,210px);font-weight:950;line-height:.8;letter-spacing:-.16em;padding-right:.16em;color:#e50914;text-shadow:0 0 45px rgba(229,9,20,.44);transform:scale(.74);opacity:0;animation:genflixLogo 1.35s cubic-bezier(.2,.8,.2,1) forwards}.genflix-splash small{display:block;margin-top:28px;color:rgba(255,255,255,.52);font-size:10px;letter-spacing:.34em;text-transform:uppercase;text-align:center;opacity:0;animation:genflixCaption .55s ease .55s forwards}@keyframes genflixLogo{0%{opacity:0;transform:scale(.74) rotate(-7deg);filter:blur(16px)}55%{opacity:1;transform:scale(1.08) rotate(2deg);filter:blur(0)}100%{opacity:1;transform:scale(1) rotate(0);filter:blur(0)}}@keyframes genflixCaption{to{opacity:1}}
-.genflix-profiles{position:absolute;inset:0;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 50% 36%,rgba(229,9,20,.15),transparent 33%),linear-gradient(145deg,#080808,#121212);opacity:0;transform:translateY(12px);transition:opacity .55s ease,transform .55s ease}.genflix-profiles.visible{opacity:1;transform:none}.genflix-profile-wrap{text-align:center}.genflix-profile-wrap h2{margin:0 0 22px;font-size:clamp(22px,4vw,31px);font-weight:650;letter-spacing:-.04em}.genflix-profile-list{display:flex;justify-content:center;gap:19px}.genflix-profile{width:112px;border:0;background:transparent;color:#fff;cursor:pointer}.genflix-avatar{width:104px;height:104px;margin:0 auto 10px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,#e50914,#6e060d);box-shadow:0 12px 30px rgba(0,0,0,.38);font-size:34px;font-weight:850;transition:.18s}.genflix-profile:hover .genflix-avatar{outline:3px solid #fff;outline-offset:3px;transform:scale(1.04)}.genflix-profile span{font-size:11px;color:#d8d8d8}.genflix-home{height:100%;overflow:auto;padding:24px;background:linear-gradient(180deg,#130709,#070707 35%)}.genflix-home[hidden],.genflix-profiles[hidden]{display:none}.genflix-home-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.genflix-home-brand{display:flex;align-items:center;gap:9px;color:#fff;font-size:18px;font-weight:850;letter-spacing:-.06em}.genflix-home-brand b{color:#e50914;font-size:26px}.genflix-profile-pill{padding:7px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.07);font-size:9px}.genflix-hero{margin-top:24px;padding:26px 22px;border-radius:17px;background:linear-gradient(105deg,rgba(229,9,20,.84),rgba(92,5,11,.30)),linear-gradient(145deg,#311015,#090909);box-shadow:0 18px 38px rgba(0,0,0,.30)}.genflix-hero small{color:rgba(255,255,255,.70);font-size:9px;letter-spacing:.16em}.genflix-hero h2{margin:8px 0 5px;font-size:29px;letter-spacing:-.05em}.genflix-hero p{max-width:390px;margin:0;color:rgba(255,255,255,.72);font-size:11px;line-height:1.5}.genflix-row{display:flex;gap:11px;overflow:auto;margin-top:20px;padding:2px}.genflix-tile{flex:0 0 145px;height:84px;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid rgba(255,255,255,.10);border-radius:13px;background:linear-gradient(145deg,#222,#0e0e0e);color:#fff;text-align:left}.genflix-tile:nth-child(2){background:linear-gradient(145deg,#123f5a,#0b1118)}.genflix-tile:nth-child(3){background:linear-gradient(145deg,#4d2812,#15100c)}.genflix-tile small{color:rgba(255,255,255,.54);font-size:8px}.genflix-tile strong{margin-top:4px;font-size:11px}
+.genflix-shell{position:relative;height:100%;min-height:100%;overflow:hidden;background:#050505;color:#fff}.genflix-profiles{position:absolute;inset:0;display:grid;place-items:center;padding:28px;background:radial-gradient(circle at 50% 36%,rgba(229,9,20,.15),transparent 33%),linear-gradient(145deg,#080808,#121212);opacity:1;transform:none}.genflix-profile-wrap{text-align:center}.genflix-profile-wrap h2{margin:0 0 22px;font-size:clamp(22px,4vw,31px);font-weight:650;letter-spacing:-.04em}.genflix-profile-list{display:flex;justify-content:center;gap:19px}.genflix-profile{width:112px;border:0;background:transparent;color:#fff;cursor:pointer}.genflix-avatar{width:104px;height:104px;margin:0 auto 10px;display:grid;place-items:center;border-radius:12px;background:linear-gradient(145deg,#e50914,#6e060d);box-shadow:0 12px 30px rgba(0,0,0,.38);font-size:34px;font-weight:850;transition:.18s}.genflix-profile:hover .genflix-avatar{outline:3px solid #fff;outline-offset:3px;transform:scale(1.04)}.genflix-profile span{font-size:11px;color:#d8d8d8}.genflix-home{height:100%;overflow:auto;padding:24px;background:linear-gradient(180deg,#130709,#070707 35%)}.genflix-home[hidden],.genflix-profiles[hidden]{display:none}.genflix-home-head{display:flex;align-items:center;justify-content:space-between;gap:12px}.genflix-home-brand{display:flex;align-items:center;gap:9px;color:#fff;font-size:18px;font-weight:850;letter-spacing:-.06em}.genflix-home-brand b{color:#e50914;font-size:26px}.genflix-profile-pill{padding:7px 10px;border:1px solid rgba(255,255,255,.12);border-radius:999px;background:rgba(255,255,255,.07);font-size:9px}.genflix-hero{margin-top:24px;padding:26px 22px;border-radius:17px;background:linear-gradient(105deg,rgba(229,9,20,.84),rgba(92,5,11,.30)),linear-gradient(145deg,#311015,#090909);box-shadow:0 18px 38px rgba(0,0,0,.30)}.genflix-hero small{color:rgba(255,255,255,.70);font-size:9px;letter-spacing:.16em}.genflix-hero h2{margin:8px 0 5px;font-size:29px;letter-spacing:-.05em}.genflix-hero p{max-width:390px;margin:0;color:rgba(255,255,255,.72);font-size:11px;line-height:1.5}.genflix-row{display:flex;gap:11px;overflow:auto;margin-top:20px;padding:2px}.genflix-tile{flex:0 0 145px;height:84px;padding:12px;display:flex;flex-direction:column;justify-content:flex-end;border:1px solid rgba(255,255,255,.10);border-radius:13px;background:linear-gradient(145deg,#222,#0e0e0e);color:#fff;text-align:left}.genflix-tile:nth-child(2){background:linear-gradient(145deg,#123f5a,#0b1118)}.genflix-tile:nth-child(3){background:linear-gradient(145deg,#4d2812,#15100c)}.genflix-tile small{color:rgba(255,255,255,.54);font-size:8px}.genflix-tile strong{margin-top:4px;font-size:11px}
 
 .games{height:100%;min-height:100%;overflow:auto;padding:24px 28px 36px;background:#050505;color:#f6f6f8;scrollbar-color:rgba(255,255,255,.25) transparent}
 .games::-webkit-scrollbar{width:9px;height:9px}.games::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}.games::-webkit-scrollbar-track{background:transparent}
@@ -129,7 +129,7 @@ button{color:inherit}
 
 .player{height:100%;display:flex;flex-direction:column;background:#020305}.player-toolbar{height:50px;display:flex;align-items:center;gap:9px;padding:7px 10px;flex:none;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035)}.player-toolbar .os-btn{padding:7px 11px}.player-name{flex:1;text-align:center;font-size:12px;font-weight:600;color:rgba(255,255,255,.82);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.player-stage{position:relative;flex:1;min-height:0;background:#000}.player-frame{display:block;width:100%;height:100%;border:0;background:#000}.loader{position:absolute;inset:0;display:grid;place-items:center;background:#05070b;z-index:2;pointer-events:none;transition:.35s}.loader.hidden{opacity:0}.loader-inner{text-align:center;color:var(--muted);font-size:12px}.spinner{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.12);border-top-color:#fff;animation:spin .7s linear infinite;margin:0 auto 12px}@keyframes spin{to{transform:rotate(360deg)}}
 
-.browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{min-height:56px;height:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px;flex:none}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1;min-width:160px}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:25px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.browser-stage{position:relative;flex:1;min-height:0;background:#070a11}.browser-frame{display:block;width:100%;height:100%;border:0;background:#070a11}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{width:118px;height:118px;margin:0 auto 12px}.browser-home .logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:30px;box-shadow:0 16px 38px rgba(0,0,0,.30)}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}
+.browser{height:100%;display:flex;flex-direction:column;background:#060912}.browser-toolbar{min-height:56px;height:auto;display:flex;align-items:center;gap:7px;padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);flex:none}.nav-btn{width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.055);cursor:pointer;font-size:16px;flex:none}.nav-btn:hover{background:rgba(255,255,255,.11)}.nav-btn:disabled{opacity:.28;cursor:default}.address-wrap{position:relative;flex:1;min-width:160px}.browser-address{width:100%;height:38px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.055);color:#fff;outline:0;padding:0 40px 0 13px;user-select:text}.browser-address:focus{background:rgba(255,255,255,.085);border-color:rgba(255,255,255,.18)}.browser-go{position:absolute;right:5px;top:5px;width:28px;height:28px;border:0;border-radius:8px;background:hsla(var(--accent),75%,55%,.55);cursor:pointer}.browser-status{height:25px;padding:5px 12px;font-size:10px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.05);background:rgba(0,0,0,.12);flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.browser-stage{position:relative;flex:1;min-height:0;background:#070a11}.browser-frame{display:block;width:100%;height:100%;border:0;background:#070a11}.browser-home{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 35%,hsla(var(--accent),70%,45%,.16),transparent 33%),#070a11;color:#fff;text-align:center;padding:30px}.browser-home .logo{width:118px;height:118px;margin:0 auto 12px}.browser-home .logo img{display:block;width:100%;height:100%;object-fit:contain;border-radius:30px;box-shadow:0 16px 38px rgba(0,0,0,.30)}.browser-home p{max-width:500px;color:var(--muted);font-size:13px;line-height:1.55}.browser-home.hidden{display:none}.browser-menu-toggle{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:9px 11px;border-radius:10px;color:#fff;cursor:pointer;user-select:none}.browser-menu-toggle:hover{background:rgba(255,255,255,.09)}.browser-menu-toggle-copy{display:flex;min-width:0;flex-direction:column;gap:3px}.browser-menu-toggle-copy strong{font-size:12px;font-weight:650}.browser-menu-toggle-copy small{color:var(--muted);font-size:9px;line-height:1.35}.browser-switch{position:relative;display:inline-flex;flex:none;width:38px;height:22px}.browser-switch input{position:absolute;width:1px;height:1px;opacity:0}.browser-switch-track{position:absolute;inset:0;border:1px solid rgba(255,255,255,.18);border-radius:999px;background:rgba(255,255,255,.11);transition:.2s cubic-bezier(.2,.8,.2,1)}.browser-switch-track:after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:rgba(255,255,255,.76);box-shadow:0 2px 5px rgba(0,0,0,.3);transition:.2s cubic-bezier(.2,.8,.2,1)}.browser-switch input:checked + .browser-switch-track{border-color:hsla(var(--accent),78%,70%,.55);background:hsla(var(--accent),75%,55%,.46)}.browser-switch input:checked + .browser-switch-track:after{transform:translateX(16px);background:#fff}.browser-menu-note{padding:3px 11px 5px;color:rgba(255,255,255,.40);font-size:8px;line-height:1.4}
 
 .browser-official-frame{display:none}
 
@@ -562,7 +562,7 @@ button{color:inherit}
 .admin-row{display:flex;gap:9px;align-items:center;flex-wrap:wrap}
 .admin-status{min-height:21px;margin-top:10px;color:var(--muted);font-size:11px}
 .admin-list{margin-top:18px;display:grid;gap:8px}
-.admin-id-summary{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}.admin-id-summary-card{padding:12px 13px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.04)}.admin-id-summary-label{margin-bottom:7px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em}.admin-id-summary-value{font-size:12px;line-height:1.55;word-break:break-word}.admin-id-summary-value.active{color:#7dffac}.admin-id-summary-value.inactive{color:#ff8f9e}
+.admin-id-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:10px;margin-top:14px}.admin-id-summary-card{padding:12px 13px;border:1px solid rgba(255,255,255,.08);border-radius:14px;background:rgba(255,255,255,.04)}.admin-id-summary-label{margin-bottom:7px;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.12em}.admin-id-summary-value{font-size:12px;line-height:1.55;word-break:break-word}.admin-id-summary-value.active{color:#7dffac}.admin-id-summary-value.inactive{color:#ff8f9e}
 .admin-device{
   display:grid;grid-template-columns:70px 1fr auto;gap:10px;align-items:center;
   padding:10px 12px;border-radius:14px;border:1px solid rgba(255,255,255,.07);
@@ -649,7 +649,7 @@ button{color:inherit}
       <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M5 5h14v11H9l-4 3V5z"/><path d="M8 9h8M8 12h5"/></svg><span class="gm-app-badge" data-messages-badge></span></div><div class="app-name">Messages</div>
     </div>
 
-    <div class="desktop-icon" data-app="genify" style="left:330px;top:260px">
+    <div class="desktop-icon" data-app="genify" style="left:430px;top:145px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><path d="M7 6.5v9.4M7 6.5c5.9-2.2 10.4-.5 10.4 2.8v7.2M7 11.2c3.8-1.5 7.1-.5 10.4 1.5M7 15.9c2.1-.8 4.2-.5 6.1.4"/></svg></div><div class="app-name">Genify</div>
     </div>
     <div class="desktop-icon" data-app="genflix" style="left:430px;top:260px">
@@ -1284,6 +1284,7 @@ function deactivateOSHTML(){
     <div class="heading" style="font-size:17px;margin-top:22px;margin-bottom:10px">IDs currently on Genesis</div>
     <div id="genesisActiveSummary" class="muted" style="font-size:11px;margin-bottom:10px">Loading ID status…</div>
     <div class="admin-id-summary" aria-live="polite">
+      <div class="admin-id-summary-card"><div class="admin-id-summary-label">Online IDs</div><div id="genesisOnlineIds" class="admin-id-summary-value active">Loading…</div></div>
       <div class="admin-id-summary-card"><div class="admin-id-summary-label">Active IDs</div><div id="genesisActiveIds" class="admin-id-summary-value active">Loading…</div></div>
       <div class="admin-id-summary-card"><div class="admin-id-summary-label">Deactivated IDs</div><div id="genesisInactiveIds" class="admin-id-summary-value inactive">Loading…</div></div>
     </div>
@@ -1523,8 +1524,7 @@ function initGenify(win){
 
 function genflixHTML(){
   return `<div class="genflix-shell">
-    <div class="genflix-splash" aria-hidden="true"><div><div class="genflix-g">G</div><small>Genesis presents</small></div></div>
-    <section class="genflix-profiles" hidden>
+    <section class="genflix-profiles visible">
       <div class="genflix-profile-wrap"><h2>Who is using this account?</h2><div class="genflix-profile-list"><button class="genflix-profile" type="button" data-genflix-profile="GenyBoi"><div class="genflix-avatar">G</div><span>GenyBoi</span></button></div></div>
     </section>
     <section class="genflix-home" hidden>
@@ -1537,20 +1537,10 @@ function genflixHTML(){
 }
 
 function initGenflix(win){
-  const splash=win.querySelector(".genflix-splash");
   const profiles=win.querySelector(".genflix-profiles");
   const home=win.querySelector(".genflix-home");
-  const revealProfiles=()=>{
-    if(!splash||!profiles)return;
-    splash.classList.add("done");
-    profiles.hidden=false;
-    const schedule=typeof requestAnimationFrame==="function"?requestAnimationFrame:(callback=>setTimeout(callback,16));
-    schedule(()=>profiles.classList.add("visible"));
-  };
-  const timer=setTimeout(revealProfiles,1450);
+  if(profiles){profiles.hidden=false;profiles.classList.add("visible");}
   win.querySelectorAll("[data-genflix-profile]").forEach(button=>button.addEventListener("click",()=>{
-    clearTimeout(timer);
-    profiles?.classList.remove("visible");
     if(profiles) profiles.hidden=true;
     if(home) home.hidden=false;
   }));
@@ -2253,6 +2243,12 @@ function browserHTML(){
         <button type="button" id="browserHomeBtn">Home</button>
         <button type="button" id="browserForward">Forward</button>
         <button type="button" id="browserAboutBlank">Open Genesis in About Blank</button>
+        <div class="menu-divider"></div>
+        <label class="browser-menu-toggle" for="browserAdsToggle">
+          <span class="browser-menu-toggle-copy"><strong>Allow website ads</strong><small>Show ads and sponsored embeds</small></span>
+          <span class="browser-switch"><input id="browserAdsToggle" type="checkbox" role="switch" aria-label="Allow website ads"><span class="browser-switch-track" aria-hidden="true"></span></span>
+        </label>
+        <div class="browser-menu-note">Some sites control their own ads. Reload after changing this setting.</div>
       </div>
     </div>
 
@@ -2306,6 +2302,15 @@ function browserHTML(){
 }
 
 const GENESIS_BROWSER_STATE_KEY="genesisBrowserStateV2";
+const GENESIS_BROWSER_ADS_KEY="genesisBrowserAdsEnabledV1";
+
+function loadBrowserAdsEnabled(){
+  try{return localStorage.getItem(GENESIS_BROWSER_ADS_KEY)==="1"}catch{return false}
+}
+
+function saveBrowserAdsEnabled(enabled){
+  try{localStorage.setItem(GENESIS_BROWSER_ADS_KEY,enabled?"1":"0")}catch{}
+}
 
 function validSavedBrowserAddress(value){
   if(value==="os://home")return value;
@@ -2340,6 +2345,8 @@ const browserState={
   frameMode:"home",
   currentRoute:null,
   navigationId:0,
+  adsEnabled:loadBrowserAdsEnabled(),
+  adObserver:null,
   restoreOnStartup:savedBrowserState.open
 };
 
@@ -2445,6 +2452,82 @@ async function ensureGenesisPrism(win){
   }
 }
 
+function browserAdNodes(doc){
+  if(!doc?.querySelectorAll)return [];
+  const nodes=[];
+  const selector='[data-ad],[data-ad-slot],[data-ad-client],[aria-label*="advert" i],[aria-label*="sponsor" i],ins.adsbygoogle,iframe[src*="doubleclick.net" i],iframe[src*="googlesyndication.com" i],iframe[src*="adnxs.com" i],iframe[src*="/ads/" i]';
+  try{nodes.push(...doc.querySelectorAll(selector))}catch{}
+  try{
+    doc.querySelectorAll("*").forEach(element=>{
+      if(nodes.includes(element))return;
+      const id=String(element.id||"");
+      const classes=typeof element.className==="string"?element.className:"";
+      const label=String(element.getAttribute?.("aria-label")||"");
+      const text=(id+" "+classes+" "+label).toLowerCase();
+      if(/(^|[-_ ])(?:ad|ads|advert|advertisement|sponsor)(?:$|[-_ ])/i.test(text)) nodes.push(element);
+    });
+  }catch{}
+  return nodes;
+}
+
+function restoreBrowserAdNodes(doc){
+  try{doc?.querySelectorAll?.("[data-genesis-ad-hidden]").forEach(element=>{
+    const style=element.dataset.genesisAdStyle||"";
+    if(style)element.setAttribute("style",style);else element.removeAttribute("style");
+    delete element.dataset.genesisAdHidden;
+    delete element.dataset.genesisAdStyle;
+  })}catch{}
+}
+
+function applyBrowserAdPolicy(win=openWindows.browser){
+  const frame=win?.querySelector?.("#browserFrame");
+  if(!frame)return;
+  if(browserState.adObserver){try{browserState.adObserver.disconnect()}catch{}browserState.adObserver=null}
+  let doc;
+  try{doc=frame.contentDocument}catch{return}
+  if(!doc?.documentElement)return;
+  doc.documentElement.dataset.genesisAds=browserState.adsEnabled?"enabled":"blocked";
+  if(browserState.adsEnabled){
+    restoreBrowserAdNodes(doc);
+    return;
+  }
+  const hide=()=>browserAdNodes(doc).forEach(element=>{
+    if(!element?.style||element.dataset.genesisAdHidden)return;
+    element.dataset.genesisAdHidden="1";
+    element.dataset.genesisAdStyle=element.getAttribute("style")||"";
+    element.style.setProperty("display","none","important");
+  });
+  hide();
+  if(doc.body&&typeof MutationObserver==="function"){
+    let queued=false;
+    browserState.adObserver=new MutationObserver(()=>{
+      if(queued)return;
+      queued=true;
+      const run=()=>{queued=false;if(!browserState.adsEnabled)hide()};
+      if(typeof queueMicrotask==="function")queueMicrotask(run);else setTimeout(run,0);
+    });
+    browserState.adObserver.observe(doc.body,{childList:true,subtree:true});
+  }
+}
+
+function syncBrowserAdsToggle(win=openWindows.browser){
+  const toggle=win?.querySelector?.("#browserAdsToggle");
+  if(!toggle)return;
+  toggle.checked=browserState.adsEnabled;
+  toggle.setAttribute("aria-checked",String(browserState.adsEnabled));
+}
+
+function setBrowserAdsEnabled(enabled,win=openWindows.browser){
+  browserState.adsEnabled=!!enabled;
+  saveBrowserAdsEnabled(browserState.adsEnabled);
+  syncBrowserAdsToggle(win);
+  applyBrowserAdPolicy(win);
+  const status=win?.querySelector?.("#browserStatus");
+  if(status)status.textContent=browserState.adsEnabled
+    ?"Ads enabled · reload the page to let new ads appear"
+    :"Ads blocked · Genesis will hide common ad placements";
+}
+
 function initBrowser(win){
   const address=win.querySelector("#browserAddress");
   const go=win.querySelector("#browserGo");
@@ -2455,6 +2538,7 @@ function initBrowser(win){
   const aboutBlank=win.querySelector("#browserAboutBlank");
   const more=win.querySelector("#browserMore");
   const menu=win.querySelector("#browserMenu");
+  const adsToggle=win.querySelector("#browserAdsToggle");
   const tryInside=win.querySelector("#browserTryInside");
   const frame=win.querySelector("#browserFrame");
   const officialFrame=win.querySelector("#browserOfficialFrame");
@@ -2488,6 +2572,9 @@ function initBrowser(win){
   reload.onclick=()=>browserReload();
   home.onclick=()=>browserNavigate("os://home",true,false);
 
+  syncBrowserAdsToggle(win);
+  adsToggle?.addEventListener("change",()=>setBrowserAdsEnabled(adsToggle.checked,win));
+
   more.onclick=event=>{event.stopPropagation();const open=menu.classList.toggle("open");more.setAttribute("aria-expanded",String(open))};
   win.addEventListener("click",event=>{if(!event.target.closest("#browserMenu,#browserMore")){menu.classList.remove("open");more.setAttribute("aria-expanded","false")}else if(event.target.closest("#browserMenu button")){menu.classList.remove("open");more.setAttribute("aria-expanded","false")}});
 
@@ -2520,6 +2607,7 @@ function initBrowser(win){
       return;
     }
     if(browserState.frameMode==="proxy" && current && current!=="os://home"){
+      applyBrowserAdPolicy(win);
       status.textContent="Page connected · finishing scripts and images…";
       repairEmbeddedPage(win);
       setTimeout(()=>captureBrowserLocation(win),0);
@@ -3083,13 +3171,15 @@ function genesisDeviceToken(){
 async function genesisRpc(name, body, bearer){
   if(!genesisBackendReady()) throw new Error("Genesis backend is not configured");
   const b = window.GENESIS_BACKEND;
-  const auth = bearer || b.anonKey;
+  const auth = bearer || "";
+  const headers = {
+    "apikey":b.anonKey,
+    "Content-Type":"application/json"
+  };
+  if(auth) headers.Authorization="Bearer "+auth;
   const response = await fetch(`${b.url}/rest/v1/rpc/${name}`, {
     method:"POST",
-    headers:{
-      "apikey":b.anonKey,
-      "Content-Type":"application/json"
-    },
+    headers,
     body:JSON.stringify(body || {})
   });
   if(!response.ok) throw new Error(await response.text());
@@ -3140,6 +3230,7 @@ async function genesisAdminRequest(path, options={}){
   const token = await genesisAdminSession();
   const headers = Object.assign({
     "apikey":b.anonKey,
+    "Authorization":"Bearer "+token,
     "Content-Type":"application/json"
   }, options.headers || {});
   const response = await fetch(`${b.url}/rest/v1/${path}`, Object.assign({}, options, {headers}));
@@ -3180,6 +3271,26 @@ async function ensureGenesisDevice(){
   }else{
     localStorage.removeItem("genesisDeviceBlocked");
   }
+}
+
+const GENESIS_DEVICE_ONLINE_WINDOW_MS=90*1000;
+function genesisDeviceIsOnline(device,now=Date.now()){
+  if(!device?.active||!device.last_seen)return false;
+  const stamp=Date.parse(device.last_seen);
+  return Number.isFinite(stamp)&&now-stamp>=-30000&&now-stamp<=GENESIS_DEVICE_ONLINE_WINDOW_MS;
+}
+
+async function heartbeatGenesisDevice(){
+  if(!genesisBackendReady())return;
+  try{
+    const rows=await genesisRpc("genesis_register_device",{p_token:genesisDeviceToken()});
+    const device=Array.isArray(rows)?rows[0]:rows;
+    if(device?.display_id){
+      localStorage.setItem("genesisDisplayId",String(device.display_id));
+      const badge=document.getElementById("genesisVisitorId");
+      if(badge)badge.textContent=`ID ${device.display_id}`;
+    }
+  }catch(error){console.warn("Genesis device heartbeat failed:",error)}
 }
 
 async function checkGenesisDevice(){
@@ -3311,6 +3422,7 @@ async function refreshDeactivateOS(){
   const list = document.getElementById("genesisDeviceList");
   const history = document.getElementById("genesisActionHistory");
   const summary = document.getElementById("genesisActiveSummary");
+  const onlineIds = document.getElementById("genesisOnlineIds");
   const activeIds = document.getElementById("genesisActiveIds");
   const inactiveIds = document.getElementById("genesisInactiveIds");
   if(!list || !history) return;
@@ -3321,19 +3433,24 @@ async function refreshDeactivateOS(){
     );
     const myId = Number(localStorage.getItem("genesisDisplayId"));
 
+    const now=Date.now();
+    const online = (devices || []).filter(d=>genesisDeviceIsOnline(d,now));
     const active = (devices || []).filter(d=>d.active);
     const inactive = (devices || []).filter(d=>!d.active);
+    const onlineText = online.map(d=>`ID ${d.display_id}`).join(", ") || "None";
     const activeText = active.map(d=>`ID ${d.display_id}`).join(", ") || "None";
     const inactiveText = inactive.map(d=>`ID ${d.display_id}`).join(", ") || "None";
-    if(summary) summary.textContent = `${active.length} active · ${inactive.length} deactivated`;
+    if(summary) summary.textContent = `${online.length} online · ${active.length} active · ${inactive.length} deactivated · online means seen within 90 seconds`;
+    if(onlineIds) onlineIds.textContent = onlineText;
     if(activeIds) activeIds.textContent = activeText;
     if(inactiveIds) inactiveIds.textContent = inactiveText;
     list.innerHTML = (devices || []).map(d=>{
       const isMe = Number(d.display_id) === myId;
+      const onlineNow=genesisDeviceIsOnline(d,now);
       return `<div class="admin-device">
         <div class="device-id">ID ${escapeHTML(d.display_id)}</div>
         <div>
-          <div class="${d.active ? "status-active" : "status-off"}">${d.active ? "Active now" : "Deactivated — this ID cannot log in"}${isMe ? " · This device" : ""}</div>
+          <div class="${d.active ? (onlineNow ? "status-active" : "status-off") : "status-off"}">${d.active ? (onlineNow ? "Online now" : "Active · not currently online") : "Deactivated — this ID cannot log in"}${isMe ? " · This device" : ""}</div>
           <div class="muted" style="font-size:9px;margin-top:2px">Last seen ${escapeHTML(new Date(d.last_seen).toLocaleString())}</div>
         </div>
         <button class="os-btn" onclick="setGenesisDevice(${Number(d.display_id)},${d.active ? "false" : "true"})">
@@ -3425,8 +3542,10 @@ Promise.resolve(ensureGenesisDevice())
   .catch(error=>console.warn("Genesis device service:",error))
   .finally(()=>window.GenesisMessages?.start?.());
 pollGenesisAnnouncement();
+setInterval(heartbeatGenesisDevice,15000);
 setInterval(checkGenesisDevice,5000);
 setInterval(pollGenesisAnnouncement,3000);
+setInterval(()=>{if(openWindows.deactivateOS)refreshDeactivateOS()},10000);
 setInterval(validateGenesis12HourSession,60000);
 if(browserState.restoreOnStartup)setTimeout(()=>openApp("browser"),80);
 

@@ -81,7 +81,7 @@
     .browser-toolbar{position:relative;background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.018));padding:9px 11px}
     .nav-btn,.browser-go{display:grid;place-items:center}.nav-btn svg,.browser-go svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
     .browser-go svg{width:15px;height:15px}.nav-btn:hover,.browser-go:hover{transform:translateY(-1px);background:rgba(255,255,255,.13)}
-    .browser-menu{position:absolute;right:10px;top:52px;z-index:30;width:205px;padding:7px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(12,17,28,.94);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 20px 55px rgba(0,0,0,.45);opacity:0;transform:translateY(-7px) scale(.97);pointer-events:none}
+    .browser-menu{position:absolute;right:10px;top:52px;z-index:30;width:244px;padding:7px;border:1px solid rgba(255,255,255,.14);border-radius:16px;background:rgba(12,17,28,.94);backdrop-filter:blur(24px) saturate(160%);box-shadow:0 20px 55px rgba(0,0,0,.45);opacity:0;transform:translateY(-7px) scale(.97);pointer-events:none;transition:opacity .2s var(--ease-spring),transform .2s var(--ease-spring)}
     .browser-menu.open{opacity:1;transform:none;pointer-events:auto}.browser-menu button{width:100%;height:38px;padding:0 11px;border:0;border-radius:10px;background:transparent;color:#fff;text-align:left;font-size:12px;cursor:pointer}.browser-menu button:hover{background:rgba(255,255,255,.09)}
     .browser-menu .menu-divider{height:1px;margin:5px;background:rgba(255,255,255,.08)}
     .browser-status{height:27px;padding:6px 13px;background:rgba(0,0,0,.16)}
