@@ -39,7 +39,7 @@ window.GENESIS_BACKEND = {
     if(isLogin||isOS)loadRansom(isOS);
 
     if(!isOS)return;
-    for(const [src,label] of [['genesis-browser-extras.js?build=browser-extras-r3','Browser extras'],['genesis-ui-polish.js?build=ui-polish-r2','Genesis UI polish']]){
+    for(const [src,label] of [['genesis-browser-extras.js?build=browser-extras-r3','Browser extras'],['genesis-ui-polish.js?build=ui-polish-r3','Genesis UI polish']]){
       loadScript(src,label);
     }
   }

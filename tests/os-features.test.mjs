@@ -78,9 +78,13 @@ test("Games tab exposes the storefront showcase while retaining the full catalog
 });
 
 test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
+  assert.match(os,/id="genesisOnlineIds"/);
   assert.match(os,/id="genesisActiveIds"/);
   assert.match(os,/id="genesisInactiveIds"/);
   assert.match(os,/genesis_devices\?select=display_id,active,last_seen/);
+  assert.match(os,/GENESIS_DEVICE_ONLINE_WINDOW_MS=90\*1000/);
+  assert.match(os,/function genesisDeviceIsOnline\(/);
+  assert.match(os,/onlineText = online\.map/);
   assert.match(os,/const activeText = active\.map/);
   assert.match(os,/const inactiveText = inactive\.map/);
   assert.match(os,/Deactivated — this ID cannot log in/);
@@ -113,6 +117,7 @@ test("desktop folders persist app placement without expanding the dock",()=>{
 
 test("Genify and Genflix are desktop-only original app surfaces",()=>{
   assert.match(os,/data-app="genify"/);
+  assert.match(os,/data-app="genify" style="left:430px;top:145px"/);
   assert.match(os,/data-app="genflix"/);
   assert.match(os,/genify:\{title:"Genify",content:genifyHTML\}/);
   assert.match(os,/genflix:\{title:"Genflix",content:genflixHTML\}/);
@@ -122,9 +127,30 @@ test("Genify and Genflix are desktop-only original app surfaces",()=>{
   assert.match(os,/function initGenflix\(/);
   assert.match(os,/Who is using this account\?/);
   assert.match(os,/GenyBoi/);
-  assert.match(os,/Genesis presents/);
+  assert.doesNotMatch(os,/Genesis presents|genflix-splash|genflix-g/);
+  assert.match(os,/class="genflix-profiles visible"/);
   assert.match(os,/genify-mark/);
   assert.doesNotMatch(os,/spotify\.com|netflix\.com/i);
+});
+
+test("Browser exposes a smooth opt-in ads toggle from the three-dot menu",()=>{
+  assert.match(os,/id="browserMore"/);
+  assert.match(os,/id="browserMenu"/);
+  assert.match(os,/id="browserAdsToggle"/);
+  assert.match(os,/Allow website ads/);
+  assert.match(os,/GENESIS_BROWSER_ADS_KEY/);
+  assert.match(os,/function setBrowserAdsEnabled\(/);
+  assert.match(os,/function applyBrowserAdPolicy\(/);
+});
+
+test("GPT shared defaults are administrator-only and persisted through Supabase",()=>{
+  const gpt=readFileSync(new URL("../genesis-gpt.js",import.meta.url),"utf8");
+  const sql=readFileSync(new URL("../GPT_DEFAULTS.sql",import.meta.url),"utf8");
+  assert.match(gpt,/genesis_gpt_config/);
+  assert.match(gpt,/Only administrators can publish/);
+  assert.match(gpt,/genesisAdminRequest/);
+  assert.match(sql,/create table if not exists public\.genesis_gpt_config/);
+  assert.match(sql,/Genesis admins manage GPT defaults/);
 });
 
 test("Genesis intro uses the requested Falcon artwork and exact OS letterform",()=>{
