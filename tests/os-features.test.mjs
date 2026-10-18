@@ -82,12 +82,20 @@ test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
   assert.match(os,/id="genesisActiveIds"/);
   assert.match(os,/id="genesisInactiveIds"/);
   assert.match(os,/genesis_devices\?select=display_id,active,last_seen/);
+  assert.match(os,/const devices = await genesisAdminRequest\(/);
+  assert.match(os,/const actions = await genesisAdminRequest\(/);
   assert.match(os,/GENESIS_DEVICE_ONLINE_WINDOW_MS=90\*1000/);
   assert.match(os,/function genesisDeviceIsOnline\(/);
   assert.match(os,/onlineText = online\.map/);
   assert.match(os,/const activeText = active\.map/);
   assert.match(os,/const inactiveText = inactive\.map/);
   assert.match(os,/Deactivated — this ID cannot log in/);
+});
+
+test("The login page keeps device presence fresh while it is open",()=>{
+  assert.match(login,/async function genesisHeartbeatDevice\(/);
+  assert.match(login,/genesis_register_device/);
+  assert.match(login,/setInterval\(genesisHeartbeatDevice, 15000\)/);
 });
 
 test("Genesis branding keeps the requested fall Falcon through login, OS, and install",()=>{
@@ -115,22 +123,18 @@ test("desktop folders persist app placement without expanding the dock",()=>{
   assert.doesNotMatch(os,/data-dock-app="(?:genify|genflix)"/);
 });
 
-test("Genify and Genflix are desktop-only original app surfaces",()=>{
+test("Genify remains a desktop-only original app surface",()=>{
   assert.match(os,/data-app="genify"/);
   assert.match(os,/data-app="genify" style="left:430px;top:145px"/);
-  assert.match(os,/data-app="genflix"/);
   assert.match(os,/genify:\{title:"Genify",content:genifyHTML\}/);
-  assert.match(os,/genflix:\{title:"Genflix",content:genflixHTML\}/);
   assert.match(os,/function genifyHTML\(/);
   assert.match(os,/function initGenify\(/);
-  assert.match(os,/function genflixHTML\(/);
-  assert.match(os,/function initGenflix\(/);
-  assert.match(os,/Who is using this account\?/);
-  assert.match(os,/GenyBoi/);
-  assert.doesNotMatch(os,/Genesis presents|genflix-splash|genflix-g/);
-  assert.match(os,/class="genflix-profiles visible"/);
   assert.match(os,/genify-mark/);
-  assert.doesNotMatch(os,/spotify\.com|netflix\.com/i);
+});
+
+test("Genflix is removed from the OS",()=>{
+  assert.doesNotMatch(os,/genflix/i);
+  assert.doesNotMatch(os,/netflix\.com/i);
 });
 
 test("Browser exposes a smooth opt-in ads toggle from the three-dot menu",()=>{

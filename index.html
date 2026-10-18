@@ -1865,6 +1865,23 @@ async function genesisEnsureDevice(){
   return device || {active:true};
 }
 
+async function genesisHeartbeatDevice(){
+  if(!genesisBackendReady()) return;
+  try{
+    const rows = await genesisRpc("genesis_register_device", {
+      p_token: genesisGetDeviceToken()
+    });
+    const device = Array.isArray(rows) ? rows[0] : rows;
+    if(device?.display_id){
+      localStorage.setItem("genesisDisplayId", String(device.display_id));
+      const badge = document.getElementById("genesisVisitorId");
+      if(badge) badge.textContent = \`ID \${device.display_id}\`;
+    }
+  }catch(error){
+    console.warn("Genesis device heartbeat failed:", error);
+  }
+}
+
 function genesisShowBlocked(id){
   localStorage.setItem("genesisDeviceBlocked", "1");
   if(id) localStorage.setItem("genesisDisplayId", String(id));
@@ -1945,6 +1962,7 @@ async function initializeGenesisLogin(){
 showGenesisIdImmediately();
 initializeGenesisLogin();
 
+setInterval(genesisHeartbeatDevice, 15000);
 setInterval(async ()=>{
   if(!genesisBackendReady()) return;
   try{
