@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="genesis-install.css">
 <link rel="stylesheet" href="genesis-gpt.css">
 <script src="genesis-install.js" defer></script>
-<script src="genesis-gpt.js?build=gpt-owner-setup-r2" defer></script>
+<script src="genesis-gpt.js?build=gpt-no-auth-prompt-r3" defer></script>
 <script src="genesis-admin-auth.js" defer></script>
 <style>
 :root{
@@ -3192,9 +3192,11 @@ async function genesisAdminSession(){
   return s.access_token;
 }
 
-async function genesisAdminRequest(path, options={}){
+async function genesisAdminRequest(path, options={}, authOptions={}){
   const b = window.GENESIS_BACKEND;
-  const token = await genesisAdminSession();
+  const token = authOptions.interactive===false
+    ? await window.GenesisAdminAuth.getSessionToken({interactive:false})
+    : await genesisAdminSession();
   const headers = Object.assign({
     "apikey":b.anonKey,
     "Authorization":"Bearer "+token,

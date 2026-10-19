@@ -73,11 +73,22 @@ try{
   assert.match(await page.locator("#genesisAppTour").innerText(),/GPT/);
   await page.locator("#genesisAppTour [data-tour-close]").click();
   assert.equal(await page.locator(".gpt-frame").count(),0,"GPT still embeds a provider website");
-  assert.equal(await page.locator(".gpt-config").count(),0);
-  assert.match(await page.locator(".gpt-status").innerText(),/Setup pending/);
-  assert.equal(await page.locator(".gpt-input").isDisabled(),true);
-  assert.equal(await page.locator(".gpt-send").isDisabled(),true);
-  console.log("PASS GPT owner setup pending without API entry or authentication");
+  assert.equal(await page.locator(".gpt-config").getAttribute("hidden"),null,"GPT settings did not open for a new session");
+
+  await page.locator(".gpt-key").fill("fixture-key");
+  await page.locator(".gpt-endpoint").fill(origin+"/Genesis/__mock-ai");
+  await page.locator(".gpt-model").fill("fixture-model");
+  await page.locator('[data-gpt-action="save"]').click();
+  await page.locator(".gpt-input").fill("hello Genesis");
+  await page.locator(".gpt-composer").press("Enter");
+  await page.locator(".gpt-message.assistant").filter({hasText:"Fixture response for: hello Genesis"}).waitFor();
+  assert.equal(await page.evaluate(()=>sessionStorage.getItem("genesisGPTApiKeySession")),"fixture-key");
+  console.log("PASS native GPT app, session key handling, API response, no provider iframe, and first-use tour");
+
+  await page.evaluate(()=>openApp("games"));
+  await page.locator('#genesisAppTour').waitFor();
+  await page.locator("#genesisAppTour [data-tour-close]").click();
+  await page.evaluate(()=>openGame("ugs-doc-cltacostand"));
   await page.waitForFunction(()=>document.getElementById("gameFrame")?.src.startsWith("blob:"),null,{timeout:15000});
   await page.frameLocator("#gameFrame").locator("h1").waitFor();
   assert.match(await page.frameLocator("#gameFrame").locator("h1").innerText(),/Taco Stand/);
