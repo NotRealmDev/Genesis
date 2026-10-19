@@ -1875,7 +1875,7 @@ async function genesisHeartbeatDevice(){
     if(device?.display_id){
       localStorage.setItem("genesisDisplayId", String(device.display_id));
       const badge = document.getElementById("genesisVisitorId");
-      if(badge) badge.textContent = \`ID \${device.display_id}\`;
+      if(badge) badge.textContent = `ID ${device.display_id}`;
     }
   }catch(error){
     console.warn("Genesis device heartbeat failed:", error);
