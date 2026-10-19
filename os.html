@@ -3428,6 +3428,7 @@ async function refreshDeactivateOS(){
       </div>`;
     }).join("") || `<div class="muted">No IDs yet.</div>`;
 
+    try{
     const actions = await genesisPublicGet(
       "genesis_admin_actions?select=display_id,action,created_at&order=created_at.desc&limit=30"
     );
@@ -3436,7 +3437,14 @@ async function refreshDeactivateOS(){
         ID ${escapeHTML(a.display_id)} · ${escapeHTML(a.action)} · ${escapeHTML(new Date(a.created_at).toLocaleString())}
       </div>`
     ).join("") || `<div class="muted">No actions yet.</div>`;
+    }catch(error){
+      history.innerHTML = `<div class="muted">Could not load history: ${escapeHTML(error.message)}</div>`;
+    }
   }catch(error){
+    if(summary) summary.textContent = "ID status unavailable";
+    for(const el of [onlineIds,activeIds,inactiveIds]){
+      if(el) el.textContent = "Unavailable";
+    }
     list.innerHTML = `<div class="muted">Could not load IDs: ${escapeHTML(error.message)}</div>`;
   }
 }
