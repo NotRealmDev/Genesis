@@ -7,7 +7,6 @@ import vm from "node:vm";
 const os = readFileSync(new URL("../os.html",import.meta.url),"utf8");
 const login = readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const intro = readFileSync(new URL("../intro.html",import.meta.url),"utf8");
-const updateIntro = readFileSync(new URL("../intro-update.html",import.meta.url),"utf8");
 const messages = readFileSync(new URL("../genesis-messages.js",import.meta.url),"utf8");
 const announcements = readFileSync(new URL("../genesis-announcements.js",import.meta.url),"utf8");
 
@@ -174,11 +173,10 @@ test("Genesis intro uses the requested Falcon artwork and exact OS letterform",(
   assert.doesNotMatch(intro,/assets\/icons\/genesis-192\.png/);
   assert.doesNotMatch(intro,/data:image\/png;base64/);
   assert.doesNotMatch(intro,/genesis-intro-state/);
+  assert.doesNotMatch(login,/genesis-intro-state/);
+  assert.doesNotMatch(os,/genesis-intro-state|intro-update\.html/);
   assert.match(intro,/location\.replace\("os\.html"\)/);
   assert.match(intro,/setTimeout\(finishIntro,9600\)/);
-  assert.match(updateIntro,/GenesisIntroState\.complete\(login\)/);
-  assert.match(updateIntro,/data-scene="messages"/);
-  assert.match(updateIntro,/data-scene="games"/);
 });
 
 test("announcements can read directly when the optional RPC is absent",()=>{
@@ -276,7 +274,7 @@ test("Messages notification previews preserve actual message text",()=>{
   assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
 });
 
-test("first-use app tours coexist with the once-only liquid glass Genesis intro",()=>{
+test("first-use app tours coexist with the original Genesis intro",()=>{
   const tour=readFileSync(new URL("../genesis-app-tour.js",import.meta.url),"utf8");
   const intro=readFileSync(new URL("../intro.html",import.meta.url),"utf8");
   assert.match(os,/genesis-app-tour\.js/);
@@ -286,7 +284,5 @@ test("first-use app tours coexist with the once-only liquid glass Genesis intro"
   assert.match(intro,/class="stage"/);
   assert.match(intro,/Genesis OS startup/);
   assert.match(intro,/class="logo-wrap"/);
-  assert.match(updateIntro,/id="skipIntro"/);
-  assert.match(updateIntro,/class="shell"/);
   assert.doesNotMatch(intro,/showcaseAudio/);
 });
