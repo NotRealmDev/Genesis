@@ -576,7 +576,6 @@ button{color:inherit}
 }
 
 </style>
-<script src="genesis-intro-state.js?build=intro-liquid-once-r1"></script>
 <script>
 (function(){
   try{
@@ -585,7 +584,6 @@ button{color:inherit}
       sessionStorage.setItem("realmAuth","1");
       sessionStorage.setItem("realmUser",login.user || "");
       sessionStorage.setItem("genesisRole",login.role || "user");
-      if(GenesisIntroState.shouldShow(login)){location.replace("intro-update.html");return;}
       return;
     }
   }catch(e){}
