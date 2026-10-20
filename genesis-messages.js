@@ -104,7 +104,7 @@
     if(directCall!==call)return;
     try{
       await sendBroadcast(call.peer,'direct-call',{action:'invite',id,from:state.identity,to:call.peer,name:currentName()});
-      if(directCall!==call)return;
+      if(directCall!==call||call.accepted)return;
       startCallTone('outgoing');
       callTimer=setTimeout(()=>{if(directCall===call)endCall()},30000);
     }catch{endCall()}
@@ -131,7 +131,7 @@
       callNotice('Incoming call · ID '+from,true);startCallTone('incoming');callTimer=setTimeout(()=>endCall(),30000);
     }else if(directCall?.id===p.id&&directCall.peer===from){
       if(p.action==='end')endCall(false);
-      if(p.action==='accept'){stopCallTone();clearTimeout(callTimer);callNotice('Call with ID '+from)}
+      if(p.action==='accept'){directCall.accepted=true;stopCallTone();clearTimeout(callTimer);callNotice('Call with ID '+from)}
     }
   }
   const SERVER_ACCENTS=Object.freeze({
