@@ -16,6 +16,7 @@
     return [...byId.values()].sort((a,b)=>Number(a.id)-Number(b.id));
   }
   function render(){
+    if(typeof global.CustomEvent==='function')global.dispatchEvent(new CustomEvent('genesis:presence'));
     const label=document.getElementById("genesisLiveStatus");
     const list=document.getElementById("genesisLiveUsers");
     const online=users();
