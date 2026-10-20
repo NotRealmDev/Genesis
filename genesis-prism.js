@@ -14,8 +14,10 @@
   const DEFAULT_HTTP_PROXY_URLS = [
     "https://genesis-proxy.bernye-eugene7.workers.dev/"
   ];
-  const BUILD_ID = "2026-10-20-wifi-fallback-r2";
+  const BUILD_ID = "2026-10-20-wifi-recovery-r3";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
+  const LAST_WISP_TIME_KEY = "genesisLastWorkingWispAtV1";
+  const WISP_ROUTE_TTL_MS = 6*60*60*1000;
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
   const WISP_PROBE_TIMEOUT_MS = 4500;
   const WISP_INIT_TIMEOUT_MS = 12000;
@@ -82,14 +84,16 @@
       custom=normalizeWispUrl(localStorage.getItem("genesisWispUrl"));
       if(custom) urls.push(custom);
     }catch{}
-    for(const value of DEFAULT_WISP_URLS){
+    for(const value of [...(window.GENESIS_PROXY?.wispEndpoints||[]),...DEFAULT_WISP_URLS]){
       const normalized=normalizeWispUrl(value);
       if(normalized && !urls.includes(normalized)) urls.push(normalized);
     }
     // Start with the endpoint that actually worked on this device last time.
     // Different networks often have very different WebSocket routing latency.
     try{
-      const previous=normalizeWispUrl(localStorage.getItem(LAST_WISP_KEY));
+      const lastUsed=Number(localStorage.getItem(LAST_WISP_TIME_KEY))||0;
+      const fresh=lastUsed>0 && Date.now()-lastUsed<WISP_ROUTE_TTL_MS && Date.now()>=lastUsed;
+      const previous=fresh?normalizeWispUrl(localStorage.getItem(LAST_WISP_KEY)):"";
       const index=urls.indexOf(previous);
       if(index>0 && !custom)urls.splice(0,0,urls.splice(index,1)[0]);
     }catch{}
@@ -451,6 +455,7 @@
       this.activeIndex=startIndex;
       this.client=null;
       this.ready=false;
+      this.cancelled=false;
       this.officialVerified=false;
       this.stats={
         logicalRequests:0,
@@ -492,9 +497,11 @@
     }
 
     async makeClient(index,verifyRoute=true,knownProbe=null){
+      if(this.cancelled)throw new Error("Wisp startup was cancelled after another route was selected.");
       const websocket=this.wispUrls[index];
       const probe=knownProbe||await probeWispEndpoint(websocket);
       if(!probe.ok) throw new Error("Wisp handshake failed at "+websocket+": "+probe.detail);
+      if(this.cancelled)throw new Error("Wisp startup was cancelled after a fallback succeeded.");
 
       // This is the same constructor shape used by Scramjet's official
       // bootstrap. Libcurl supplies HTTP, media and WebSocket traffic over Wisp.
@@ -512,6 +519,7 @@
         await releaseResponseBody(health);
         if(!ok) throw new Error("The Wisp route health check returned "+(health?.status||"an invalid response")+".");
       }
+      if(this.cancelled)throw new Error("Wisp startup was cancelled after a fallback succeeded.");
 
       return {client,verified:!!probe.verified};
       }catch(error){
@@ -526,29 +534,45 @@
       let lastError=null;
       const order=Array.from({length:this.wispUrls.length},(_,offset)=>(this.startIndex+offset)%this.wispUrls.length);
       const probed=await Promise.all(order.map(async index=>{
+        if(this.cancelled)return {index,result:{ok:false,verified:false,detail:"cancelled"},latencyMs:Infinity};
         this.stats.endpointProbes++;
+        const started=performance.now();
         try{
           const result=await probeWispEndpoint(this.wispUrls[index]);
           if(!result.ok)this.stats.endpointProbeFailures++;
-          return {index,result};
+          return {index,result,latencyMs:performance.now()-started};
         }catch(error){
           this.stats.endpointProbeFailures++;
-          return {index,result:{ok:false,verified:false,detail:error?.message||String(error)}};
+          return {index,result:{ok:false,verified:false,detail:error?.message||String(error)},latencyMs:Infinity};
         }
       }));
       // Only initialize routes that accepted a socket probe. A blocked cafe
       // network therefore falls through to the next provider immediately
       // instead of waiting on Libcurl to time out against the same host.
-      const candidates=probed.filter(entry=>entry.result.ok);
+      if(this.cancelled)throw new Error("Wisp startup was cancelled.");
+      // Try protocol-verified and faster responding providers before those
+      // that merely accepted a WebSocket upgrade.
+      const candidates=probed.filter(entry=>entry.result.ok).sort((a,b)=>{
+        if(a.result.verified!==b.result.verified)return a.result.verified?-1:1;
+        return a.latencyMs-b.latencyMs;
+      });
       for(const {index,result} of candidates){
+        if(this.cancelled)throw new Error("Wisp startup was cancelled.");
         this.stats.endpointAttempts++;
         try{
           const transportResult=await this.makeClient(index,true,result);
+          if(this.cancelled){
+            await disposeTransport(transportResult.client);
+            throw new Error("Wisp startup was cancelled.");
+          }
           this.client=transportResult.client;
           this.activeIndex=index;
           this.officialVerified=transportResult.verified;
           this.ready=true;
-          try{localStorage.setItem(LAST_WISP_KEY,this.activeWisp)}catch{}
+          try{
+            localStorage.setItem(LAST_WISP_KEY,this.activeWisp);
+            localStorage.setItem(LAST_WISP_TIME_KEY,String(Date.now()));
+          }catch{}
           this.emit("ready");
           return;
         }catch(err){
@@ -702,6 +726,7 @@
     }
 
     async close(){
+      this.cancelled=true;
       this.ready=false;
       const client=this.client;
       this.client=null;
@@ -763,23 +788,40 @@
       this.stats.lastHost=remote.hostname;
       this.stats.lastEventAt=Date.now();
       try{
-        const response=await fetch(this.proxyUrl(remote),{
-          method:verb,
-          headers:forwarded,
-          redirect:"manual",
-          credentials:"omit",
-          cache:"no-store",
-          signal
-        });
-        this.stats.completed++;
-        this.stats.lastStatus=Number(response?.status)||0;
-        this.stats.lastError="";
-        return {
-          body:response.body,
-          headers:[...response.headers],
-          status:response.status,
-          statusText:response.statusText
-        };
+        // Retry one failed, read-only HTTPS request; never replay a mutation.
+        // 429 is deliberately excluded to respect upstream rate limiting.
+        for(let attempt=0;attempt<2;attempt++){
+          if(signal?.aborted)throw new Error("Request cancelled.");
+          try{
+            const response=await fetch(this.proxyUrl(remote),{
+              method:verb,
+              headers:forwarded,
+              redirect:"manual",
+              credentials:"omit",
+              cache:"no-store",
+              signal
+            });
+            const status=Number(response?.status)||0;
+            if(attempt===0 && TRANSIENT_STATUSES.has(status)){
+              await releaseResponseBody(response);
+              await delay(180);
+              continue;
+            }
+            this.stats.completed++;
+            this.stats.lastStatus=status;
+            this.stats.lastError="";
+            return {
+              body:response.body,
+              headers:[...response.headers],
+              status:response.status,
+              statusText:response.statusText
+            };
+          }catch(err){
+            if(attempt>0 || signal?.aborted)throw err;
+            await delay(180);
+          }
+        }
+        throw new Error("HTTPS fallback exhausted its safe retries.");
       }catch(error){
         this.stats.failed++;
         this.stats.lastError=error?.message||String(error);
@@ -815,6 +857,7 @@
     // Begin the HTTPS route independently: blocked sockets or a missing
     // Libcurl script must not prevent the fallback from ever being attempted.
     let winner=null;
+    let pendingWispTransport=null;
     const choose=async(candidate)=>{
       const result=await candidate;
       if(winner){
@@ -822,12 +865,18 @@
         throw new Error("Another healthy route was selected.");
       }
       winner=result;
+      // Stop background socket attempts once HTTPS has already connected.
+      // Without cancellation a late Wisp client could reset Libcurl's shared
+      // egress route while Scramjet was loading via the HTTPS fallback.
+      if(result.profile==="https-fallback" && pendingWispTransport)
+        Promise.resolve(pendingWispTransport.close()).catch(()=>{});
       return result;
     };
     const wisp=(async()=>{
     if(!wispUrls.length || !window.LibcurlTransport) throw new Error("Wisp transport is unavailable.");
     const Transport=window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
     const transport=new ResilientWispTransport(Transport,wispUrls,startIndex);
+    pendingWispTransport=transport;
     try{
       await transport.init();
       return {
