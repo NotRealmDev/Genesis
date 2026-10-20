@@ -57,3 +57,42 @@ test('ending a call while permission is pending stops the late microphone stream
   resolveMedia({getTracks:()=>[{stop(){stopped=true}}]});
   await pending;assert.equal(stopped,true);
 });
+
+test('incoming ringtone plays, can be silenced, and stops on decline',async()=>{
+  const {context,elements}=setup();
+  let played=0,stopped=0,intervals=0,cleared=0;
+  context.AudioContext=class {
+    state='running';currentTime=0;destination={};
+    createOscillator(){return {frequency:{setValueAtTime(){}},connect(){},start(){played++},stop(){stopped++},disconnect(){}}}
+    createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}}}
+  };
+  context.setInterval=()=>{intervals++;return 12};
+  context.clearInterval=()=>{cleared++};
+  context.testMessages.handleDirectCall({payload:{id:'dm-ring',from:'202',to:'101',action:'invite'}});
+  assert.ok(played>=4);
+  assert.equal(intervals,1);
+  const silence=elements.get('gmCallNotice').children.find(child=>child.textContent==='Silence');
+  assert.ok(silence);
+  silence.onclick();
+  assert.equal(silence.textContent,'Silenced');
+  assert.ok(stopped>=played);
+  assert.equal(cleared,1);
+  await context.GenesisMessages.endCall();
+  assert.equal(elements.has('gmCallNotice'),false);
+});
+
+test('outgoing ringback stops when the recipient answers',async()=>{
+  const {context,sent}=setup();
+  let played=0,stopped=0;
+  context.AudioContext=class {
+    state='running';currentTime=0;destination={};
+    createOscillator(){return {frequency:{setValueAtTime(){}},connect(){},start(){played++},stop(){stopped++},disconnect(){}}}
+    createGain(){return {gain:{setValueAtTime(){},exponentialRampToValueAtTime(){}},connect(){},disconnect(){}}}
+  };
+  await context.GenesisMessages.callContact();
+  assert.equal(sent[0].payload.action,'invite');
+  assert.ok(played>=2);
+  context.testMessages.handleDirectCall({payload:{id:'dm-1234-test',from:'202',to:'101',action:'accept'}});
+  assert.ok(stopped>=played);
+  await context.GenesisMessages.endCall();
+});
