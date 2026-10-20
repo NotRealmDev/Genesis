@@ -544,6 +544,8 @@ body {
 </style>
   <link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
 <script src="supabase-config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous" defer></script>
+<script src="genesis-presence.js?build=presence-r1" defer></script>
 <script src="genesis-announcements.js" defer></script>
 
 <style>
@@ -1850,6 +1852,7 @@ async function genesisEnsureDevice(){
     p_token: genesisGetDeviceToken()
   });
   const device = Array.isArray(rows) ? rows[0] : rows;
+  window.genesisRegisteredDevice=device;
   if(device && device.display_id){
     localStorage.setItem("genesisDisplayId", String(device.display_id));
     const badge = document.getElementById("genesisVisitorId");
@@ -1872,6 +1875,7 @@ async function genesisHeartbeatDevice(){
       p_token: genesisGetDeviceToken()
     });
     const device = Array.isArray(rows) ? rows[0] : rows;
+    window.genesisRegisteredDevice=device;
     if(device?.display_id){
       localStorage.setItem("genesisDisplayId", String(device.display_id));
       const badge = document.getElementById("genesisVisitorId");
