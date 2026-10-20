@@ -1650,8 +1650,8 @@ async function login() {
   let loginName = accountName || usernameRaw;
 
   // Admin login: exact password, username may be Admin/admin/ADMIN.
-  if(usernameKey === "admin" && password === "R!ealm"){
-    ok = true;
+  if(usernameKey === "admin"){
+    try{await genesisAdminSignIn(password);ok=true}catch{ok=false}
     role = "admin";
     loginName = "Admin";
     account = accounts["Admin"];
@@ -1799,7 +1799,9 @@ async function genesisCanAttemptLogin(){
       genesisShowBlocked(localStorage.getItem("genesisDisplayId"));
       return false;
     }
-    return true;
+    errorMessage.textContent="Access verification is unavailable. Please try again.";
+    errorMessage.classList.add("show");
+    return false;
   }
 
   try{
@@ -1818,7 +1820,8 @@ async function genesisCanAttemptLogin(){
       return false;
     }
 
-    genesisClearBlocked(device && device.display_id);
+    if(!device || device.active !== true || !device.display_id) throw new Error("No approved browser ID returned");
+    genesisClearBlocked(device.display_id);
     return true;
   }catch(error){
     console.warn("Genesis login status check failed:", error);
@@ -1829,7 +1832,9 @@ async function genesisCanAttemptLogin(){
       genesisShowBlocked(localStorage.getItem("genesisDisplayId"));
       return false;
     }
-    return true;
+    errorMessage.textContent="Could not verify access. Please retry when connected.";
+    errorMessage.classList.add("show");
+    return false;
   }
 }
 
@@ -1952,6 +1957,9 @@ async function initializeGenesisLogin(){
     if(device && device.active === false) return;
   }catch(error){
     console.warn("Genesis device service:", error);
+    errorMessage.textContent="Could not verify access. Please retry when connected.";
+    errorMessage.classList.add("show");
+    return;
   }
 
   const login = genesisValidLogin();

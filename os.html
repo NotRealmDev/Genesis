@@ -3358,10 +3358,11 @@ async function setGenesisDevice(displayId, makeActive){
   }
 
   try{
+    const adminToken=await window.GenesisAdminAuth.getSessionToken({interactive:true});
     await genesisRpc("genesis_set_device_status", {
       p_display_id:id,
       p_active:!!makeActive
-    });
+    },adminToken);
     if(status) status.textContent = makeActive
       ? `ID ${id} was reactivated.`
       : `ID ${id} is now deactivated.`;
