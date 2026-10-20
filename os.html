@@ -1775,6 +1775,7 @@ function openApp(appId){
 function closeWindow(appId,win){
   if(appId==="messages") window.GenesisMessages?.onWindowClose?.();
   if(appId==="browser"){
+    try{win.__genesisBrowserAbort?.abort()}catch{}
     captureBrowserLocation(win);
     persistBrowserState(false);
     browserState.navigationId++;
@@ -2474,6 +2475,7 @@ function setBrowserAdsEnabled(enabled,win=openWindows.browser){
 }
 
 function initBrowser(win){
+  win.__genesisBrowserAbort=new AbortController();
   const address=win.querySelector("#browserAddress");
   const go=win.querySelector("#browserGo");
   const back=win.querySelector("#browserBack");
@@ -2545,7 +2547,7 @@ function initBrowser(win){
       repairGenesisBrowserConnection(win,"network connection restored").catch(()=>{});
     }
   };
-  window.addEventListener("online",onOnline,{signal:win.__genesisBrowserAbort?.signal});
+  window.addEventListener("online",onOnline,{signal:win.__genesisBrowserAbort.signal});
 
   win.querySelectorAll("[data-browser-url]").forEach(button=>{
     button.addEventListener("click",()=>browserNavigate(button.dataset.browserUrl,true,true));
