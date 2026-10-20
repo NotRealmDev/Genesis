@@ -581,6 +581,7 @@ body {
 .genesis-blocked p{margin:0;color:rgba(255,255,255,.58);line-height:1.6}
 </style>
 
+<script src="genesis-intro-state.js?build=intro-liquid-once-r1"></script>
 </head>
 
 
@@ -1677,7 +1678,7 @@ async function login() {
     sessionStorage.setItem("realmUser", loginName);
     sessionStorage.setItem("genesisRole", role);
 
-    window.location.href = (account?.url && account.url!=="intro.html") ? account.url : "intro.html";
+    window.location.href = (account?.url && account.url!=="intro.html" && account.url!=="os.html") ? account.url : GenesisIntroState.destination({user:loginName});
     return;
   }
 
@@ -1959,7 +1960,7 @@ async function initializeGenesisLogin(){
     sessionStorage.setItem("realmAuth","1");
     sessionStorage.setItem("realmUser",login.user || "");
     sessionStorage.setItem("genesisRole",login.role || "user");
-    location.replace(login.url || "intro.html");
+    location.replace(login.url && login.url!=="intro.html" && login.url!=="os.html" ? login.url : GenesisIntroState.destination(login));
   }
 }
 
