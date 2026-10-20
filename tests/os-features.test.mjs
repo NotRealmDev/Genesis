@@ -123,13 +123,8 @@ test("desktop folders persist app placement without expanding the dock",()=>{
   assert.doesNotMatch(os,/data-dock-app="(?:genify|genflix)"/);
 });
 
-test("Genify remains a desktop-only original app surface",()=>{
-  assert.match(os,/data-app="genify"/);
-  assert.match(os,/data-app="genify" style="left:430px;top:145px"/);
-  assert.match(os,/genify:\{title:"Genify",content:genifyHTML\}/);
-  assert.match(os,/function genifyHTML\(/);
-  assert.match(os,/function initGenify\(/);
-  assert.match(os,/genify-mark/);
+test("Genify is removed from the OS",()=>{
+  assert.doesNotMatch(os,/genify/i);
 });
 
 test("Genflix is removed from the OS",()=>{

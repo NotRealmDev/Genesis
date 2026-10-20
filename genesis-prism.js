@@ -14,7 +14,7 @@
   const DEFAULT_HTTP_PROXY_URLS = [
     "https://genesis-proxy.bernye-eugene7.workers.dev/"
   ];
-  const BUILD_ID = "2026-10-15-cafe-wifi-failover-r1";
+  const BUILD_ID = "2026-10-20-wifi-fallback-r2";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
   const WISP_PROBE_TIMEOUT_MS = 4500;
@@ -742,7 +742,7 @@
       );
       const status=Number(response?.status)||0;
       await releaseResponseBody(response);
-      if(status<200 || status>=500) throw new Error("The HTTPS Genesis proxy fallback returned "+(status||"an invalid response")+".");
+      if(status<200 || status>=400) throw new Error("The HTTPS Genesis proxy fallback returned "+(status||"an invalid response")+".");
       this.ready=true;
       return this;
     }
@@ -812,7 +812,20 @@
   }
 
   async function createTransport(wispUrls,startIndex=0){
-    if(!wispUrls.length) throw new Error("Genesis has no valid Wisp transport endpoints configured.");
+    // Begin the HTTPS route independently: blocked sockets or a missing
+    // Libcurl script must not prevent the fallback from ever being attempted.
+    let winner=null;
+    const choose=async(candidate)=>{
+      const result=await candidate;
+      if(winner){
+        Promise.resolve(result.transport.close()).catch(()=>{});
+        throw new Error("Another healthy route was selected.");
+      }
+      winner=result;
+      return result;
+    };
+    const wisp=(async()=>{
+    if(!wispUrls.length || !window.LibcurlTransport) throw new Error("Wisp transport is unavailable.");
     const Transport=window.LibcurlTransport.LibcurlClient || window.LibcurlTransport.default || window.LibcurlTransport;
     const transport=new ResilientWispTransport(Transport,wispUrls,startIndex);
     try{
@@ -826,9 +839,16 @@
         officialVerified:transport.officialVerified
       };
     }catch(wispError){
-      await transport.close();
-      console.warn("Genesis Wisp providers were unavailable; trying the HTTPS proxy fallback.",wispError);
-      let lastError=wispError;
+      Promise.resolve(transport.close()).catch(()=>{});
+      throw wispError;
+    }
+    })();
+    const https=(async()=>{
+      // Prefer full Wisp compatibility when it starts promptly, without
+      // waiting through every provider's initialization and health timeout.
+      await Promise.race([delay(1500),wisp.catch(()=>{})]);
+      if(winner) throw new Error("Wisp is already connected.");
+      let lastError=new Error("No HTTPS fallback is configured.");
       for(const endpoint of getHttpProxyUrls()){
         const fallback=new HttpProxyTransport(endpoint);
         try{
@@ -846,7 +866,12 @@
           await fallback.close();
         }
       }
-      throw new Error("Genesis could not connect to any Wisp provider or HTTPS proxy fallback. "+(lastError?.message||String(lastError)));
+      throw lastError;
+    })();
+    try{
+      return await Promise.any([choose(wisp),choose(https)]);
+    }catch(error){
+      throw new Error("No browser route is reachable on this network. Complete the Wi-Fi sign-in page and retry. "+Array.from(error.errors||[],e=>e.message).join("; "));
     }
   }
 
@@ -991,7 +1016,6 @@
         if(!("serviceWorker" in navigator)) throw new Error("Service workers are not supported in this browser.");
         if(!window.$scramjet) throw new Error("prism.js did not load.");
         if(!window.$scramjetController?.Controller) throw new Error("prism.api.js did not load.");
-        if(!window.LibcurlTransport) throw new Error("libby.js did not load.");
 
         const swUrl=new URL("servy.js",BASE_URL);
         // Share a stable registration with Genesis's install controller.
