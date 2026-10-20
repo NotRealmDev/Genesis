@@ -65,25 +65,11 @@ try{
   const ctx=await context();
   page=await ctx.newPage();
   await page.goto(base+"os.html",{waitUntil:"load"});
-  await page.waitForFunction(()=>window.GenesisGPT&&window.GenesisAppTour&&window.GenesisInstall);
-
-  await page.evaluate(()=>openApp("gpt"));
-  await page.locator('.window[data-app="gpt"]').waitFor();
-  await page.locator("#genesisAppTour").waitFor();
-  assert.match(await page.locator("#genesisAppTour").innerText(),/GPT/);
-  await page.locator("#genesisAppTour [data-tour-close]").click();
-  assert.equal(await page.locator(".gpt-frame").count(),0,"GPT still embeds a provider website");
-  assert.equal(await page.locator(".gpt-config").getAttribute("hidden"),null,"GPT settings did not open for a new session");
-
-  await page.locator(".gpt-key").fill("fixture-key");
-  await page.locator(".gpt-endpoint").fill(origin+"/Genesis/__mock-ai");
-  await page.locator(".gpt-model").fill("fixture-model");
-  await page.locator('[data-gpt-action="save"]').click();
-  await page.locator(".gpt-input").fill("hello Genesis");
-  await page.locator(".gpt-composer").press("Enter");
-  await page.locator(".gpt-message.assistant").filter({hasText:"Fixture response for: hello Genesis"}).waitFor();
-  assert.equal(await page.evaluate(()=>sessionStorage.getItem("genesisGPTApiKeySession")),"fixture-key");
-  console.log("PASS native GPT app, session key handling, API response, no provider iframe, and first-use tour");
+  await page.waitForFunction(()=>window.GenesisAppTour && window.GenesisInstall);
+  assert.equal(await page.locator('[data-app="gpt"]').count(),0);
+  assert.equal(await page.locator('[data-dock-app="gpt"]').count(),0);
+  assert.equal(await page.locator('script[src*="genesis-gpt.js"]').count(),0);
+  console.log("PASS GPT hidden from the desktop and dock");
 
   await page.evaluate(()=>openApp("games"));
   await page.locator('#genesisAppTour').waitFor();
@@ -109,14 +95,21 @@ try{
   page=await introCtx.newPage();
   await page.goto(base+"intro.html",{waitUntil:"load"});
   assert.equal(await page.locator(".stage").count(),1);
+  assert.equal(await page.locator('[data-scene="messages"]').count(),1);
+  assert.equal(await page.locator('[data-scene="themes"]').count(),1);
   assert.equal(await page.locator(".logo-wrap").count(),1);
   assert.equal(await page.locator(".icon").getAttribute("src"),"assets/icons/genesis-fall.png");
   assert.equal(await page.locator(".os-only").getAttribute("src"),"assets/icons/genesis-fall-os.png");
-  await page.evaluate(({version})=>localStorage.setItem("genesisShowcaseSeen:introtest",version),{version});
+  await page.locator("#skipIntro").click();
+  await page.waitForURL(base+"os.html");
+  assert.equal(await page.evaluate(()=>localStorage.getItem("genesisShowcaseSeen:introtest")),version);
   await page.goto(base+"os.html",{waitUntil:"load"});
   await page.waitForFunction(()=>document.querySelector("#os"));
   assert.equal(await page.locator("#genesisAppTour").count(),0);
-  console.log("PASS original Falcon Genesis intro and returning-login flow");
+  assert.equal(new URL(page.url()).pathname,"/Genesis/os.html");
+  await page.goto(base+"intro.html",{waitUntil:"load"});
+  await page.waitForURL(base+"os.html");
+  console.log("PASS once-only Genesis liquid glass intro and returning-login flow");
   await introCtx.close();
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:resolve(output,"gpt-install-showcase-failure.png")}).catch(()=>{});
