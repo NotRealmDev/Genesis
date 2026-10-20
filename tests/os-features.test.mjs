@@ -142,14 +142,10 @@ test("Browser exposes a smooth opt-in ads toggle from the three-dot menu",()=>{
   assert.match(os,/function applyBrowserAdPolicy\(/);
 });
 
-test("GPT uses a secure Edge Function without storing public default API keys",()=>{
-  const gpt=readFileSync(new URL("../genesis-gpt.js",import.meta.url),"utf8");
-  const sql=readFileSync(new URL("../GPT_DEFAULTS.sql",import.meta.url),"utf8");
-  assert.match(gpt,/functions\/v1\//);
-  assert.match(gpt,/GenesisAdminAuth/);
-  assert.match(sql,/drop column if exists api_key/);
-  assert.doesNotMatch(gpt,/shared\?\.api_key|api_key:apiKey/);
-
+test("GPT is hidden from the Genesis desktop and dock until restored",()=>{
+  assert.doesNotMatch(os,/data-app="gpt"|data-dock-app="gpt"|genesis-gpt\.js|genesis-gpt\.css/);
+  assert.doesNotMatch(os,/gpt:\{title:"GPT"/);
+  assert.match(os,/data-app="messages"/);
 });
 
 test("Genesis intro uses the requested Falcon artwork and exact OS letterform",()=>{
@@ -176,9 +172,11 @@ test("Genesis intro uses the requested Falcon artwork and exact OS letterform",(
   assert.match(intro,/class="os-only" src="assets\/icons\/genesis-fall-os\.png"/);
   assert.doesNotMatch(intro,/assets\/icons\/genesis-192\.png/);
   assert.doesNotMatch(intro,/data:image\/png;base64/);
-  assert.doesNotMatch(intro,/genesis-intro-state/);
+  assert.match(intro,/genesis-intro-state/);
+  assert.match(intro,/GenesisIntroState\.complete\(login\)/);
   assert.match(intro,/location\.replace\("os\.html"\)/);
-  assert.match(intro,/setTimeout\(finishIntro,9600\)/);
+  assert.match(intro,/data-scene="messages"/);
+  assert.match(intro,/data-scene="games"/);
 });
 
 test("announcements can read directly when the optional RPC is absent",()=>{
@@ -286,6 +284,7 @@ test("first-use app tours are wired with the original Genesis intro",()=>{
   assert.match(intro,/class="stage"/);
   assert.match(intro,/Genesis OS startup/);
   assert.match(intro,/class="logo-wrap"/);
-  assert.doesNotMatch(intro,/intro-card|Skip intro/);
+  assert.match(intro,/id="skipIntro"/);
+  assert.match(intro,/class="shell"/);
   assert.doesNotMatch(intro,/showcaseAudio/);
 });
