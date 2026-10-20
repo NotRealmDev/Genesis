@@ -274,7 +274,7 @@ test("Messages notification previews preserve actual message text",()=>{
   assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
 });
 
-test("first-use app tours are wired with the original Genesis intro",()=>{
+test("first-use app tours coexist with the once-only liquid glass Genesis intro",()=>{
   const tour=readFileSync(new URL("../genesis-app-tour.js",import.meta.url),"utf8");
   const intro=readFileSync(new URL("../intro.html",import.meta.url),"utf8");
   assert.match(os,/genesis-app-tour\.js/);
@@ -283,7 +283,7 @@ test("first-use app tours are wired with the original Genesis intro",()=>{
   assert.match(tour,/QUICK TOUR/);
   assert.match(intro,/class="stage"/);
   assert.match(intro,/Genesis OS startup/);
-  assert.match(intro,/class="logo-wrap"/);
+  assert.match(intro,/class="logo-wrap glass"/);
   assert.match(intro,/id="skipIntro"/);
   assert.match(intro,/class="shell"/);
   assert.doesNotMatch(intro,/showcaseAudio/);
