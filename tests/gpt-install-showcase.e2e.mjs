@@ -93,30 +93,20 @@ try{
 
   const introCtx=await context({seen:false,user:"IntroTest"});
   page=await introCtx.newPage();
-  await page.goto(base+"intro-update.html",{waitUntil:"load"});
-  assert.equal(await page.locator(".stage").count(),1);
-  assert.equal(await page.locator('[data-scene="messages"]').count(),1);
-  assert.equal(await page.locator('[data-scene="themes"]').count(),1);
-  assert.equal(await page.locator(".logo-wrap").count(),1);
-  assert.equal(await page.locator(".icon").getAttribute("src"),"assets/icons/genesis-fall.png");
-  assert.equal(await page.locator(".os-only").getAttribute("src"),"assets/icons/genesis-fall-os.png");
-  await page.locator("#skipIntro").click();
-  await page.waitForURL(base+"os.html");
-  assert.equal(await page.evaluate(()=>localStorage.getItem("genesisShowcaseSeen:introtest")),version);
-  await page.goto(base+"os.html",{waitUntil:"load"});
-  await page.waitForFunction(()=>document.querySelector("#os"));
-  assert.equal(await page.locator("#genesisAppTour").count(),0);
-  assert.equal(new URL(page.url()).pathname,"/Genesis/os.html");
   await page.goto(base+"intro.html",{waitUntil:"load"});
+  assert.equal(await page.locator(".stage").count(),1);
   assert.equal(await page.locator(".black-fade").count(),1);
   assert.equal(await page.locator("#skipIntro").count(),0);
+  assert.equal(await page.locator(".icon").getAttribute("src"),"assets/icons/genesis-fall.png");
+  assert.equal(await page.locator(".os-only").getAttribute("src"),"assets/icons/genesis-fall-os.png");
   await page.keyboard.press("Escape");
   await page.waitForURL(base+"os.html");
-  await page.goto(base+"intro-update.html",{waitUntil:"load"});
-  await page.waitForURL(base+"intro.html");
+  await page.goto(base+"intro.html",{waitUntil:"load"});
+  assert.equal(await page.locator(".black-fade").count(),1);
   await page.keyboard.press("Escape");
   await page.waitForURL(base+"os.html");
-  console.log("PASS one-time upgrade showcase and original intro on future sign-ins");
+  assert.equal(await page.locator('[data-app="gpt"]').count(),0);
+  console.log("PASS original Falcon startup intro on every sign-in, GPT remains hidden");
   await introCtx.close();
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:resolve(output,"gpt-install-showcase-failure.png")}).catch(()=>{});
