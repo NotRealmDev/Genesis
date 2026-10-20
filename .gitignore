@@ -1,0 +1,7 @@
+# Never commit project API keys, Edge Function secrets, or local credentials.
+.env
+.env.*
+!.env.example
+supabase/functions/.env
+supabase/functions/.env.*
+*.pem
