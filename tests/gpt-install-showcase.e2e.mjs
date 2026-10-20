@@ -93,7 +93,7 @@ try{
 
   const introCtx=await context({seen:false,user:"IntroTest"});
   page=await introCtx.newPage();
-  await page.goto(base+"intro.html",{waitUntil:"load"});
+  await page.goto(base+"intro-update.html",{waitUntil:"load"});
   assert.equal(await page.locator(".stage").count(),1);
   assert.equal(await page.locator('[data-scene="messages"]').count(),1);
   assert.equal(await page.locator('[data-scene="themes"]').count(),1);
@@ -108,8 +108,15 @@ try{
   assert.equal(await page.locator("#genesisAppTour").count(),0);
   assert.equal(new URL(page.url()).pathname,"/Genesis/os.html");
   await page.goto(base+"intro.html",{waitUntil:"load"});
+  assert.equal(await page.locator(".black-fade").count(),1);
+  assert.equal(await page.locator("#skipIntro").count(),0);
+  await page.keyboard.press("Escape");
   await page.waitForURL(base+"os.html");
-  console.log("PASS once-only Genesis liquid glass intro and returning-login flow");
+  await page.goto(base+"intro-update.html",{waitUntil:"load"});
+  await page.waitForURL(base+"intro.html");
+  await page.keyboard.press("Escape");
+  await page.waitForURL(base+"os.html");
+  console.log("PASS one-time upgrade showcase and original intro on future sign-ins");
   await introCtx.close();
 }catch(error){
   if(page&&!page.isClosed())await page.screenshot({path:resolve(output,"gpt-install-showcase-failure.png")}).catch(()=>{});
