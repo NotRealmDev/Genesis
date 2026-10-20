@@ -7,6 +7,7 @@ import vm from "node:vm";
 const os = readFileSync(new URL("../os.html",import.meta.url),"utf8");
 const login = readFileSync(new URL("../index.html",import.meta.url),"utf8");
 const intro = readFileSync(new URL("../intro.html",import.meta.url),"utf8");
+const updateIntro = readFileSync(new URL("../intro-update.html",import.meta.url),"utf8");
 const messages = readFileSync(new URL("../genesis-messages.js",import.meta.url),"utf8");
 const announcements = readFileSync(new URL("../genesis-announcements.js",import.meta.url),"utf8");
 
@@ -142,14 +143,10 @@ test("Browser exposes a smooth opt-in ads toggle from the three-dot menu",()=>{
   assert.match(os,/function applyBrowserAdPolicy\(/);
 });
 
-test("GPT uses a secure Edge Function without storing public default API keys",()=>{
-  const gpt=readFileSync(new URL("../genesis-gpt.js",import.meta.url),"utf8");
-  const sql=readFileSync(new URL("../GPT_DEFAULTS.sql",import.meta.url),"utf8");
-  assert.match(gpt,/functions\/v1\//);
-  assert.match(gpt,/GenesisAdminAuth/);
-  assert.match(sql,/drop column if exists api_key/);
-  assert.doesNotMatch(gpt,/shared\?\.api_key|api_key:apiKey/);
-
+test("GPT is hidden from the Genesis desktop and dock until restored",()=>{
+  assert.doesNotMatch(os,/data-app="gpt"|data-dock-app="gpt"|genesis-gpt\.js|genesis-gpt\.css/);
+  assert.doesNotMatch(os,/gpt:\{title:"GPT"/);
+  assert.match(os,/data-app="messages"/);
 });
 
 test("Genesis intro uses the requested Falcon artwork and exact OS letterform",()=>{
@@ -179,6 +176,9 @@ test("Genesis intro uses the requested Falcon artwork and exact OS letterform",(
   assert.doesNotMatch(intro,/genesis-intro-state/);
   assert.match(intro,/location\.replace\("os\.html"\)/);
   assert.match(intro,/setTimeout\(finishIntro,9600\)/);
+  assert.match(updateIntro,/GenesisIntroState\.complete\(login\)/);
+  assert.match(updateIntro,/data-scene="messages"/);
+  assert.match(updateIntro,/data-scene="games"/);
 });
 
 test("announcements can read directly when the optional RPC is absent",()=>{
@@ -276,7 +276,7 @@ test("Messages notification previews preserve actual message text",()=>{
   assert.equal(helpers.channelSlug(" General Chat! "),"general-chat");
 });
 
-test("first-use app tours are wired with the original Genesis intro",()=>{
+test("first-use app tours coexist with the once-only liquid glass Genesis intro",()=>{
   const tour=readFileSync(new URL("../genesis-app-tour.js",import.meta.url),"utf8");
   const intro=readFileSync(new URL("../intro.html",import.meta.url),"utf8");
   assert.match(os,/genesis-app-tour\.js/);
@@ -286,6 +286,7 @@ test("first-use app tours are wired with the original Genesis intro",()=>{
   assert.match(intro,/class="stage"/);
   assert.match(intro,/Genesis OS startup/);
   assert.match(intro,/class="logo-wrap"/);
-  assert.doesNotMatch(intro,/intro-card|Skip intro/);
+  assert.match(updateIntro,/id="skipIntro"/);
+  assert.match(updateIntro,/class="shell"/);
   assert.doesNotMatch(intro,/showcaseAudio/);
 });

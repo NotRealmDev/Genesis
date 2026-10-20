@@ -12,13 +12,13 @@ function fixture({localFails=false}={}){
 }
 test('showcase appears once per account and again when the release changes',()=>{
   const {api,local,session}=fixture();
-  assert.equal(api.destination({user:'Realm'}),'intro.html');
+  assert.equal(api.destination({user:'Realm'}),'intro-update.html');
   api.complete({user:'Realm'});
-  assert.equal(api.destination({user:'REALM'}),'os.html');
-  assert.equal(api.destination({user:'Another user'}),'intro.html');
+  assert.equal(api.destination({user:'REALM'}),'intro.html');
+  assert.equal(api.destination({user:'Another user'}),'intro-update.html');
   for(const key of local.keys())local.set(key,'previous-release');
   session.clear();
-  assert.equal(api.destination({user:'Realm'}),'intro.html');
+  assert.equal(api.destination({user:'Realm'}),'intro-update.html');
 });
 test('session fallback prevents a redirect loop when persistent writes fail',()=>{
   const {api}=fixture({localFails:true});
