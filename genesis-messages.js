@@ -13,6 +13,63 @@
   const TUTORIAL_KEY="genesisMessagesTutorialComplete";
   const SDK_VERSION="2.116.0";
   let directCall=null,callTimer=null,voiceGeneration=0;
+  // Gentle synthesized incoming ringtone and outgoing ringback (no external assets).
+  let callAudio=null,callToneTimer=null;
+  const callToneVoices=new Set();
+  function unlockCallAudio(){
+    if(!callAudio){
+      const Audio=global.AudioContext||global.webkitAudioContext;
+      if(!Audio)return;
+      try{callAudio=new Audio()}catch{return}
+    }
+    if(callAudio.state==="suspended"){
+      try{callAudio.resume().catch(()=>{})}catch{}
+    }
+  }
+  function stopCallTone(){
+    if(callToneTimer!==null){clearInterval(callToneTimer);callToneTimer=null}
+    for(const {osc,gain} of callToneVoices){
+      try{osc.stop()}catch{}
+      try{osc.disconnect()}catch{}
+      try{gain.disconnect()}catch{}
+    }
+    callToneVoices.clear();
+  }
+  function playCallPhrase(kind){
+    if(!callAudio||callAudio.state==="closed")return;
+    const incoming=kind==="incoming";
+    // Each phrase leaves a quiet gap before its next repeat.
+    const notes=incoming
+      ? [[523.25,0,.24],[659.25,.28,.24],[783.99,.56,.38],[659.25,1.05,.30]]
+      : [[440,0,.27],[493.88,.33,.27]];
+    const volume=incoming?.045:.022;
+    for(const [frequency,offset,duration] of notes){
+      const osc=callAudio.createOscillator(),gain=callAudio.createGain();
+      const start=callAudio.currentTime+.02+offset;
+      osc.type="sine";osc.frequency.setValueAtTime(frequency,start);
+      gain.gain.setValueAtTime(.0001,start);
+      gain.gain.exponentialRampToValueAtTime(volume,start+.04);
+      gain.gain.setValueAtTime(volume,start+duration-.06);
+      gain.gain.exponentialRampToValueAtTime(.0001,start+duration);
+      osc.connect(gain);gain.connect(callAudio.destination);
+      const voice={osc,gain};callToneVoices.add(voice);
+      osc.onended=()=>{callToneVoices.delete(voice);osc.disconnect();gain.disconnect()};
+      osc.start(start);osc.stop(start+duration+.01);
+    }
+  }
+  function startCallTone(kind){
+    stopCallTone();
+    unlockCallAudio();
+    if(!callAudio)return; // Web Audio unavailable or forbidden by the browser.
+    try{
+      playCallPhrase(kind);
+      callToneTimer=setInterval(()=>playCallPhrase(kind),kind==="incoming"?3000:4000);
+    }catch{stopCallTone()}
+  }
+  // Browsers can restrict unsolicited sound; unlock on an OS user gesture.
+  global.addEventListener?.("pointerdown",unlockCallAudio,{passive:true});
+  global.addEventListener?.("keydown",unlockCallAudio);
+  global.addEventListener?.("pagehide",stopCallTone);
   function onlineDot(id){
     const online=global.GenesisPresence?.users?.().some(user=>user.id===String(id));
     return '<i class="gm-presence-dot '+(online?'online':'')+'" title="'+(online?'Online':'Offline or unavailable')+'" aria-label="'+(online?'Online':'Offline or unavailable')+'"></i>';
@@ -31,7 +88,10 @@
     if(!card){card=document.createElement('div');card.id='gmCallNotice';card.className='gm-glass-notice';card.setAttribute?.('role','dialog');card.setAttribute?.('aria-label','Direct call');document.body.appendChild(card)}
     card.replaceChildren();
     const label=document.createElement('strong');label.textContent=text;card.appendChild(label);
-    if(incoming){const accept=document.createElement('button');accept.textContent='Accept';accept.onclick=acceptCall;card.appendChild(accept)}
+    if(incoming){
+      const accept=document.createElement('button');accept.textContent='Accept';accept.onclick=acceptCall;card.appendChild(accept);
+      const silence=document.createElement('button');silence.textContent='Silence';silence.setAttribute('aria-label','Silence ringtone');silence.onclick=()=>{stopCallTone();silence.disabled=true;silence.textContent='Silenced'};card.appendChild(silence);
+    }
     const end=document.createElement('button');end.textContent=incoming?'Decline':'End call';end.onclick=()=>endCall();card.appendChild(end);
   }
   async function callContact(){
@@ -44,19 +104,21 @@
     if(directCall!==call)return;
     try{
       await sendBroadcast(call.peer,'direct-call',{action:'invite',id,from:state.identity,to:call.peer,name:currentName()});
+      if(directCall!==call||call.accepted)return;
+      startCallTone('outgoing');
       callTimer=setTimeout(()=>{if(directCall===call)endCall()},30000);
     }catch{endCall()}
   }
   async function acceptCall(){
     const call=directCall;if(!call?.incoming)return;
-    clearTimeout(callTimer);global.openApp?.('messages');
+    stopCallTone();clearTimeout(callTimer);global.openApp?.('messages');
     callNotice('Connecting to ID '+call.peer+'…');
     if(!await joinVoice(call.server,{id:'call',type:'voice'})){if(directCall===call)endCall();return}
     if(directCall!==call)return;
     try{await sendBroadcast(call.peer,'direct-call',{action:'accept',id:call.id,from:state.identity,to:call.peer});callNotice('Call with ID '+call.peer)}catch{endCall()}
   }
   async function endCall(notify=true){
-    const call=directCall;directCall=null;clearTimeout(callTimer);document.getElementById('gmCallNotice')?.remove();
+    const call=directCall;directCall=null;stopCallTone();clearTimeout(callTimer);document.getElementById('gmCallNotice')?.remove();
     await leaveVoice();
     if(call&&notify)sendBroadcast(call.peer,'direct-call',{action:'end',id:call.id,from:state.identity,to:call.peer}).catch(()=>{});
   }
@@ -66,10 +128,10 @@
     if(p.action==='invite'){
       if(directCall||state.voice.channel){sendBroadcast(from,'direct-call',{action:'end',id:p.id,from:state.identity,to:from}).catch(()=>{});return}
       directCall={id:p.id,peer:from,incoming:true,server:{id:p.id,members:[state.identity,from],name:'Direct call'}};
-      callNotice('Incoming call · ID '+from,true);callTimer=setTimeout(()=>endCall(),30000);
+      callNotice('Incoming call · ID '+from,true);startCallTone('incoming');callTimer=setTimeout(()=>endCall(),30000);
     }else if(directCall?.id===p.id&&directCall.peer===from){
       if(p.action==='end')endCall(false);
-      if(p.action==='accept'){clearTimeout(callTimer);callNotice('Call with ID '+from)}
+      if(p.action==='accept'){directCall.accepted=true;stopCallTone();clearTimeout(callTimer);callNotice('Call with ID '+from)}
     }
   }
   const SERVER_ACCENTS=Object.freeze({
