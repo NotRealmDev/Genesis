@@ -1,0 +1,4 @@
+# Supabase validates Genesis JWTs inside the function using auth.getUser.
+# Publishable API keys are accepted by the gateway, but are never enough to use GPT.
+[functions.genesis-gpt]
+verify_jwt = false
