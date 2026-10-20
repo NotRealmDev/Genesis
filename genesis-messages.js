@@ -12,6 +12,66 @@
   const VIEW_PREFIX="genesisMessagesView:";
   const TUTORIAL_KEY="genesisMessagesTutorialComplete";
   const SDK_VERSION="2.116.0";
+  let directCall=null,callTimer=null,voiceGeneration=0;
+  function onlineDot(id){
+    const online=global.GenesisPresence?.users?.().some(user=>user.id===String(id));
+    return '<i class="gm-presence-dot '+(online?'online':'')+'" title="'+(online?'Online':'Offline or unavailable')+'" aria-label="'+(online?'Online':'Offline or unavailable')+'"></i>';
+  }
+  function deleteMessage(button){
+    const id=button.closest('[data-message-id]')?.dataset.messageId;
+    const list=state.mode==='server'?serverConversation(state.selectedServer,state.selectedChannel):conversation(state.selected);
+    const index=list.findIndex(message=>message.id===id);
+    if(index<0||!confirm('Delete this message from your history? Other people keep their copy.'))return;
+    list.splice(index,1);
+    if(state.mode==='server')saveServerHistory();else saveHistory();
+    renderAll();
+  }
+  function callNotice(text,incoming=false){
+    let card=document.getElementById('gmCallNotice');
+    if(!card){card=document.createElement('div');card.id='gmCallNotice';card.className='gm-glass-notice';card.setAttribute?.('role','dialog');card.setAttribute?.('aria-label','Direct call');document.body.appendChild(card)}
+    card.replaceChildren();
+    const label=document.createElement('strong');label.textContent=text;card.appendChild(label);
+    if(incoming){const accept=document.createElement('button');accept.textContent='Accept';accept.onclick=acceptCall;card.appendChild(accept)}
+    const end=document.createElement('button');end.textContent=incoming?'Decline':'End call';end.onclick=()=>endCall();card.appendChild(end);
+  }
+  async function callContact(){
+    if(directCall||!state.selected||state.mode!=='dm')return;
+    const id='dm-'+uniqueMessageId();
+    directCall={id,peer:state.selected,incoming:false,server:{id,members:[state.identity,state.selected],name:'Direct call'}};
+    const call=directCall;
+    callNotice('Calling ID '+call.peer+'…');
+    if(!await joinVoice(call.server,{id:'call',type:'voice'})){if(directCall===call)endCall();return}
+    if(directCall!==call)return;
+    try{
+      await sendBroadcast(call.peer,'direct-call',{action:'invite',id,from:state.identity,to:call.peer,name:currentName()});
+      callTimer=setTimeout(()=>{if(directCall===call)endCall()},30000);
+    }catch{endCall()}
+  }
+  async function acceptCall(){
+    const call=directCall;if(!call?.incoming)return;
+    clearTimeout(callTimer);global.openApp?.('messages');
+    callNotice('Connecting to ID '+call.peer+'…');
+    if(!await joinVoice(call.server,{id:'call',type:'voice'})){if(directCall===call)endCall();return}
+    if(directCall!==call)return;
+    try{await sendBroadcast(call.peer,'direct-call',{action:'accept',id:call.id,from:state.identity,to:call.peer});callNotice('Call with ID '+call.peer)}catch{endCall()}
+  }
+  async function endCall(notify=true){
+    const call=directCall;directCall=null;clearTimeout(callTimer);document.getElementById('gmCallNotice')?.remove();
+    await leaveVoice();
+    if(call&&notify)sendBroadcast(call.peer,'direct-call',{action:'end',id:call.id,from:state.identity,to:call.peer}).catch(()=>{});
+  }
+  function handleDirectCall(packet){
+    const p=packet?.payload||packet,from=normalizeId(p?.from);
+    if(!from||from===state.identity||normalizeId(p.to)!==state.identity||!/^dm-[a-z0-9_-]+$/i.test(p.id||''))return;
+    if(p.action==='invite'){
+      if(directCall||state.voice.channel){sendBroadcast(from,'direct-call',{action:'end',id:p.id,from:state.identity,to:from}).catch(()=>{});return}
+      directCall={id:p.id,peer:from,incoming:true,server:{id:p.id,members:[state.identity,from],name:'Direct call'}};
+      callNotice('Incoming call · ID '+from,true);callTimer=setTimeout(()=>endCall(),30000);
+    }else if(directCall?.id===p.id&&directCall.peer===from){
+      if(p.action==='end')endCall(false);
+      if(p.action==='accept'){clearTimeout(callTimer);callNotice('Call with ID '+from)}
+    }
+  }
   const SERVER_ACCENTS=Object.freeze({
     violet:"#7c6cff",blue:"#4f8cff",cyan:"#35b9cf",green:"#43b581",orange:"#f0a45d",pink:"#e96fb2"
   });
@@ -242,9 +302,13 @@
     return mediaLabel(media)||"sent a message";
   }
   function showMessageNotification(sender,text,media,context){
-    if(typeof global.showGenesisAnnouncement!=="function")return;
     const prefix=context?sender+" · "+context:sender;
-    global.showGenesisAnnouncement(prefix+": "+messagePreview(text,media),6000);
+    document.getElementById('gmMessageNotice')?.remove();
+    const card=document.createElement('button');card.id='gmMessageNotice';card.className='gm-glass-notice gm-message-notice';
+    card.textContent=prefix+": "+messagePreview(text,media);
+    card.onclick=()=>{global.openApp?.('messages');card.remove()};
+    document.body.appendChild(card);
+    setTimeout(()=>{card.classList.add('leaving');setTimeout(()=>card.remove(),350)},6000);
   }
 
   function html(){
@@ -350,7 +414,7 @@
     list.innerHTML='<div class="gm-section-label">DIRECT MESSAGES</div>'+sorted.map(function(contact){
       const last=lastMessage(contact.id),unread=unreadCount(contact.id);
       const preview=last?messagePreview(last.text,last.media):"New conversation";
-      return '<button class="gm-contact '+(contact.id===state.selected?"active":"")+'" type="button" onclick="GenesisMessages.selectContact(\''+contact.id+'\')"><span class="gm-avatar">'+escapeHTML(contact.id.slice(-2))+'</span><span class="gm-contact-copy"><strong>'+escapeHTML(contactLabel(contact))+'</strong><small>'+escapeHTML(preview)+'</small></span><span class="gm-contact-meta"><time>'+(last?escapeHTML(formatTime(last.sentAt)):"")+'</time>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</span></button>';
+      return '<button class="gm-contact '+(contact.id===state.selected?"active":"")+'" type="button" onclick="GenesisMessages.selectContact(\''+contact.id+'\')"><span class="gm-avatar">'+escapeHTML(contact.id.slice(-2))+'</span><span class="gm-contact-copy"><strong>'+escapeHTML(contactLabel(contact))+onlineDot(contact.id)+'</strong><small>'+escapeHTML(preview)+'</small></span><span class="gm-contact-meta"><time>'+(last?escapeHTML(formatTime(last.sentAt)):"")+'</time>'+(unread?'<b>'+Math.min(unread,99)+'</b>':'')+'</span></button>';
     }).join("");
     updateBadges();
   }
@@ -365,7 +429,7 @@
       const media=message.media?.url?'<img class="gm-message-media" src="'+escapeHTML(message.media.url)+'" alt="'+escapeHTML(message.media.type||"image")+'" loading="lazy">':"";
       const body=String(message.text||"").trim();
       const visibleText=(body==="Image"||body==="GIF")&&media?"":'<div class="gm-message-text">'+escapeHTML(body).replace(/\n/g,"<br>")+'</div>';
-      return '<article class="gm-chat-message '+(own?"own":"")+'" data-message-id="'+escapeHTML(message.id)+'"><div class="gm-message-avatar">'+escapeHTML(avatar)+'</div><div class="gm-message-content"><div class="gm-message-meta"><strong>'+escapeHTML(sender)+'</strong><time>'+escapeHTML(formatTime(message.sentAt))+escapeHTML(status)+'</time></div>'+visibleText+media+'</div></article>';
+      return '<article class="gm-chat-message '+(own?"own":"")+'" data-message-id="'+escapeHTML(message.id)+'"><div class="gm-message-avatar">'+escapeHTML(avatar)+'</div><div class="gm-message-content"><div class="gm-message-meta"><strong>'+escapeHTML(sender)+'</strong><time>'+escapeHTML(formatTime(message.sentAt))+escapeHTML(status)+'</time><button class="gm-delete" type="button" onclick="GenesisMessages.deleteMessage(this)" title="Delete for me">Delete for me</button></div>'+visibleText+media+'</div></article>';
     }).join("");
   }
 
@@ -393,6 +457,11 @@
     const input=document.getElementById("gmMessageInput");
     const send=document.getElementById("gmSendButton");
     if(!header||!thread||!input||!send)return;
+    const scrollKey=state.mode+':'+state.selected+':'+state.selectedServer+':'+state.selectedChannel;
+    const follow=thread.dataset.conversation!==scrollKey||thread.scrollHeight-thread.scrollTop-thread.clientHeight<70;
+    const previousTop=thread.scrollTop;
+    thread.dataset.conversation=scrollKey;
+    const restoreScroll=()=>{thread.scrollTop=follow?thread.scrollHeight:previousTop};
     bindImagePicker();
 
     if(state.mode==="server"){
@@ -421,7 +490,7 @@
       thread.innerHTML=messages.length?renderMessageRows(messages,true):'<div class="gm-channel-welcome"><div>#</div><h2>Welcome to #'+escapeHTML(channel.name)+'</h2><p>This is the start of the channel in '+escapeHTML(server.name)+'.</p></div>';
       input.disabled=false;send.disabled=false;input.placeholder="Message #"+channel.name;
       updateConnectionUI();
-      requestAnimationFrame(function(){thread.scrollTop=thread.scrollHeight});
+      requestAnimationFrame(restoreScroll);
       return;
     }
 
@@ -432,12 +501,12 @@
       thread.innerHTML='<div class="gm-empty-thread"><div class="gm-empty-orb">✦</div><h3>Your conversations</h3><p>Add a Genesis ID or create a server to start talking.</p></div>';
       input.disabled=true;send.disabled=true;input.placeholder="Choose a conversation";updateConnectionUI();return;
     }
-    header.innerHTML='<div class="gm-chat-person"><span class="gm-avatar">'+escapeHTML(contact.id.slice(-2))+'</span><span><strong>'+escapeHTML(contactLabel(contact))+'</strong><small>ID '+escapeHTML(contact.id)+' · <span id="gmConnectionLabel"></span></small></span></div><button type="button" class="gm-remove" onclick="GenesisMessages.removeCurrent()" title="Remove DM">•••</button>';
+    header.innerHTML='<div class="gm-chat-person"><span class="gm-avatar">'+escapeHTML(contact.id.slice(-2))+'</span><span><strong>'+escapeHTML(contactLabel(contact))+'</strong><small>'+onlineDot(contact.id)+'ID '+escapeHTML(contact.id)+' · <span id="gmConnectionLabel"></span></small></span></div><button type="button" class="gm-call" onclick="GenesisMessages.callContact()">Call</button><button type="button" class="gm-remove" onclick="GenesisMessages.removeCurrent()" title="Remove DM">•••</button>';
     const messages=conversation(contact.id);
     thread.innerHTML=messages.length?renderMessageRows(messages,false):'<div class="gm-channel-welcome"><div>@</div><h2>'+escapeHTML(contactLabel(contact))+'</h2><p>This is the beginning of your direct message history.</p></div>';
     input.disabled=false;send.disabled=false;input.placeholder="Message "+contactLabel(contact);
     updateConnectionUI();
-    requestAnimationFrame(function(){thread.scrollTop=thread.scrollHeight});
+    requestAnimationFrame(restoreScroll);
   }
 
   function renderVoiceDock(){
@@ -446,7 +515,7 @@
     const server=state.servers.find(item=>item.id===state.voice.serverId);
     const channel=server?.channels.find(item=>item.id===state.voice.channelId);
     dock.hidden=false;
-    dock.innerHTML='<div><strong>Voice Connected</strong><small>'+escapeHTML(server?.name||"Server")+' · '+escapeHTML(channel?.name||"voice")+'</small></div><button type="button" onclick="GenesisMessages.toggleVoiceMute()" title="Mute">'+(state.voice.muted?"Unmute":"Mute")+'</button><button class="danger" type="button" onclick="GenesisMessages.leaveVoice()" title="Disconnect">×</button>';
+    dock.innerHTML='<div><strong>Voice Connected</strong><small>'+escapeHTML(server?.name||"Server")+' · '+escapeHTML(channel?.name||"voice")+'</small></div><button type="button" onclick="GenesisMessages.toggleVoiceMute()" title="Mute">'+(state.voice.muted?"Unmute":"Mute")+'</button><button class="danger" type="button" onclick="GenesisMessages.endCall()" title="Disconnect">×</button>';
   }
   function renderAll(){renderServerRail();renderContacts();renderConversation();renderVoiceDock();updateBadges()}
   function updateConnectionUI(){
@@ -659,7 +728,7 @@
   }
   function validVoicePacket(payload){
     if(serverId(payload?.serverId)!==state.voice.serverId||serverId(payload?.channelId)!==state.voice.channelId)return "";
-    const from=normalizeId(payload?.from),server=state.servers.find(item=>item.id===state.voice.serverId);
+    const from=normalizeId(payload?.from),server=directCall?.server.id===state.voice.serverId?directCall.server:state.servers.find(item=>item.id===state.voice.serverId);
     return from&&server?.members.includes(from)?from:"";
   }
   async function handleVoiceHello(packet){
@@ -697,11 +766,13 @@
   function handleVoiceLeave(packet){
     const payload=packet?.payload||packet,from=validVoicePacket(payload);if(from)removeVoicePeer(from);
   }
-  async function joinVoice(){
-    const server=currentServer(),channel=currentChannel();
+  async function joinVoice(directServer,directChannel){
+    if(!directServer&&directCall)await endCall();
+    const server=directServer||currentServer(),channel=directChannel||currentChannel();
     if(!server||channel?.type!=="voice"||state.voice.joining)return false;
     if(state.voice.channel&&state.voice.serverId===server.id&&state.voice.channelId===channel.id)return true;
     await leaveVoice();
+    const generation=voiceGeneration;
     if(!state.client)await start();
     if(!state.client||!navigator.mediaDevices?.getUserMedia||typeof RTCPeerConnection!=="function"){
       if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Voice is not available in this browser.",4200);
@@ -710,6 +781,7 @@
     state.voice.joining=true;
     try{
       const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true},video:false});
+      if(generation!==voiceGeneration){stream.getTracks().forEach(track=>track.stop());return false}
       state.voice.serverId=server.id;state.voice.channelId=channel.id;state.voice.stream=stream;state.voice.participants={};state.voice.muted=false;
       voiceParticipant(state.identity,currentName(),false);
       const room=state.client.channel(voiceTopic(server.id,channel.id),{config:{broadcast:{self:false,ack:true}}});
@@ -726,15 +798,18 @@
           else if(status==="CHANNEL_ERROR"||status==="TIMED_OUT"){clearTimeout(timer);reject(new Error("Voice signaling could not connect"))}
         });
       });
+      if(generation!==voiceGeneration)return false;
       await sendVoiceEvent("voice-hello",{from:state.identity,name:currentName(),serverId:server.id,channelId:channel.id});
       renderAll();return true;
     }catch(error){
       console.warn("Genesis voice join:",error);
+      if(generation!==voiceGeneration)return false;
       if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Could not join voice: "+String(error?.message||error),4600);
       await leaveVoice();return false;
     }finally{state.voice.joining=false}
   }
   async function leaveVoice(){
+    voiceGeneration++;
     const channel=state.voice.channel;
     if(channel){try{await sendVoiceEvent("voice-leave",{from:state.identity,serverId:state.voice.serverId,channelId:state.voice.channelId})}catch{}}
     for(const pc of state.voice.peers.values()){try{pc.close()}catch{}}
@@ -913,6 +988,7 @@
       .channel(topicFor(id),{config:{broadcast:{self:false,ack:true}}})
       .on("broadcast",{event:"message"},handleIncoming)
       .on("broadcast",{event:"receipt"},handleReceipt)
+      .on("broadcast",{event:"direct-call"},handleDirectCall)
       .on("broadcast",{event:"server-sync"},handleServerSync)
       .on("broadcast",{event:"server-message"},handleServerMessage)
       .subscribe(function(status){
@@ -952,7 +1028,7 @@
     clearTimeout(state.tutorialTimer);
     if(localStorage.getItem(TUTORIAL_KEY)!=="1")state.tutorialTimer=setTimeout(function(){beginTutorial(0)},560);
   }
-  function onWindowClose(){clearTimeout(state.tutorialTimer);finishTutorial(false);void leaveVoice();state.window=null}
+  function onWindowClose(){clearTimeout(state.tutorialTimer);finishTutorial(false);void endCall();state.window=null}
 
   function tutorialElements(){
     return {shell:document.getElementById("genesisMessagesApp"),card:document.getElementById("gmTutorial"),svg:document.getElementById("gmTutorialLine"),path:document.querySelector("#gmTutorialLine path"),dot:document.querySelector("#gmTutorialLine circle")};
@@ -1003,6 +1079,7 @@
     if(typeof document==="undefined"||document.getElementById("genesisMessagesStyles"))return;
     const style=document.createElement("style");style.id="genesisMessagesStyles";
     style.textContent=[
+      '.gm-chat{min-height:0;overflow:hidden}.gm-thread{overscroll-behavior:contain;touch-action:pan-y;scrollbar-gutter:stable;scroll-behavior:auto!important}.gm-presence-dot{display:inline-block;width:7px;height:7px;margin:0 5px;border-radius:50%;background:#727887;vertical-align:middle}.gm-presence-dot.online{background:#43e59a;box-shadow:0 0 8px #43e59a66}.gm-delete,.gm-call{border:1px solid #ffffff24;border-radius:8px;padding:5px 8px;background:#ffffff0c;color:#ccd5e7;cursor:pointer;font-size:9px}.gm-delete{margin-left:auto}.gm-glass-notice{position:fixed;right:24px;top:75px;z-index:999999;max-width:min(390px,calc(100vw - 32px));display:flex;align-items:center;gap:10px;padding:18px;border:1px solid #ffffff45;border-radius:22px;color:#f3f7ff;background:linear-gradient(135deg,#7789b844,#15213bc9);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);box-shadow:inset 0 1px 0 #ffffff55,0 18px 60px #0005;animation:gmGlassEnter .45s cubic-bezier(.16,1,.3,1);transition:opacity .35s,transform .35s;overflow-wrap:anywhere}.gm-glass-notice button{padding:8px;border:1px solid #ffffff33;border-radius:10px;background:#ffffff15;color:white;cursor:pointer}.gm-message-notice{top:auto;bottom:28px;text-align:left;cursor:pointer;font:inherit;font-size:12px;line-height:1.5}.gm-glass-notice.leaving{opacity:0;transform:translateY(12px) scale(.97)}@keyframes gmGlassEnter{from{opacity:0;transform:translateY(18px) scale(.94)}to{opacity:1;transform:none}}@media(prefers-reduced-motion:reduce){.gm-glass-notice{animation:none;transition:none}}',
       '.window[data-app="messages"]{width:min(1120px,calc(100vw - 120px));height:min(680px,calc(100vh - 90px));animation:gmWindowOpen .52s cubic-bezier(.16,.86,.22,1.04)}',
       '@keyframes gmWindowOpen{0%{opacity:0;transform:translate(-50%,-47%) scale(.88);filter:blur(10px)}100%{opacity:1;transform:translate(-50%,-50%) scale(1);filter:blur(0)}}',
       '.window[data-app="messages"] .window-content{overflow:hidden}',
@@ -1050,6 +1127,7 @@
   }
 
   if(typeof global.addEventListener==="function"){
+    global.addEventListener("genesis:presence",function(){if(document.getElementById("genesisMessagesApp")){renderContacts();document.querySelectorAll(".gm-chat-person .gm-presence-dot").forEach(dot=>{const online=global.GenesisPresence?.users?.().some(user=>user.id===state.selected);dot.classList.toggle("online",!!online);dot.title=online?"Online":"Offline or unavailable"})}});
     global.addEventListener("online",function(){start();retryQueued()});
     global.addEventListener("offline",function(){state.connection="offline";updateConnectionUI()});
     global.addEventListener("storage",function(event){
@@ -1066,7 +1144,7 @@
     toggleAddContact,submitContact,sendCurrent,removeCurrent,pickImage,sendGifPrompt,openGifSearch,closeGifSearch,searchGifs,chooseGif,
     createServerPrompt,createGroupPrompt,createChannelPrompt,createVoiceChannelPrompt,inviteToServerPrompt,
     openServerSettings,closeServerSettings,saveServerSettings,
-    joinVoice,leaveVoice,toggleVoiceMute,
+    joinVoice,leaveVoice,toggleVoiceMute,deleteMessage,callContact,acceptCall,endCall,
     replayTutorial,nextTutorial,finishTutorial,
     __test:Object.freeze({normalizeId,topicFor,voiceTopic,escapeHTML,channelSlug,serverAccent,serverIcon,safeMediaUrl,messagePreview,normalizeServer})
   });
