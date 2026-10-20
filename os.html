@@ -596,7 +596,7 @@ button{color:inherit}
 <script src="prism.js" defer></script>
 <script src="prism.api.js" defer></script>
 <script src="libby.js" defer></script>
-<script src="genesis-prism.js?build=wifi-r2" defer></script>
+<script src="genesis-prism.js?build=wifi-r3" defer></script>
 <script src="genesis-announcements.js" defer></script>
 <script src="genesis-overhaul.js" defer></script>
 </head>
@@ -1775,6 +1775,7 @@ function openApp(appId){
 function closeWindow(appId,win){
   if(appId==="messages") window.GenesisMessages?.onWindowClose?.();
   if(appId==="browser"){
+    try{win.__genesisBrowserAbort?.abort()}catch{}
     captureBrowserLocation(win);
     persistBrowserState(false);
     browserState.navigationId++;
@@ -2313,6 +2314,34 @@ function captureBrowserLocation(win=openWindows.browser){
 }
 
 let genesisPrismRuntimePromise=null;
+
+let genesisBrowserRepairPromise=null;
+async function repairGenesisBrowserConnection(win,reason="manual browser retry"){
+  if(genesisBrowserRepairPromise)return genesisBrowserRepairPromise;
+  genesisBrowserRepairPromise=(async()=>{
+    if(!win||openWindows.browser!==win)throw new Error("Genesis Browser is closed.");
+    const status=win.querySelector("#browserStatus"),frame=win.querySelector("#browserFrame");
+    if(!frame)throw new Error("Browser frame is missing.");
+    if(status)status.textContent="Repairing the browser transport and changing routes…";
+    const current=browserState.history[browserState.index]||"os://home";
+    try{
+      const runtime=await ensureGenesisPrismRuntime(status);
+      const fresh=await runtime.recoverFrame(frame,reason,{rotateWisp:true});
+      if(openWindows.browser!==win)return;
+      browserState.prismFrame=fresh;
+      browserState.prismError="";
+      if(status)status.textContent="Connected · reopening the website…";
+      if(current!=="os://home")await browserNavigate(current,false,false,{forceProxy:true});
+    }catch(error){
+      browserState.prismFrame=null;
+      browserState.prismError=error?.message||String(error);
+      if(openWindows.browser===win)showPrismError(browserState.prismError);
+      throw error;
+    }
+  })().finally(()=>{genesisBrowserRepairPromise=null});
+  return genesisBrowserRepairPromise;
+}
+
 function genesisPrismRuntimeReady(){return !!(window.$scramjet&&window.$scramjetController?.Controller&&window.LibcurlTransport&&typeof window.GenesisPrism?.createFrame==="function")}
 function waitForGenesisPrismRuntime(timeoutMs=1800){
   const started=Date.now();return new Promise(resolve=>{const check=()=>{if(genesisPrismRuntimeReady())return resolve(true);if(Date.now()-started>=timeoutMs)return resolve(false);setTimeout(check,40)};check()});
@@ -2446,6 +2475,7 @@ function setBrowserAdsEnabled(enabled,win=openWindows.browser){
 }
 
 function initBrowser(win){
+  win.__genesisBrowserAbort=new AbortController();
   const address=win.querySelector("#browserAddress");
   const go=win.querySelector("#browserGo");
   const back=win.querySelector("#browserBack");
@@ -2505,11 +2535,19 @@ function initBrowser(win){
   tryInside.onclick=()=>{
     const current=browserState.history[browserState.index];
     if(current && current!=="os://home"){
-      browserState.prismFrame=null;
-      browserState.prismError="";
-      browserNavigate(current,false,true,{forceProxy:true});
+      repairGenesisBrowserConnection(win,"user selected Repair & Retry")
+        .catch(error=>console.warn("Genesis browser repair:",error));
     }
   };
+
+  // A restored connection may keep the old iframe bound to a dead Wisp.
+  const onOnline=()=>{
+    const current=browserState.history[browserState.index];
+    if(openWindows.browser===win && current && current!=="os://home" && browserState.prismError){
+      repairGenesisBrowserConnection(win,"network connection restored").catch(()=>{});
+    }
+  };
+  window.addEventListener("online",onOnline,{signal:win.__genesisBrowserAbort.signal});
 
   win.querySelectorAll("[data-browser-url]").forEach(button=>{
     button.addEventListener("click",()=>browserNavigate(button.dataset.browserUrl,true,true));
