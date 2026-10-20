@@ -30,7 +30,7 @@
   const delay = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
   const TRANSPORT_HEALTH_URL = "https://example.com/";
   const TRANSIENT_STATUSES = new Set([408,425,500,502,503,504]);
-  const PROXY_ERROR_PATTERN = /Genesis upstream request failed|Internal Service Worker Error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
+  const PROXY_ERROR_PATTERN = /Genesis upstream request failed|Internal Service Worker Error|The destination could not be reached|The HTTPS Genesis proxy fallback|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
 
   let officialWispModulePromise = null;
 
@@ -63,6 +63,8 @@
     try{
       const parsed=new URL(String(value||"").trim());
       if(parsed.protocol!=="wss:" && parsed.protocol!=="ws:") return "";
+      // Secure Genesis pages cannot use cleartext WebSockets on public hosts.
+      if(parsed.protocol==="ws:" && location.protocol==="https:" && !["localhost","127.0.0.1","[::1]"].includes(parsed.hostname))return "";
       if(!parsed.pathname.endsWith("/")) parsed.pathname += "/";
       return parsed.href;
     }catch{return "";}
@@ -895,7 +897,9 @@
     const https=(async()=>{
       // Prefer full Wisp compatibility when it starts promptly, without
       // waiting through every provider's initialization and health timeout.
-      await Promise.race([delay(1500),wisp.catch(()=>{})]);
+      // Slow but valid Wisp connections can require more than 1.5s on public
+      // Wi-Fi. Give full-featured Wisp a short chance before GET-only HTTPS.
+      await Promise.race([delay(3200),wisp.catch(()=>{})]);
       if(winner) throw new Error("Wisp is already connected.");
       let lastError=new Error("No HTTPS fallback is configured.");
       for(const endpoint of getHttpProxyUrls()){
