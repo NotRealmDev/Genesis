@@ -16,7 +16,7 @@
 <script>
 (function(){
   const TARGET_KEY="genesisBrowserTarget",LAST_TARGET_KEY="genesisBrowserLastTarget",LAUNCH_PREFIX="genesisBrowserLaunch:";
-  const PROXY_ERROR_PATTERN=/Genesis upstream request failed|Internal Service Worker Error|Genesis transport error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
+  const PROXY_ERROR_PATTERN=/Genesis upstream request failed|Internal Service Worker Error|Genesis transport error|The destination could not be reached|The HTTPS Genesis proxy fallback|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
   const frame=document.getElementById("browserFrame"),officialFrame=document.getElementById("officialFrame"),status=document.getElementById("status"),loading=document.getElementById("loading"),loadingText=document.getElementById("loadingText"),error=document.getElementById("error"),errorText=document.getElementById("errorText"),retry=document.getElementById("retry"),repair=document.getElementById("repair"),reload=document.getElementById("reload"),aboutBlank=document.getElementById("aboutBlank"),footerNote=document.getElementById("footerNote");
   let target="",prismFrame=null,started=false,starting=false,recovering=false,loadTimer=null,readinessTimer=null,youtubeFallbackTimer=null,navigationId=0,automaticRecoveries=0,lastFailure="",usingYouTubeFallback=false,youtubeFallbacks=[],youtubeFallbackIndex=0;
 
