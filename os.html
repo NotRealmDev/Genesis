@@ -704,6 +704,7 @@ button{color:inherit}
 <script src="games-s-z.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous"></script>
 <script src="genesis-messages.js"></script>
+<script src="genesis-presence.js?build=presence-r1"></script>
 <script src="genesis-app-tour.js"></script>
 <script>
 const embeddedGamePayloads = {
@@ -1273,7 +1274,8 @@ function deactivateOSHTML(){
     <div class="heading" style="font-size:17px;margin-top:22px;margin-bottom:10px">IDs currently on Genesis</div>
     <div id="genesisActiveSummary" class="muted" style="font-size:11px;margin-bottom:10px">Loading ID status…</div>
     <div class="admin-id-summary" aria-live="polite">
-      <div class="admin-id-summary-card"><div class="admin-id-summary-label">Online IDs</div><div id="genesisOnlineIds" class="admin-id-summary-value active">Loading…</div></div>
+      <div class="admin-id-summary-card"><div class="admin-id-summary-label">Live users</div><div id="genesisLiveStatus">Connecting…</div><div id="genesisLiveUsers"></div></div>
+      <div class="admin-id-summary-card"><div class="admin-id-summary-label">Recently seen IDs (database)</div><div id="genesisOnlineIds" class="admin-id-summary-value active">Loading…</div></div>
       <div class="admin-id-summary-card"><div class="admin-id-summary-label">Active IDs</div><div id="genesisActiveIds" class="admin-id-summary-value active">Loading…</div></div>
       <div class="admin-id-summary-card"><div class="admin-id-summary-label">Deactivated IDs</div><div id="genesisInactiveIds" class="admin-id-summary-value inactive">Loading…</div></div>
     </div>
@@ -3189,6 +3191,7 @@ async function ensureGenesisDevice(){
   const rows = await genesisRpc("genesis_register_device", {p_token:genesisDeviceToken()});
   const d = Array.isArray(rows) ? rows[0] : rows;
   if(!d) return;
+  window.genesisRegisteredDevice=d;
   localStorage.setItem("genesisDisplayId",String(d.display_id));
   const badge = document.getElementById("genesisVisitorId");
   if(badge) badge.textContent = `ID ${d.display_id}`;
@@ -3211,6 +3214,7 @@ async function heartbeatGenesisDevice(){
   try{
     const rows=await genesisRpc("genesis_register_device",{p_token:genesisDeviceToken()});
     const device=Array.isArray(rows)?rows[0]:rows;
+    window.genesisRegisteredDevice=device;
     if(device?.display_id){
       localStorage.setItem("genesisDisplayId",String(device.display_id));
       const badge=document.getElementById("genesisVisitorId");
@@ -3345,6 +3349,7 @@ function setGenesisDeviceFromInput(makeActive){
 
 async function refreshDeactivateOS(){
   if(genesisRole() !== "admin") return;
+  window.GenesisPresence?.render();
   const list = document.getElementById("genesisDeviceList");
   const history = document.getElementById("genesisActionHistory");
   const summary = document.getElementById("genesisActiveSummary");

@@ -78,6 +78,7 @@ test('history failure preserves online IDs; device failure clears stale counts',
       return [{display_id:527,active:true,last_seen:new Date().toISOString()}];
     }
   });
+  context.window=context;
   vm.runInContext(osHTML.slice(osHTML.indexOf('const GENESIS_DEVICE_ONLINE_WINDOW_MS='),osHTML.indexOf('async function heartbeatGenesisDevice')),context);
   vm.runInContext(osHTML.slice(osHTML.indexOf('async function refreshDeactivateOS()'),osHTML.indexOf('function setupGenesisAdminUI()')),context);
   await context.refreshDeactivateOS();
