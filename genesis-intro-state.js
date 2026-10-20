@@ -14,6 +14,6 @@
     try{localStorage.setItem(name,version);}catch{}
     try{sessionStorage.setItem(name,version);}catch{}
   }
-  function destination(login){return shouldShow(login)?"intro.html":"os.html";}
+  function destination(login){return shouldShow(login)?"intro-update.html":"intro.html";}
   global.GenesisIntroState=Object.freeze({version,shouldShow,complete,destination});
 })(window);
