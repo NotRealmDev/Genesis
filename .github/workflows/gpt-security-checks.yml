@@ -1,0 +1,26 @@
+name: Genesis GPT security checks
+
+on:
+  pull_request:
+    paths:
+      - "genesis-gpt.js"
+      - "GPT_DEFAULTS.sql"
+      - "os.html"
+      - "supabase/**"
+      - "tests/gpt-*.test.mjs"
+      - "tests/os-features.test.mjs"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Test Genesis GPT and desktop integrations
+        run: node --test tests/gpt-native.test.mjs tests/gpt-secure.test.mjs tests/os-features.test.mjs

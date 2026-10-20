@@ -19,8 +19,15 @@ test("GPT is a native API surface instead of a website frame",()=>{
   assert.match(markup,/class="gpt-app"/);
   assert.match(markup,/ChatGPT API/);
   assert.match(markup,/class="gpt-key"/);
-  assert.match(markup,/gpt-shared-panel/);
-  assert.match(markup,/save-shared/);
-  assert.match(markup,/platform\.openai\.com\/api-keys/);
+  assert.doesNotMatch(markup,/gpt-shared-panel|gpt-shared-key|save-shared/);
+  assert.match(markup,/secured Supabase GPT service/);
   assert.doesNotMatch(markup,/iframe|chatgpt\.com|claude\.ai|gemini\.google/);
+});
+
+test("GPT routes shared requests through the Supabase function without exposing a shared secret",()=>{
+  assert.match(source,/functions\/v1\/["']?\+FUNCTION_NAME/);
+  assert.match(source,/GenesisAdminAuth\?\.getSessionToken/);
+  assert.doesNotMatch(source,/select=id,endpoint,model,api_key/);
+  assert.doesNotMatch(source,/genesis_gpt_config/);
+  assert.doesNotMatch(source,/Published for everyone/);
 });
