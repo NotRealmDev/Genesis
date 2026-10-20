@@ -12,7 +12,7 @@ const proxyWorker=readFileSync(new URL("../genesis-proxy-worker.js",import.meta.
 const gameCatalogSource=readFileSync(new URL("../games-c-s.js",import.meta.url),"utf8");
 const eaglercraft=readFileSync(new URL("../eaglercraft.html",import.meta.url),"utf8");
 
-function loadPrismShell(){
+function loadPrismShell(overrides={}){
   const store=new Map();
   const context={
     console,
@@ -50,10 +50,38 @@ function loadPrismShell(){
     dispatchEvent(){}
   };
   context.window=context;
+  Object.assign(context,overrides);
   vm.createContext(context);
-  vm.runInContext(prismSource,context,{filename:"genesis-prism.js"});
+  vm.runInContext(prismSource.replace('  installBrowserRouting();','  window.testCreateTransport=createTransport; window.testHttpTransport=HttpProxyTransport; window.testWispTransport=ResilientWispTransport;\n  installBrowserRouting();'),context,{filename:"genesis-prism.js"});
   return context;
 }
+
+test("HTTPS fallback works when the Wisp library is missing",async()=>{
+  const context=loadPrismShell({fetch:async()=>({status:200})});
+  const result=await context.testCreateTransport([]);
+  assert.equal(result.profile,"https-fallback");
+  await result.transport.close();
+});
+
+test("a stalled Wisp does not delay HTTPS and its late client is closed",async()=>{
+  let finishWisp,closed=false;
+  const context=loadPrismShell({LibcurlTransport:{},fetch:async()=>({status:200}),
+    setTimeout:(fn,ms)=>setTimeout(fn,Math.min(ms,10))});
+  context.testWispTransport.prototype.init=function(){return new Promise(resolve=>{finishWisp=resolve})};
+  context.testWispTransport.prototype.close=async function(){closed=true};
+  const result=await context.testCreateTransport(['wss://test.example/']);
+  assert.equal(result.profile,'https-fallback');
+  finishWisp();
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(closed,true);
+});
+
+test("HTTPS error pages never count as a usable fallback",async()=>{
+  for(const status of [0,403,404,500]){
+    const context=loadPrismShell({fetch:async()=>({status})});
+    await assert.rejects(context.testCreateTransport([]),/No browser route is reachable/);
+  }
+});
 
 test("Genesis uses Scramjet's native URL codec exactly",()=>{
   const context=loadPrismShell();
