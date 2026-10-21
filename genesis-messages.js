@@ -4,6 +4,52 @@
   const MAX_MESSAGES_PER_CONTACT=500;
   const MAX_MESSAGE_LENGTH=1200;
   const MAX_INLINE_MEDIA=240000;
+  const MAX_GIF_BYTES=2*1024*1024;
+  const GIF_BUCKET='genesis-message-gifs';
+  const gifUrlCache=new Map();
+  function gifStoragePath(value){return /^[a-f0-9-]{36}\/[a-f0-9-]{36}\.gif$/i.test(String(value||''))?String(value):''}
+  async function gifStorageRequest(path,options={}){
+    const config=backend();if(!config||!global.GenesisAuth)throw Error('Sign in before uploading a GIF.');
+    const response=await fetch(config.url+'/storage/v1/'+path,{...options,headers:{apikey:config.anonKey,Authorization:'Bearer '+await global.GenesisAuth.token(),...options.headers},signal:AbortSignal.timeout(30000)});
+    if(!response.ok)throw Error(response.status===413?'GIF is too large. Maximum size is 2 MB.':'Could not upload or load the GIF. Please retry.');
+    return response;
+  }
+  async function deleteUploadedGif(path){
+    gifUrlCache.delete(path);
+    await gifStorageRequest('object/'+GIF_BUCKET,{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({prefixes:[path]})}).catch(()=>{});
+  }
+  async function signedGifUrl(path){
+    path=gifStoragePath(path);if(!path)throw Error('Invalid GIF attachment.');
+    const cached=gifUrlCache.get(path);if(cached&&cached.expires>Date.now())return cached.promise;
+    const promise=gifStorageRequest('object/sign/'+GIF_BUCKET+'/'+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expiresIn:3600})}).then(response=>response.json()).then(data=>{
+      const signed=data.signedURL||data.signedUrl;
+      if(typeof signed!=='string')throw Error('Invalid GIF link.');
+      const url=new URL(signed.startsWith('/object/')?backend().url+'/storage/v1'+signed:signed,backend().url+'/storage/v1/');
+      if(url.origin!==new URL(backend().url).origin||!url.pathname.startsWith('/storage/v1/object/sign/'+GIF_BUCKET+'/'))throw Error('Invalid GIF link.');
+      return url.href;
+    }).catch(error=>{gifUrlCache.delete(path);throw error});
+    gifUrlCache.set(path,{promise,expires:Date.now()+50*60*1000});return promise;
+  }
+  function refreshGifImages(thread){
+    thread.querySelectorAll?.('img[data-gif-path]').forEach(img=>{
+      signedGifUrl(img.dataset.gifPath).then(url=>{if(img.isConnected&&img.src!==url)img.src=url}).catch(()=>{img.alt='GIF unavailable. Reconnect and reopen this conversation.'});
+    });
+  }
+  async function uploadGif(file){
+    if(!file||file.size>MAX_GIF_BYTES)throw Error('GIF is too large. Maximum size is 2 MB.');
+    const header=String.fromCharCode(...new Uint8Array(await file.slice(0,6).arrayBuffer()));
+    if(!/^GIF8[79]a$/.test(header))throw Error('Choose a valid GIF file.');
+    const user=await global.GenesisAuth?.verify();if(!user)throw Error('Sign in before uploading a GIF.');
+    const path=user.id+'/'+crypto.randomUUID()+'.gif';
+    await gifStorageRequest('object/'+GIF_BUCKET+'/'+path,{method:'POST',headers:{'Content-Type':'image/gif','x-upsert':'false'},body:file});
+    try{return {type:'gif',url:await signedGifUrl(path),storagePath:path}}
+    catch(error){await deleteUploadedGif(path);throw error}
+  }
+  function receivedMedia(raw){
+    const url=safeMediaUrl(raw?.url);if(!url)return null;
+    const path=gifStoragePath(raw?.storagePath);
+    return {type:String(raw.type||'image').slice(0,12),url,...(path?{storagePath:path}:{})};
+  }
   const CONTACTS_PREFIX="genesisMessagesContacts:";
   const HISTORY_PREFIX="genesisMessagesHistory:";
   const SELECTED_PREFIX="genesisMessagesSelected:";
@@ -402,7 +448,7 @@
         '<header class="gm-chat-head" id="gmChatHead"></header>'+
         '<div class="gm-thread" id="gmThread"></div>'+
         '<div class="gm-composer-wrap"><div class="gm-composer" id="gmComposer">'+
-          '<button class="gm-media-btn" type="button" onclick="GenesisMessages.pickImage()" title="Send image">＋</button>'+
+          '<button class="gm-media-btn" type="button" onclick="GenesisMessages.pickImage()" title="Upload image or GIF (GIFs up to 2 MB)">＋</button>'+
           '<button class="gm-gif-btn" type="button" onclick="GenesisMessages.openGifSearch()" title="Search GIFs">GIF</button>'+
           '<input id="gmImagePicker" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>'+
           '<textarea id="gmMessageInput" maxlength="'+MAX_MESSAGE_LENGTH+'" rows="1" placeholder="Choose a conversation" disabled></textarea>'+
@@ -488,7 +534,7 @@
       const sender=own?currentName():String(message.senderName||"Genesis User");
       const avatar=(sender.replace(/\s+/g,"").slice(0,2)||message.from||"GU").toUpperCase();
       const status=own?(message.status==="queued"?" · retrying":message.status==="sending"?" · sending":""):"";
-      const media=message.media?.url?'<img class="gm-message-media" src="'+escapeHTML(message.media.url)+'" alt="'+escapeHTML(message.media.type||"image")+'" loading="lazy">':"";
+      const media=message.media?.url?'<img class="gm-message-media" '+(gifStoragePath(message.media.storagePath)?'data-gif-path="'+escapeHTML(message.media.storagePath)+'" ':'')+'src="'+escapeHTML(message.media.url)+'" alt="'+escapeHTML(message.media.type||"image")+'" loading="lazy">':"";
       const body=String(message.text||"").trim();
       const visibleText=(body==="Image"||body==="GIF")&&media?"":'<div class="gm-message-text">'+escapeHTML(body).replace(/\n/g,"<br>")+'</div>';
       return '<article class="gm-chat-message '+(own?"own":"")+'" data-message-id="'+escapeHTML(message.id)+'"><div class="gm-message-avatar">'+escapeHTML(avatar)+'</div><div class="gm-message-content"><div class="gm-message-meta"><strong>'+escapeHTML(sender)+'</strong><time>'+escapeHTML(formatTime(message.sentAt))+escapeHTML(status)+'</time><button class="gm-delete" type="button" onclick="GenesisMessages.deleteMessage(this)" title="Delete for me">Delete for me</button></div>'+visibleText+media+'</div></article>';
@@ -499,9 +545,21 @@
     const picker=document.getElementById("gmImagePicker");
     if(!picker||picker.dataset.bound)return;
     picker.dataset.bound="1";
-    picker.addEventListener("change",function(){
+    picker.addEventListener("change",async function(){
       const file=picker.files?.[0];
       if(!file)return;
+      if(file.type==='image/gif'||/\.gif$/i.test(file.name||'')){
+        const destination=[state.mode,state.selected,state.selectedServer,state.selectedChannel].join(':');
+        picker.disabled=true;
+        try{
+          if(state.mode==='dm'&&!state.selected)throw Error('Choose a conversation before uploading a GIF.');
+          const media=await uploadGif(file);
+          if(destination!==[state.mode,state.selected,state.selectedServer,state.selectedChannel].join(':')){await deleteUploadedGif(media.storagePath);throw Error('Conversation changed. Choose the GIF again to send it.')}
+          await sendMedia('gif',media.url,{storagePath:media.storagePath});
+        }catch(error){global.showGenesisAnnouncement?.(error.message,5000)}
+        finally{picker.disabled=false;picker.value=''}
+        return;
+      }
       if(file.size>175000){
         if(typeof global.showGenesisAnnouncement==="function")global.showGenesisAnnouncement("Image is too large. Choose one under 175 KB.",4200);
         picker.value="";return;
@@ -523,7 +581,7 @@
     const follow=thread.dataset.conversation!==scrollKey||thread.scrollHeight-thread.scrollTop-thread.clientHeight<70;
     const previousTop=thread.scrollTop;
     thread.dataset.conversation=scrollKey;
-    const restoreScroll=()=>{thread.scrollTop=follow?thread.scrollHeight:previousTop};
+    const restoreScroll=()=>{thread.scrollTop=follow?thread.scrollHeight:previousTop;refreshGifImages(thread)};
     bindImagePicker();
 
     if(state.mode==="server"){
@@ -920,9 +978,10 @@
     if(input){input.value="";input.style.height="auto"}
     if(state.mode==="server")await sendServerMessage(text,null);else await sendDirectMessage(text,null);
   }
-  async function sendMedia(type,url){
+  async function sendMedia(type,url,attachment={}){
     const safe=safeMediaUrl(url);if(!safe)return;
-    const media={type:type==="gif"?"gif":"image",url:safe};
+    const path=gifStoragePath(attachment.storagePath);
+    const media={type:type==="gif"?"gif":"image",url:safe,...(path?{storagePath:path}:{})};
     if(state.mode==="server")await sendServerMessage("",media);else await sendDirectMessage("",media);
   }
   function pickImage(){document.getElementById("gmImagePicker")?.click()}
@@ -986,7 +1045,7 @@
     const payload=packet?.payload&&packet.payload.id?packet.payload:packet;
     const from=normalizeId(payload?.from),to=normalizeId(payload?.to);
     const text=String(payload?.text||"").trim().slice(0,MAX_MESSAGE_LENGTH);
-    const mediaUrl=safeMediaUrl(payload?.media?.url),media=mediaUrl?{type:String(payload.media.type||"image").slice(0,12),url:mediaUrl}:null;
+    const media=receivedMedia(payload?.media);
     if(!payload?.id||!from||to!==state.identity||(!text&&!media)||from===state.identity)return;
     const contact=addContact(from,{name:payload.senderName});
     const appOpen=!!document.getElementById("genesisMessagesApp");
@@ -1015,7 +1074,7 @@
     const channelId=serverId(payload.channelId);
     const channel=server.channels.find(item=>item.id===channelId);if(!channel)return;
     const text=String(payload?.text||"").trim().slice(0,MAX_MESSAGE_LENGTH);
-    const mediaUrl=safeMediaUrl(payload?.media?.url),media=mediaUrl?{type:String(payload.media.type||"image").slice(0,12),url:mediaUrl}:null;
+    const media=receivedMedia(payload?.media);
     if(!text&&!media)return;
     const appOpen=!!document.getElementById("genesisMessagesApp");
     const selected=appOpen&&state.mode==="server"&&state.selectedServer===server.id&&state.selectedChannel===channelId;

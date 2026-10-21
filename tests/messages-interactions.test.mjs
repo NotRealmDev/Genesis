@@ -5,10 +5,10 @@ import {readFileSync} from 'node:fs';
 const source=readFileSync(new URL('../genesis-messages.js',import.meta.url),'utf8');
 function setup(){
   const elements=new Map(),stored=new Map(),sent=[];
-  const node=()=>({dataset:{},classList:{add(){},toggle(){}},style:{},children:[],replaceChildren(){this.children=[]},appendChild(child){this.children.push(child);if(child.id)elements.set(child.id,child)},remove(){elements.delete(this.id)},querySelectorAll(){return[]}});
+  const node=()=>({dataset:{},classList:{add(){},toggle(){}},style:{},children:[],setAttribute(){},replaceChildren(){this.children=[]},appendChild(child){this.children.push(child);if(child.id)elements.set(child.id,child)},remove(){elements.delete(this.id)},querySelectorAll(){return[]}});
   const body=node();
   const context=vm.createContext({console,Date,URL,Map,Set,Promise,confirm:()=>true,
-    crypto:{randomUUID:()=> '1234-test'},setTimeout:()=>1,clearTimeout(){},setInterval(){},requestAnimationFrame:fn=>fn(),
+    crypto:{randomUUID:()=> '1234-test'},setTimeout:()=>1,clearTimeout(){},clearInterval(){},setInterval(){},requestAnimationFrame:fn=>fn(),
     localStorage:{getItem:key=>stored.get(key)||null,setItem:(key,v)=>stored.set(key,v)},
     document:{body,head:node(),getElementById:id=>id==='genesisMessagesStyles'?{}:elements.get(id)||null,createElement:node,querySelector:()=>null,querySelectorAll:()=>[]},
     GenesisPresence:{users:()=>[{id:'202',name:'Alt'}]},addEventListener(){},

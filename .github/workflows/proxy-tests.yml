@@ -46,7 +46,7 @@ jobs:
         with:
           node-version: "22"
       - name: Run proxy unit and integration-contract tests
-        run: node --test tests/proxy-resilience.test.mjs tests/os-features.test.mjs tests/announcements-global.test.mjs tests/browser-extras.test.mjs tests/ui-polish.test.mjs tests/showcase-state.test.mjs tests/games-s-z.test.mjs tests/gpt-native.test.mjs
+        run: node --test tests/proxy-resilience.test.mjs tests/os-features.test.mjs tests/announcements-global.test.mjs tests/browser-extras.test.mjs tests/ui-polish.test.mjs tests/showcase-state.test.mjs tests/games-s-z.test.mjs tests/gpt-native.test.mjs tests/messages-gif-upload.test.mjs tests/messages-interactions.test.mjs
 
   gpt-install-showcase:
     runs-on: ubuntu-latest
