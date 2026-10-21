@@ -2,7 +2,7 @@
 
 ## Status
 
-Prepared for review, not deployed. The live project had zero Supabase Auth users when inspected. Activating this change before provisioning the owner would disable all existing shared logins and leave admin actions unavailable. This patch replaces the narrower draft in PR #65; do not apply both SQL files.
+Prepared for review, not deployed. The owner's account has been registered using the supplied email; confirmation and a successful sign-in are still required before activation. Activating this change would replace existing shared logins with approved server accounts. This patch replaces the narrower draft in PR #65; do not apply both SQL files.
 
 ## Behavior
 

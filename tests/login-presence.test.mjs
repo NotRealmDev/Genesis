@@ -39,8 +39,9 @@ test('password goes only to Auth and is not retained in browser storage',async()
 });
 test('the existing Admin username maps to its server account without a client password check',async()=>{
   const {context,calls}=setup();
+  context.GENESIS_BACKEND.adminEmail='owner@example.test';
   await context.GenesisAuth.signIn(' Admin ','test-only-password');
-  assert.equal(JSON.parse(calls[0].options.body).email,'admin@genesisos.lol');
+  assert.equal(JSON.parse(calls[0].options.body).email,'owner@example.test');
 });
 test('missing approval, mismatched identity and network failure all deny sign-in',async()=>{
   for(const options of [{active:false},{account:'someone-else'},{networkError:true}]){
