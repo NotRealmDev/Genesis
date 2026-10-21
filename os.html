@@ -97,6 +97,9 @@ button{color:inherit}
 .window-header{height:51px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid rgba(255,255,255,.07);cursor:grab;background:rgba(255,255,255,.025);touch-action:none}
 .window-controls{display:flex;gap:7px}.window-control{width:12px;height:12px;border:0;border-radius:50%;cursor:pointer}.close{background:#ff5f57}.minimize{background:#febc2e}.maximize{background:#28c840}
 .window-title{position:absolute;left:50%;transform:translateX(-50%);font-size:12px;font-weight:550;color:rgba(255,255,255,.80);pointer-events:none}.window-content{height:calc(100% - 51px);overflow:auto;user-select:text}
+.window[data-app="gta5"] .window-content{position:relative;overflow:hidden;background:#000}
+.window[data-app="gta5"] iframe{position:absolute;inset:0;width:100%;height:100%;border:0}
+.folder-app-icon img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
 .section{padding:25px}.heading{font-size:24px;font-weight:650;margin:0 0 20px}.muted{color:var(--muted)}
 
 .files-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:15px}.file-card{height:115px;border-radius:19px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);transition:.18s}.file-card:hover{background:rgba(255,255,255,.10);transform:translateY(-3px)}.folder{width:46px;height:35px;border-radius:7px;background:linear-gradient(145deg,hsl(var(--accent),80%,65%),hsl(var(--accent),70%,45%));position:relative}.folder:before{content:"";position:absolute;width:22px;height:8px;top:-5px;left:3px;border-radius:5px 5px 0 0;background:hsl(var(--accent),75%,62%)}
@@ -600,6 +603,9 @@ button{color:inherit}
   </div>
 
   <main id="desktop" class="desktop">
+    <div class="desktop-icon" data-app="gta5" style="left:330px;top:260px">
+      <div class="app-icon"><img src="assets/icons/grand-theft-auto-5.jpg" alt="Grand Theft Auto V cover art" style="width:100%;height:100%;object-fit:cover;border-radius:inherit"></div><div class="app-name">Grand Theft Auto 5</div>
+    </div>
     <div class="desktop-icon" data-app="browser" style="left:30px;top:30px">
       <div class="app-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 4 6 4 9s-1 6-4 9M12 3c-3 3-4 6-4 9s1 6 4 9"/></svg></div><div class="app-name">Browser</div>
     </div>
@@ -1460,6 +1466,7 @@ function genesisUpdateMusicUI(){
 
 
 const apps = {
+  gta5:{title:"Grand Theft Auto 5",content:()=>`<iframe src="https://fiveplay.lol/" title="Grand Theft Auto V, hosted on fiveplay.lol" sandbox="allow-scripts allow-same-origin allow-pointer-lock allow-forms" allow="cross-origin-isolated; fullscreen; autoplay; gamepad; keyboard-map" referrerpolicy="no-referrer" class="absolute inset-0 size-full border-0"></iframe>`},
   store:{title:"Store",content:()=>window.GenesisOverhaul?.storeHTML?.()||`<div class="section"><div class="heading">Store</div><div class="muted">Store is loading…</div></div>`},
   accountSettings:{title:"Account Settings",content:()=>window.GenesisOverhaul?.accountHTML?.()||`<div class="section"><div class="heading">Account Settings</div></div>`},
   browser:{title:"Browser",content:browserHTML},
