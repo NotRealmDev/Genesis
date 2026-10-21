@@ -1,0 +1,30 @@
+name: Genesis authentication security
+on:
+  pull_request:
+    paths:
+      - 'genesis-auth.js'
+      - 'genesis-admin-auth.js'
+      - 'GENESIS_AUTH_SECURITY.sql'
+      - 'index.html'
+      - 'intro.html'
+      - 'os.html'
+      - 'browser-tab.html'
+      - 'tests/auth-database.test.mjs'
+      - 'tests/login-presence.test.mjs'
+      - '.github/workflows/auth-security.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authorization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install isolated database runtime
+        run: npm install --no-save --no-package-lock @electric-sql/pglite@0.3.14
+      - name: Test login and database authorization
+        run: node --test tests/auth-database.test.mjs tests/login-presence.test.mjs

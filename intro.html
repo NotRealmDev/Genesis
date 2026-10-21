@@ -224,23 +224,9 @@
     }
   }
 </style>
-<script>
-(function(){
-  "use strict";
-  try{
-    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
-    if(login && login.expires && Date.now() < login.expires){
-      sessionStorage.setItem("realmAuth","1");
-      sessionStorage.setItem("realmUser",login.user || "");
-      sessionStorage.setItem("genesisRole",login.role || "user");
-      return;
-    }
-  }catch(error){
-    console.warn("Genesis intro auth:",error);
-  }
-  if(sessionStorage.getItem("realmAuth") !== "1") location.replace("index.html");
-})();
-</script>
+
+<script src="supabase-config.js"></script>
+<script src="genesis-auth.js?build=server-auth-r1"></script>
 </head>
 <body>
   <main class="stage" aria-label="Genesis OS startup">

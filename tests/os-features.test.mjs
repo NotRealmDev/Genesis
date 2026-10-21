@@ -38,11 +38,9 @@ test("Messages app is connected to the desktop, dock, and window lifecycle",()=>
   assert.match(messages,/genesisMessagesTutorialComplete/);
 });
 
-test("Jameson can use the requested password through a stored hash",()=>{
-  assert.match(login,/"Jameson"\s*:\s*\{/);
-  assert.match(login,/bca8816842fa75ec3b69627aba1ff01ecc5d6c56e2070cf700d04f0c2b30b905/);
-  assert.match(login,/await genesisSha256\(password\) === account\.passwordHash/);
-  assert.doesNotMatch(login,/password:\s*"GoonFishing"/);
+test("login delegates all password verification to the server",()=>{
+  assert.doesNotMatch(login,/passwordHash|const accounts|genesisSha256/);
+  assert.match(login,/GenesisAuth.signIn/);
 });
 
 test("game HTML keeps an existing asset base",()=>{
@@ -92,10 +90,9 @@ test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
   assert.match(os,/Deactivated — this ID cannot log in/);
 });
 
-test("The login page keeps device presence fresh while it is open",()=>{
-  assert.match(login,/async function genesisHeartbeatDevice\(/);
-  assert.match(login,/genesis_register_device/);
-  assert.match(login,/setInterval\(genesisHeartbeatDevice, 15000\)/);
+test("login uses verified account identity instead of generating browser IDs",()=>{
+  assert.doesNotMatch(login,/genesis_register_device|crypto.randomUUID/);
+  assert.match(login,/ID assigned after verified sign-in/);
 });
 
 test("Genesis branding keeps the requested fall Falcon through login, OS, and install",()=>{

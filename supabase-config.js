@@ -4,6 +4,7 @@
  NEVER place a secret/service_role key in this file.
 */
 window.GENESIS_BACKEND = {
+  adminEmail: "realmgames7@gmail.com",
   url: "https://yubpnkcsjuxuczrafmmj.supabase.co",
   anonKey: "sb_publishable_JNxkxsQxxy5gwawUduiFbw_wHYsaQ5V"
 };
