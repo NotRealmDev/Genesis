@@ -43,6 +43,14 @@ test('the existing Admin username maps to its server account without a client pa
   await context.GenesisAuth.signIn(' Admin ','test-only-password');
   assert.equal(JSON.parse(calls[0].options.body).email,'owner@example.test');
 });
+test('High Skys maps to its own verified account and retains the supplied password',async()=>{
+  const {context,calls}=setup();
+  await context.GenesisAuth.signIn(' High Skys ','fixture-only-password');
+  const request=JSON.parse(calls[0].options.body);
+  assert.equal(request.email,'high-skys@accounts.genesisoss.lol');
+  assert.equal(request.password,'fixture-only-password');
+  assert.equal(context.GenesisAuth.user.role,'user');
+});
 test('missing approval, mismatched identity and network failure all deny sign-in',async()=>{
   for(const options of [{active:false},{account:'someone-else'},{networkError:true}]){
     const {context}=setup(options);
