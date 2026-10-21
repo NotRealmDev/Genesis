@@ -47,7 +47,9 @@
     return verified;
   }
   async function signIn(email,password){
-    clear();save(await fetchJSON('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:String(email).trim(),password})}));
+    const supplied=String(email).trim();
+    const identifier=supplied.toLowerCase()==='admin'?(config()?.adminEmail||'admin@genesisos.lol'):supplied;
+    clear();save(await fetchJSON('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:identifier,password})}));
     try{return await verify()}catch(error){clear();throw error}
   }
   async function adminToken(){

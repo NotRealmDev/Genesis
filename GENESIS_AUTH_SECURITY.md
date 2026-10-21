@@ -17,7 +17,7 @@ Prepared for review, not deployed. The live project had zero Supabase Auth users
 
 ## Activation prerequisites
 
-1. Identify the owner's email. Create and verify a real Supabase Auth account using the Dashboard or trusted Auth Admin API. Use a new unique password rather than the old public shared credential.
+1. Identify the owner's valid email. Create and verify a real Supabase Auth account using the Dashboard or trusted Auth Admin API, then set `GENESIS_BACKEND.adminEmail` to that email. The login accepts the existing `Admin` username and maps it to this server-side account. The user requested retaining the existing password; it was previously public and should subsequently be changed. The old placeholder `admin@genesisos.lol` was rejected by Auth signup, so a valid owner email is still required.
 2. Set that verified owner's `app_metadata.role` to `admin` using trusted server-side administration. Keep public signup disabled or require manual approval for all new accounts.
 3. Provision individual accounts for existing users. The frontend now accepts account email and password. Existing browser-only IDs are retained as legacy records; bans cannot reliably be matched to people without linking their verified accounts.
 4. Apply `GENESIS_AUTH_SECURITY.sql` and deploy the matching frontend together. The file is an initial cutover script, not a repeatable migration. Generate the recorded migration with the installed Supabase CLI during activation.
