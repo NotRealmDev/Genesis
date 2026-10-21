@@ -2,7 +2,7 @@
 
 ## Status
 
-Prepared for review, not deployed. The owner's account has been registered using the supplied email; confirmation and a successful sign-in are still required before activation. Activating this change would replace existing shared logins with approved server accounts. This patch replaces the narrower draft in PR #65; do not apply both SQL files.
+The owner account is confirmed, the existing password has been verified against Supabase Auth, and the server migration has been applied. Live checks verified administrator access and rejection of anonymous reactivation. A rollback-only test verified suspension and incident recording without changing the owner's role or leaving an incident behind. Frontend publication is tracked by PR #67. Existing shared logins are replaced with approved server accounts. This patch replaces the narrower draft in PR #65; do not apply both SQL files.
 
 ## Behavior
 
@@ -34,6 +34,10 @@ Client tests verify forged local flags cannot sign in, passwords are sent only t
 npm install --no-save --no-package-lock @electric-sql/pglite@0.3.14
 node --test tests/auth-database.test.mjs tests/login-presence.test.mjs tests/os-features.test.mjs
 ```
+
+`tests/auth-ui.e2e.mjs` uses Playwright with a simulated Auth backend to verify the normal Admin username reaches DeactivateOS and forged browser storage flags remain locked out. The live password and admin-role checks were performed separately through Supabase Auth and the protected access RPC.
+
+The security advisor's private-table/no-policy informational notice is intentional: `genesis_private.account_access` denies all direct client access. Auth's leaked-password protection remains disabled; the owner explicitly requested retaining the previously public password, which should be replaced subsequently.
 
 ## Boundaries
 
