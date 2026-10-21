@@ -38,7 +38,7 @@
       const id=result?.display_id;clear();
       throw Error(id?'ID '+id+' is deactivated or awaiting administrator approval.':'This account needs administrator approval.');
     }
-    verified=Object.freeze({id:identity.id,name:String(identity.email||'Genesis user'),role:result.role==='admin'?'admin':'user',displayId:String(result.display_id)});
+    verified=Object.freeze({id:identity.id,name:result.role==='admin'?'Admin':String(identity.user_metadata?.display_name||identity.email||'Genesis user'),role:result.role==='admin'?'admin':'user',displayId:String(result.display_id)});
     localStorage.setItem('genesisDisplayId',verified.displayId);
     localStorage.removeItem('genesisDeviceBlocked');
     global.genesisRegisteredDevice={display_id:result.display_id,active:true};
