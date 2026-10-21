@@ -544,6 +544,7 @@ body {
 </style>
   <link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
 <script src="supabase-config.js"></script>
+<script src="genesis-auth.js?build=server-auth-r1"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous" defer></script>
 <script src="genesis-presence.js?build=presence-r1" defer></script>
 <script src="genesis-announcements.js" defer></script>
@@ -1505,10 +1506,10 @@ Sign in to continue
 <div class="input-box">
 
 <input
-type="text"
+type="email"
 id="username"
-placeholder="Username"
-autocomplete="off"
+placeholder="Account email"
+autocomplete="username"
 spellcheck="false"
 >
 
@@ -1521,7 +1522,7 @@ spellcheck="false"
 type="password"
 id="password"
 placeholder="Password"
-autocomplete="off"
+autocomplete="current-password"
 >
 
 </div>
@@ -1553,443 +1554,25 @@ Incorrect username or password.
 
 
 <script>
-
-/* =========================================================
-   ACCOUNTS
-========================================================= */
-
-const accounts = {
-
-
-  "Admin": {
-    admin: true,
-    url: "intro.html"
-  },
-
-
-  "High Skys": {
-
-    password: "Goon",
-
-    url:
-      "intro.html"
-
-  },
-
-
-  "Blueberry": {
-
-    password: "Skids",
-
-    url:
-      "intro.html"
-
-  },
-
-
-  "Jameson": {
-
-    passwordHash: "bca8816842fa75ec3b69627aba1ff01ecc5d6c56e2070cf700d04f0c2b30b905",
-
-    url:
-      "intro.html"
-
-  }
-
-};
-
-
-
-/* =========================================================
-   ELEMENTS
-========================================================= */
-
-const usernameInput =
-  document.getElementById("username");
-
-const passwordInput =
-  document.getElementById("password");
-
-const loginButton =
-  document.getElementById("loginButton");
-
-const errorMessage =
-  document.getElementById("errorMessage");
-
-const loginCard =
-  document.getElementById("loginCard");
-
-
-
-/* =========================================================
-   LOGIN FUNCTION
-========================================================= */
-
-
-async function genesisSha256(text){
-  const bytes = new TextEncoder().encode(text);
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
-  return Array.from(new Uint8Array(digest))
-    .map(b => b.toString(16).padStart(2,"0"))
-    .join("");
-}
-
-async function login() {
-  // A deactivated Genesis ID cannot use ANY username/password.
-  const deviceAllowed = await genesisCanAttemptLogin();
-  if(!deviceAllowed) return;
-
-  const usernameRaw = usernameInput.value.trim();
-  const usernameKey = usernameRaw.toLowerCase();
-  const password = passwordInput.value;
-
-  const accountName = Object.keys(accounts).find(name => name.toLowerCase() === usernameKey);
-  let account = accountName ? accounts[accountName] : null;
-  let ok = false;
-  let role = "user";
-  let loginName = accountName || usernameRaw;
-
-  // Admin login: exact password, username may be Admin/admin/ADMIN.
-  if(usernameKey === "admin" && password === "R!ealm"){
-    ok = true;
-    role = "admin";
-    loginName = "Admin";
-    account = accounts["Admin"];
-  }else if(account){
-    if(account.password === password){
-      ok = true;
-    }else if(account.passwordHash){
-      ok = await genesisSha256(password) === account.passwordHash;
-    }
-  }
-
-  if(ok){
-    errorMessage.classList.remove("show");
-
-    const expires = Date.now() + (12 * 60 * 60 * 1000);
-    localStorage.setItem("genesisLogin", JSON.stringify({
-      user: loginName,
-      role,
-      expires
-    }));
-
-    sessionStorage.setItem("realmAuth", "1");
-    sessionStorage.setItem("realmUser", loginName);
-    sessionStorage.setItem("genesisRole", role);
-
-    window.location.href = (account?.url && account.url!=="intro.html" && account.url!=="os.html") ? account.url : "intro.html";
-    return;
-  }
-
-  errorMessage.classList.add("show");
-  loginCard.classList.remove("shake");
-  void loginCard.offsetWidth;
-  loginCard.classList.add("shake");
-  passwordInput.value = "";
-  passwordInput.focus();
-}
-
-
-/* =========================================================
-   BUTTON CLICK
-========================================================= */
-
-loginButton.addEventListener(
-  "click",
-  login
-);
-
-
-
-/* =========================================================
-   ENTER FROM USERNAME
-========================================================= */
-
-usernameInput.addEventListener(
-  "keydown",
-  function(event) {
-
-    if (event.key === "Enter") {
-
-      passwordInput.focus();
-
-    }
-
-  }
-);
-
-
-
-/* =========================================================
-   ENTER FROM PASSWORD
-========================================================= */
-
-passwordInput.addEventListener(
-  "keydown",
-  function(event) {
-
-    if (event.key === "Enter") {
-
-      login();
-
-    }
-
-  }
-);
-
-
-
-/* =========================================================
-   GENESIS 12-HOUR SESSION + GLOBAL DEVICE ID
-========================================================= */
-
-const GENESIS_LOGIN_MS = 12 * 60 * 60 * 1000;
-
-function genesisBackendReady(){
-  const b = window.GENESIS_BACKEND || {};
-  return /^https:\/\/.+\.supabase\.co$/i.test(String(b.url || "")) &&
-         String(b.anonKey || "").length > 20;
-}
-
-
-function genesisLocalDisplayId(){
-  let id = localStorage.getItem("genesisDisplayId");
-  if(id && /^\d{3}$/.test(id)) return id;
-  id = String(Math.floor(100 + Math.random() * 900));
-  localStorage.setItem("genesisDisplayId", id);
-  return id;
-}
-
-function showGenesisIdImmediately(){
-  const badge = document.getElementById("genesisVisitorId");
-  if(badge) badge.textContent = `ID ${genesisLocalDisplayId()}`;
-}
-
-function genesisGetDeviceToken(){
-  let token = localStorage.getItem("genesisDeviceToken");
-  if(!token){
-    token = crypto.randomUUID();
-    localStorage.setItem("genesisDeviceToken", token);
-  }
-  return token;
-}
-
-async function genesisRpc(name, body, bearer){
-  if(!genesisBackendReady()) throw new Error("Genesis backend is not configured");
-  const b = window.GENESIS_BACKEND;
-  const token = bearer || b.anonKey;
-  const response = await fetch(`${b.url}/rest/v1/rpc/${name}`, {
-    method:"POST",
-    headers:{
-      "apikey":b.anonKey,
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify(body || {})
-  });
-  if(!response.ok) throw new Error(await response.text());
-  return response.json();
-}
-
-
-async function genesisCanAttemptLogin(){
-  const blockedLocally = localStorage.getItem("genesisDeviceBlocked") === "1";
-
-  if(!genesisBackendReady()){
-    if(blockedLocally){
-      genesisShowBlocked(localStorage.getItem("genesisDisplayId"));
-      return false;
-    }
-    return true;
-  }
-
+const usernameInput=document.getElementById('username');
+const passwordInput=document.getElementById('password');
+const loginButton=document.getElementById('loginButton');
+const errorMessage=document.getElementById('errorMessage');
+async function login(){
+  if(loginButton.disabled)return;
+  loginButton.disabled=true;errorMessage.classList.remove('show');
   try{
-    const rows = await genesisRpc("genesis_check_device", {
-      p_token: genesisGetDeviceToken()
-    });
-    let device = Array.isArray(rows) ? rows[0] : rows;
-
-    // Brand-new browser that has not been registered yet.
-    if(!device){
-      device = await genesisEnsureDevice();
-    }
-
-    if(device && device.active === false){
-      genesisShowBlocked(device.display_id);
-      return false;
-    }
-
-    genesisClearBlocked(device && device.display_id);
-    return true;
+    await window.GenesisAuth.signIn(usernameInput.value,passwordInput.value);
+    passwordInput.value='';location.replace('intro.html');
   }catch(error){
-    console.warn("Genesis login status check failed:", error);
-
-    // Once an ID has been confirmed deactivated, a temporary backend error
-    // cannot be used to get around the lock.
-    if(blockedLocally){
-      genesisShowBlocked(localStorage.getItem("genesisDisplayId"));
-      return false;
-    }
-    return true;
-  }
+    errorMessage.textContent=error.message||'Sign-in failed. Please try again.';
+    errorMessage.classList.add('show');passwordInput.value='';
+  }finally{loginButton.disabled=false}
 }
-
-function genesisClearBlocked(id){
-  localStorage.removeItem("genesisDeviceBlocked");
-
-  if(id){
-    localStorage.setItem("genesisDisplayId", String(id));
-    const badge = document.getElementById("genesisVisitorId");
-    if(badge) badge.textContent = `ID ${id}`;
-  }
-
-  const layer = document.getElementById("genesisBlocked");
-  if(layer) layer.classList.remove("show");
-}
-
-async function genesisEnsureDevice(){
-  if(!genesisBackendReady()) return {active:true,display_id:null};
-  const rows = await genesisRpc("genesis_register_device", {
-    p_token: genesisGetDeviceToken()
-  });
-  const device = Array.isArray(rows) ? rows[0] : rows;
-  window.genesisRegisteredDevice=device;
-  if(device && device.display_id){
-    localStorage.setItem("genesisDisplayId", String(device.display_id));
-    const badge = document.getElementById("genesisVisitorId");
-    if(badge) badge.textContent = `ID ${device.display_id}`;
-  }
-
-  if(device && device.active === false){
-    genesisShowBlocked(device.display_id);
-  }else if(device && device.active === true){
-    genesisClearBlocked(device.display_id);
-  }
-
-  return device || {active:true};
-}
-
-async function genesisHeartbeatDevice(){
-  if(!genesisBackendReady()) return;
-  try{
-    const rows = await genesisRpc("genesis_register_device", {
-      p_token: genesisGetDeviceToken()
-    });
-    const device = Array.isArray(rows) ? rows[0] : rows;
-    window.genesisRegisteredDevice=device;
-    if(device?.display_id){
-      localStorage.setItem("genesisDisplayId", String(device.display_id));
-      const badge = document.getElementById("genesisVisitorId");
-      if(badge) badge.textContent = `ID ${device.display_id}`;
-    }
-  }catch(error){
-    console.warn("Genesis device heartbeat failed:", error);
-  }
-}
-
-function genesisShowBlocked(id){
-  localStorage.setItem("genesisDeviceBlocked", "1");
-  if(id) localStorage.setItem("genesisDisplayId", String(id));
-
-  // Deactivation invalidates every Genesis login/password on this browser.
-  localStorage.removeItem("genesisLogin");
-  sessionStorage.removeItem("realmAuth");
-  sessionStorage.removeItem("realmUser");
-  sessionStorage.removeItem("genesisRole");
-  const layer = document.getElementById("genesisBlocked");
-  const label = document.getElementById("genesisBlockedId");
-  if(label) label.textContent = id ? `ID ${id}` : "";
-  if(layer) layer.classList.add("show");
-}
-
-function genesisValidLogin(){
-  try{
-    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
-    if(!login || !login.expires || Date.now() >= login.expires){
-      localStorage.removeItem("genesisLogin");
-      return null;
-    }
-    return login;
-  }catch{
-    localStorage.removeItem("genesisLogin");
-    return null;
-  }
-}
-
-async function genesisAdminSignIn(password){
-  if(!genesisBackendReady()){
-    throw new Error("Set up Supabase before using the Admin account.");
-  }
-
-  const b = window.GENESIS_BACKEND;
-  const response = await fetch(`${b.url}/auth/v1/token?grant_type=password`, {
-    method:"POST",
-    headers:{
-      "apikey":b.anonKey,
-      "Content-Type":"application/json"
-    },
-    body:JSON.stringify({
-      email:b.adminEmail || "admin@genesisos.lol",
-      password
-    })
-  });
-
-  const data = await response.json();
-  if(!response.ok || !data.access_token){
-    throw new Error(data.error_description || data.msg || "Admin login failed");
-  }
-
-  localStorage.setItem("genesisAdminSession", JSON.stringify({
-    access_token:data.access_token,
-    refresh_token:data.refresh_token,
-    expires_at:Date.now() + ((data.expires_in || 3600) * 1000)
-  }));
-  return true;
-}
-
-async function initializeGenesisLogin(){
-  try{
-    const device = await genesisEnsureDevice();
-    if(device && device.active === false) return;
-  }catch(error){
-    console.warn("Genesis device service:", error);
-  }
-
-  const login = genesisValidLogin();
-  if(login){
-    sessionStorage.setItem("realmAuth","1");
-    sessionStorage.setItem("realmUser",login.user || "");
-    sessionStorage.setItem("genesisRole",login.role || "user");
-    location.replace(login.url && login.url!=="intro.html" && login.url!=="os.html" ? login.url : "intro.html");
-  }
-}
-
-showGenesisIdImmediately();
-initializeGenesisLogin();
-
-setInterval(genesisHeartbeatDevice, 15000);
-setInterval(async ()=>{
-  if(!genesisBackendReady()) return;
-  try{
-    const rows = await genesisRpc("genesis_check_device", {
-      p_token: genesisGetDeviceToken()
-    });
-    const d = Array.isArray(rows) ? rows[0] : rows;
-    if(d && d.active === false){
-      genesisShowBlocked(d.display_id);
-    }else if(d && d.active === true){
-      const wasBlocked = localStorage.getItem("genesisDeviceBlocked") === "1";
-      genesisClearBlocked(d.display_id);
-
-      // After reactivation, show the login again. Passwords now work normally.
-      if(wasBlocked){
-        usernameInput.value = "";
-        passwordInput.value = "";
-        usernameInput.focus();
-      }
-    }
-  }catch(error){}
-}, 5000);
-
+loginButton.addEventListener('click',login);
+passwordInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();login()}});
+usernameInput.addEventListener('keydown',event=>{if(event.key==='Enter')passwordInput.focus()});
+document.getElementById('genesisVisitorId').textContent='ID assigned after verified sign-in';
 </script>
 
 <!-- Genesis login build V2 -->

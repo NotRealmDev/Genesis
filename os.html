@@ -576,22 +576,10 @@ button{color:inherit}
 }
 
 </style>
-<script>
-(function(){
-  try{
-    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
-    if(login && login.expires && Date.now() < login.expires){
-      sessionStorage.setItem("realmAuth","1");
-      sessionStorage.setItem("realmUser",login.user || "");
-      sessionStorage.setItem("genesisRole",login.role || "user");
-      return;
-    }
-  }catch(e){}
-  location.replace("index.html");
-})();
-</script>
+
   <link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
 <script src="supabase-config.js"></script>
+<script src="genesis-auth.js?build=server-auth-r1"></script>
 <script src="proxy-config.js"></script>
 <script src="prism.js" defer></script>
 <script src="prism.api.js" defer></script>
@@ -3045,12 +3033,7 @@ function escapeHTML(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":
    GENESIS GLOBAL BACKEND / ADMIN
 ========================================================= */
 
-function genesisRole(){
-  try{
-    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
-    return login && login.expires > Date.now() ? (login.role || "user") : "user";
-  }catch{return "user"}
-}
+function genesisRole(){return window.GenesisAuth?.user?.role||'user'}
 
 function genesisBackendReady(){
   const b = window.GENESIS_BACKEND || {};
@@ -3085,29 +3068,16 @@ function genesisDeviceToken(){
   return token;
 }
 
-async function genesisRpc(name, body, bearer){
-  if(!genesisBackendReady()) throw new Error("Genesis backend is not configured");
-  const b = window.GENESIS_BACKEND;
-  const auth = bearer || "";
-  const headers = {
-    "apikey":b.anonKey,
-    "Content-Type":"application/json"
-  };
-  if(auth) headers.Authorization="Bearer "+auth;
-  const response = await fetch(`${b.url}/rest/v1/rpc/${name}`, {
-    method:"POST",
-    headers,
-    body:JSON.stringify(body || {})
-  });
-  if(!response.ok) throw new Error(await response.text());
-  return response.json();
+async function genesisRpc(name,body,bearer){
+  return window.GenesisAuth.rpc(name,body);
 }
 
 async function genesisPublicGet(path){
   const b = window.GENESIS_BACKEND;
   const response = await fetch(`${b.url}/rest/v1/${path}`, {
     headers:{
-      "apikey":b.anonKey
+      "apikey":b.anonKey,
+      "Authorization":"Bearer "+await window.GenesisAuth.token()
     },
     cache:"no-store"
   });
@@ -3115,32 +3085,7 @@ async function genesisPublicGet(path){
   return response.json();
 }
 
-async function genesisAdminSession(){
-  let s;
-  try{s = JSON.parse(localStorage.getItem("genesisAdminSession") || "null")}catch{}
-  if(!s || !s.refresh_token) throw new Error("Admin session missing. Sign in again.");
-
-  if(s.access_token && s.expires_at && Date.now() < s.expires_at - 60000){
-    return s.access_token;
-  }
-
-  const b = window.GENESIS_BACKEND;
-  const response = await fetch(`${b.url}/auth/v1/token?grant_type=refresh_token`, {
-    method:"POST",
-    headers:{"apikey":b.anonKey,"Content-Type":"application/json"},
-    body:JSON.stringify({refresh_token:s.refresh_token})
-  });
-  const data = await response.json();
-  if(!response.ok || !data.access_token) throw new Error("Admin session expired. Sign in again.");
-
-  s = {
-    access_token:data.access_token,
-    refresh_token:data.refresh_token || s.refresh_token,
-    expires_at:Date.now() + ((data.expires_in || 3600) * 1000)
-  };
-  localStorage.setItem("genesisAdminSession", JSON.stringify(s));
-  return s.access_token;
-}
+async function genesisAdminSession(){return window.GenesisAuth.adminToken()}
 
 async function genesisAdminRequest(path, options={}, authOptions={}){
   const b = window.GENESIS_BACKEND;
@@ -3297,6 +3242,7 @@ async function sendGenesisAnnouncement(){
       p_message: message,
       p_duration_ms: duration
     });
+    if(!sentId)throw new Error("Unauthorized announcement request. Account suspended for review.");
     if(status) status.textContent = `Sent · visible for about ${Math.ceil(duration/1000)} seconds`;
     input.value = "";
 
@@ -3320,10 +3266,11 @@ async function setGenesisDevice(displayId, makeActive){
   }
 
   try{
-    await genesisRpc("genesis_set_device_status", {
+    const allowed=await genesisRpc("genesis_set_device_status", {
       p_display_id:id,
       p_active:!!makeActive
     });
+    if(allowed!==true)throw new Error("Unauthorized request. Account suspended for administrator review.");
     if(status) status.textContent = makeActive
       ? `ID ${id} was reactivated.`
       : `ID ${id} is now deactivated.`;
@@ -3409,17 +3356,7 @@ function setupGenesisAdminUI(){
   });
 }
 
-function validateGenesis12HourSession(){
-  try{
-    const login = JSON.parse(localStorage.getItem("genesisLogin") || "null");
-    if(!login || !login.expires || Date.now() >= login.expires){
-      localStorage.removeItem("genesisLogin");
-      location.replace("index.html");
-    }
-  }catch{
-    location.replace("index.html");
-  }
-}
+function validateGenesis12HourSession(){window.GenesisAuth.verify().catch(()=>location.replace('index.html'))}
 
 function initGenesisAccountMenu(){
   const button=document.getElementById("genesisAccountButton"),popover=document.getElementById("genesisAccountPopover"),logout=document.getElementById("genesisLogout");
@@ -3440,6 +3377,7 @@ function initGenesisAccountMenu(){
 }
 
 function genesisLogout(){
+  void window.GenesisAuth.signOut();
   flushGenesisBrowserSession();
   try{genesisMusicAudio?.pause()}catch{}
   localStorage.removeItem("genesisLogin");
@@ -3464,6 +3402,8 @@ document.addEventListener("visibilitychange",()=>{
   if(document.visibilityState==="hidden")flushGenesisBrowserSession();
 });
 
+window.GenesisAuth.ready.then(user=>{
+if(!user)return;
 showGenesisIdImmediately();
 setupGenesisAdminUI();
 initGenesisAccountMenu();
@@ -3480,6 +3420,8 @@ setInterval(validateGenesis12HourSession,60000);
 if(browserState.restoreOnStartup)setTimeout(()=>openApp("browser"),80);
 
 
+
+});
 </script>
 </body>
 </html>
