@@ -75,9 +75,9 @@ test("Games tab exposes the storefront showcase while retaining the full catalog
   assert.match(os,/launchGenesisMiniFallback/);
 });
 
-test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
+test("DeactivateOS retains online and deactivated IDs without the Active IDs card",()=>{
   assert.match(os,/id="genesisOnlineIds"/);
-  assert.match(os,/id="genesisActiveIds"/);
+  assert.doesNotMatch(os,/id="genesisActiveIds"/);
   assert.match(os,/id="genesisInactiveIds"/);
   assert.match(os,/genesis_devices\?select=display_id,active,last_seen/);
   assert.match(os,/const devices = await genesisPublicGet\(/);
@@ -85,7 +85,6 @@ test("DeactivateOS clearly lists active and deactivated Genesis IDs",()=>{
   assert.match(os,/GENESIS_DEVICE_ONLINE_WINDOW_MS=90\*1000/);
   assert.match(os,/function genesisDeviceIsOnline\(/);
   assert.match(os,/onlineText = online\.map/);
-  assert.match(os,/const activeText = active\.map/);
   assert.match(os,/const inactiveText = inactive\.map/);
   assert.match(os,/Deactivated — this ID cannot log in/);
 });
