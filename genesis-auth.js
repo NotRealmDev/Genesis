@@ -48,7 +48,9 @@
   }
   async function signIn(email,password){
     const supplied=String(email).trim();
-    const identifier=supplied.toLowerCase()==='admin'?(config()?.adminEmail||'admin@genesisos.lol'):supplied;
+    const key=supplied.toLowerCase();
+    const identifier=key==='admin'?(config()?.adminEmail||'admin@genesisos.lol')
+      :key==='high skys'?'high-skys@accounts.genesisoss.lol':supplied;
     clear();save(await fetchJSON('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:identifier,password})}));
     try{return await verify()}catch(error){clear();throw error}
   }
