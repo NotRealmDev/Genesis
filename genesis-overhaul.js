@@ -19,6 +19,7 @@
   function storageGet(key,fallback){try{return localStorage.getItem(key)||fallback}catch{return fallback}}
   function storageSet(key,value){try{localStorage.setItem(key,value)}catch{}}
   function username(){
+    if(global.GenesisAuth?.user?.name)return global.GenesisAuth.user.name;
     const custom=storageGet(USERNAME_KEY,"").trim();
     if(custom) return custom.slice(0,24);
     try{
@@ -108,7 +109,10 @@
     const value=username(),dns=currentDns();
     return '<div class="section gx-account">'+
       '<div class="heading">Account Settings</div>'+
-      '<div class="gx-settings-card"><label>Username</label><div class="gx-input-row"><input id="gxUsername" maxlength="24" value="'+value.replace(/"/g,"&quot;")+'" placeholder="Choose a username"><button class="os-btn" onclick="GenesisOverhaul.saveUsername()">Save</button></div><small>This name appears in Genesis Messages and your account menu.</small></div>'+
+      '<div class="gx-settings-card"><label>Username</label><div class="gx-input-row"><input id="gxUsername" maxlength="24" value="'+value.replace(/"/g,"&quot;")+'" placeholder="Choose a username" autocomplete="username"><button id="gxUsernameSave" class="os-btn" onclick="GenesisOverhaul.saveUsername()">Save</button></div><small>Use this username to log in. Your ID stays the same.</small></div>'+
+      '<form class="gx-settings-card" onsubmit="event.preventDefault();GenesisOverhaul.savePassword()"><label>Change password</label><div class="gx-input-row"><input id="gxCurrentPassword" type="password" autocomplete="current-password" placeholder="Current password" required></div><div class="gx-input-row" style="margin-top:10px"><input id="gxNewPassword" type="password" autocomplete="new-password" placeholder="New password (at least 6 characters)" minlength="6" required></div><div class="gx-input-row" style="margin-top:10px"><input id="gxConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password" minlength="6" required><button id="gxPasswordSave" type="submit" class="os-btn">Change password</button></div></form>'+
+      '<div id="gxAccountStatus" role="status" aria-live="polite" style="margin-bottom:14px"></div>'+
+      '<div class="gx-settings-card"><label>Browser proxy providers</label><small>Add Wisp servers and compatible Genesis HTTPS fallbacks, one URL per line. Failed providers are skipped for two minutes.</small><div class="gx-input-row" style="margin-top:10px"><textarea id="gxWispUrls" rows="3" placeholder="wss://your-wisp-server/" style="width:100%"></textarea></div><div class="gx-input-row" style="margin-top:10px"><textarea id="gxProxyUrls" rows="2" placeholder="https://your-genesis-proxy/" style="width:100%"></textarea><button class="os-btn" onclick="GenesisOverhaul.saveProxyProviders()">Save providers</button></div><small>Saved providers take effect when you repair or reopen Browser.</small></div>'+
       '<div class="gx-settings-card"><label>DNS over HTTPS</label><select id="gxDnsSelect" onchange="GenesisOverhaul.saveDns(this.value)">'+Object.entries(dnsProviders).map(([key,p])=>'<option value="'+key+'" '+(dns===key?"selected":"")+'>'+p.name+'</option>').join("")+'</select><small>DNS is used for resolver checks and proxy diagnostics. Wisp remains the actual web transport.</small><div class="gx-dns-line">Status: <b id="genesisDnsStatus">'+dnsProviders[dns].name+' DoH</b></div></div>'+
       '</div>';
   }
@@ -117,9 +121,50 @@
     document.querySelectorAll(".gx-theme-card").forEach(card=>card.classList.toggle("active",card.dataset.themeChoice===applied));
     document.querySelectorAll(".gx-theme-copy b").forEach((b,index)=>{const card=b.closest(".gx-theme-card");b.textContent=card?.classList.contains("active")?"Installed":"Apply"});
   }
-  function saveUsername(){
+  async function saveUsername(){
     const input=document.getElementById("gxUsername");
-    if(setUsername(input?.value)) global.GenesisUI?.sound?.("success");
+    const button=document.getElementById('gxUsernameSave'),status=document.getElementById('gxAccountStatus');
+    if(button)button.disabled=true;
+    try{
+      const name=await global.GenesisAuth.changeUsername(input?.value||'');
+      setUsername(name);
+      if(status)status.textContent='Username updated. Your ID is unchanged.';
+      global.GenesisUI?.sound?.('success');
+    }catch(error){if(status)status.textContent=error.message}
+    finally{if(button)button.disabled=false}
+  }
+  async function savePassword(){
+    const current=document.getElementById('gxCurrentPassword'),next=document.getElementById('gxNewPassword'),confirm=document.getElementById('gxConfirmPassword');
+    const button=document.getElementById('gxPasswordSave'),status=document.getElementById('gxAccountStatus');
+    if(next?.value!==confirm?.value){if(status)status.textContent='The new passwords do not match.';return}
+    if(button)button.disabled=true;
+    try{
+      await global.GenesisAuth.changePassword(current?.value||'',next?.value||'');
+      if(next)next.value='';if(confirm)confirm.value='';
+      if(status)status.textContent='Password changed. Your ID is unchanged.';
+      global.GenesisUI?.sound?.('success');
+    }catch(error){if(status)status.textContent=error.message}
+    finally{if(current)current.value='';if(button)button.disabled=false}
+  }
+  function saveProxyProviders(){
+    const status=document.getElementById('gxAccountStatus');
+    try{
+      const parse=(id,protocol)=>String(document.getElementById(id)?.value||'').split(/\s+/).filter(Boolean).slice(0,10).map(value=>{
+        const url=new URL(value);if(url.protocol!==protocol)throw Error('Use '+protocol+' URLs for this provider list.');return url.href;
+      });
+      const wisp=parse('gxWispUrls','wss:'),https=parse('gxProxyUrls','https:');
+      storageSet('genesisWispUrls',JSON.stringify([...new Set(wisp)]));
+      storageSet('genesisProxyUrls',JSON.stringify([...new Set(https)]));
+      global.GenesisPrism?.routeCooldowns?.clear();
+      if(status)status.textContent='Proxy providers saved. Reopen Browser or select Repair to connect.';
+    }catch(error){if(status)status.textContent=error.message}
+  }
+  function fillProxyProviders(){
+    for(const [id,key] of [['gxWispUrls','genesisWispUrls'],['gxProxyUrls','genesisProxyUrls']]){
+      const el=document.getElementById(id);if(!el || el.dataset.loaded)continue;
+      try{const values=JSON.parse(storageGet(key,'[]'));if(Array.isArray(values))el.value=values.join('\n')}catch{}
+      el.dataset.loaded='1';
+    }
   }
   function saveDns(value){setDns(value);global.GenesisUI?.sound?.("success")}
   function patchApps(){
@@ -170,5 +215,5 @@
   const timer=setInterval(()=>{if(patchApps()){ensureStoreIcon();installAccountButton();clearInterval(timer)}},60);
   setTimeout(()=>{ensureStoreIcon();installAccountButton();syncAccountUI()},250);
 
-  global.GenesisOverhaul=Object.freeze({themes,dnsProviders,username,setUsername,currentTheme,applyTheme,chooseTheme,storeHTML,accountHTML,saveUsername,currentDns,setDns,saveDns,resolveHost});
+  global.GenesisOverhaul=Object.freeze({themes,dnsProviders,username,setUsername,currentTheme,applyTheme,chooseTheme,storeHTML,accountHTML,saveUsername,savePassword,saveProxyProviders,fillProxyProviders,currentDns,setDns,saveDns,resolveHost});
 })(window);

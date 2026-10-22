@@ -1,5 +1,15 @@
 # Server login and automatic suspension — staged cutover
 
+## Account settings and overlapping sessions
+
+`GENESIS_SINGLE_LOGIN.sql` adds a private username directory and active-session leases after the original security migration. The public username resolver returns only an internal login alias; it never returns account email addresses. Username changes update the authenticated account's directory entry and display name while retaining its Auth UUID and Genesis ID. Password changes use Supabase Auth with current-password reauthentication; credentials are not saved in browser storage or committed to the repository.
+
+The login screen shows a separate persistent visitor identifier before authentication. It is a display label, not an authorization identity. The OS continues using the stable account ID.
+
+If two different signed-in sessions overlap within the 90-second heartbeat lease, the server revokes both sessions. The initiating browser returns to sign-in immediately; other open Genesis pages check every 15 seconds and again when a hidden tab becomes visible. Tabs sharing the same Auth session do not conflict. This detects sessions, not individual people. Expired leases and explicit logout allow a subsequent sign-in without changing the account ID.
+
+The private username and presence tables deliberately deny all direct client access. Read and update helpers derive ownership from the verified session. LK and KL are approved normal-user accounts; High Skys is disabled. Initial passwords are provisioned separately and are not part of the source changes.
+
 ## Status
 
 The owner account is confirmed, the existing password has been verified against Supabase Auth, and the server migration has been applied. Live checks verified administrator access and rejection of anonymous reactivation. A rollback-only test verified suspension and incident recording without changing the owner's role or leaving an incident behind. Frontend publication is tracked by PR #67. Existing shared logins are replaced with approved server accounts. This patch replaces the narrower draft in PR #65; do not apply both SQL files.

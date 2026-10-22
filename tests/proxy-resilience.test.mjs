@@ -63,6 +63,22 @@ test("HTTPS fallback works when the Wisp library is missing",async()=>{
   await result.transport.close();
 });
 
+test('failed providers are skipped during the cooldown and custom fallback URLs are honored',async()=>{
+  const context=loadPrismShell({fetch:async()=>({status:200})});
+  const runtime=context.GenesisPrism;
+  context.localStorage.setItem('genesisWispUrls',JSON.stringify(['wss://backup.example/wisp/']));
+  runtime.routeCooldowns.set('wss://wisp.workshop/',Date.now()+120000);
+  runtime.refreshWispUrls();
+  assert.ok(!runtime.wispUrls.includes('wss://wisp.workshop/'));
+  assert.ok(runtime.wispUrls.includes('wss://backup.example/wisp/'));
+  runtime.routeCooldowns.set('wss://wisp.workshop/',Date.now()-1);
+  runtime.refreshWispUrls();assert.ok(runtime.wispUrls.includes('wss://wisp.workshop/'));
+  const result=await context.testCreateTransport([],0,{httpProxyUrls:['https://backup.example/']});
+  assert.equal(result.transport.endpoint,'https://backup.example/');
+  await result.transport.close();
+  await assert.rejects(context.testCreateTransport([],0,{httpProxyUrls:[]}),/No browser route/);
+});
+
 test('the reported TikTok proxy URL survives both controller and frame IDs',()=>{
   const context=loadPrismShell();
   const runtime=context.GenesisPrism;
