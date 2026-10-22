@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: genesis-wisp
+    runtime: node
+    plan: free
+    rootDir: render-wisp
+    buildCommand: npm ci --omit=dev
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ALLOWED_ORIGINS
+        value: https://genesisoss.lol

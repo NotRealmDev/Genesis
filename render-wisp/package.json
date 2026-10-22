@@ -1,0 +1,19 @@
+{
+  "name": "genesis-render-wisp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22 <25"
+  },
+  "scripts": {
+    "start": "node server.mjs",
+    "test": "node --test server.test.mjs"
+  },
+  "dependencies": {
+    "@mercuryworkshop/wisp-js": "0.5.0"
+  },
+  "devDependencies": {
+    "ws": "8.22.0"
+  }
+}
