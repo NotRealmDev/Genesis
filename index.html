@@ -544,7 +544,7 @@ body {
 </style>
   <link rel="icon" type="image/png" href="assets/icons/genesis-fall.png">
 <script src="supabase-config.js"></script>
-<script src="genesis-auth.js?build=high-skys-r1"></script>
+<script src="genesis-auth.js?build=accounts-r2"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.116.0/dist/umd/supabase.min.js" crossorigin="anonymous" defer></script>
 <script src="genesis-presence.js?build=presence-r1" defer></script>
 <script src="genesis-announcements.js" defer></script>
@@ -1508,7 +1508,7 @@ Sign in to continue
 <input
 type="text"
 id="username"
-placeholder="Admin or account email"
+placeholder="Username"
 autocomplete="username"
 spellcheck="false"
 >
@@ -1572,7 +1572,7 @@ async function login(){
 loginButton.addEventListener('click',login);
 passwordInput.addEventListener('keydown',event=>{if(event.key==='Enter'){event.preventDefault();login()}});
 usernameInput.addEventListener('keydown',event=>{if(event.key==='Enter')passwordInput.focus()});
-document.getElementById('genesisVisitorId').textContent='ID assigned after verified sign-in';
+document.getElementById('genesisVisitorId').textContent='Visitor ID '+window.GenesisAuth.visitorId();
 </script>
 
 <!-- Genesis login build V2 -->

@@ -23,7 +23,8 @@ try{
     if(url.pathname==='/auth/v1/token'){
       authRequests.push(request.postDataJSON());
       body={access_token:'fixture-token',refresh_token:'fixture-refresh',expires_in:3600};
-    }else if(url.pathname==='/auth/v1/user')body={id:'fixture-user',email:'owner@example.test'};
+    }else if(url.pathname==='/auth/v1/user')body={id:'fixture-user',email:'owner@example.test',user_metadata:{display_name:'Admin'}};
+    else if(/genesis_resolve_login/.test(url.pathname))body='admin';
     else if(/genesis_session_access/.test(url.pathname))body=[{user_id:'fixture-user',display_id:527,active:true,role:'admin'}];
     else if(/genesis_(register|check)_device/.test(url.pathname))body=[{display_id:527,active:true}];
     else if(/genesis_security_guard/.test(url.pathname))body=true;

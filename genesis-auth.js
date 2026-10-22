@@ -1,7 +1,7 @@
 (function(global){
   'use strict';
   const KEY='genesisVerifiedSessionV1';
-  let verified=null,refreshing=null;
+  let verified=null,refreshing=null,verification=null,passwordChange=false;
   const config=()=>global.GENESIS_BACKEND;
   function session(){try{return JSON.parse(sessionStorage.getItem(KEY)||'null')}catch{return null}}
   function clear(){
@@ -9,11 +9,11 @@
     for(const key of ['realmAuth','realmUser','genesisRole'])sessionStorage.removeItem(key);
     localStorage.removeItem('genesisLogin');localStorage.removeItem('genesisAdminSession');
   }
-  async function fetchJSON(path,options={},token=''){
+  async function fetchJSON(path,options={},token='',failureMessage='Access verification failed. Sign in again or retry.'){
     const b=config();if(!b?.url||!b?.anonKey)throw Error('Sign-in service is unavailable.');
     const response=await fetch(b.url+path,{...options,cache:'no-store',headers:{apikey:b.anonKey,'Content-Type':'application/json',...(token?{Authorization:'Bearer '+token}:{}),...options.headers},signal:AbortSignal.timeout(12000)});
     let data=null;try{data=await response.json()}catch{}
-    if(!response.ok)throw Error('Access verification failed. Sign in again or retry.');
+    if(!response.ok)throw Error(failureMessage);
     return data;
   }
   function save(data){
@@ -28,17 +28,21 @@
     value=await refreshing;return value.access_token;
   }
   async function rpc(name,body={}){return fetchJSON('/rest/v1/rpc/'+name,{method:'POST',body:JSON.stringify(body)},await token())}
-  async function verify(){
+  async function verifyAccount(){
     const access=await token();
     const identity=await fetchJSON('/auth/v1/user',{},access);
     if(!identity?.id)throw Error('Sign in to continue.');
     const rows=await fetchJSON('/rest/v1/rpc/genesis_session_access',{method:'POST',body:'{}'},access);
     const result=Array.isArray(rows)?rows[0]:rows;
+    if(!result || result.role==='conflict'){
+      clear();
+      throw Error(result?.role==='conflict'?'This login was used in two sessions. Both were signed out. Please log in again.':'Your session ended. Please log in again.');
+    }
     if(!result||result.user_id!==identity.id||result.active!==true){
       const id=result?.display_id;clear();
       throw Error(id?'ID '+id+' is deactivated or awaiting administrator approval.':'This account needs administrator approval.');
     }
-    verified=Object.freeze({id:identity.id,name:result.role==='admin'?'Admin':String(identity.user_metadata?.display_name||identity.email||'Genesis user'),role:result.role==='admin'?'admin':'user',displayId:String(result.display_id)});
+    verified=Object.freeze({id:identity.id,name:String(identity.user_metadata?.display_name||(result.role==='admin'?'Admin':identity.email)||'Genesis user'),role:result.role==='admin'?'admin':'user',displayId:String(result.display_id)});
     localStorage.setItem('genesisDisplayId',verified.displayId);
     localStorage.removeItem('genesisDeviceBlocked');
     global.genesisRegisteredDevice={display_id:result.display_id,active:true};
@@ -46,11 +50,15 @@
     sessionStorage.setItem('realmAuth','1');sessionStorage.setItem('realmUser',verified.name);sessionStorage.setItem('genesisRole',verified.role);
     return verified;
   }
+  function verify(){
+    if(!verification)verification=verifyAccount().finally(()=>{verification=null});
+    return verification;
+  }
   async function signIn(email,password){
     const supplied=String(email).trim();
-    const key=supplied.toLowerCase();
-    const identifier=key==='admin'?(config()?.adminEmail||'admin@genesisos.lol')
-      :key==='high skys'?'high-skys@accounts.genesisoss.lol':supplied;
+    const alias=supplied.includes('@')?'':await fetchJSON('/rest/v1/rpc/genesis_resolve_login',{method:'POST',body:JSON.stringify({p_username:supplied})});
+    const identifier=supplied.includes('@')?supplied:({admin:config()?.adminEmail,lk:'lk@accounts.genesisoss.lol',kl:'kl@accounts.genesisoss.lol'})[alias];
+    if(!identifier)throw Error('Incorrect username or password.');
     clear();save(await fetchJSON('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:identifier,password})}));
     try{return await verify()}catch(error){clear();throw error}
   }
@@ -61,8 +69,44 @@
     return token();
   }
   async function signOut(){
-    const access=session()?.access_token;clear();
-    if(access)fetchJSON('/auth/v1/logout',{method:'POST'},access).catch(()=>{});
+    const access=session()?.access_token;
+    if(access)await fetchJSON('/rest/v1/rpc/genesis_release_login',{method:'POST',body:'{}'},access).catch(()=>{});
+    clear();
+    if(access)await fetchJSON('/auth/v1/logout?scope=local',{method:'POST'},access).catch(()=>{});
+  }
+  async function changePassword(currentPassword,newPassword){
+    if(!currentPassword || String(newPassword).length<6)throw Error('Enter your current password and a new password of at least 6 characters.');
+    if(passwordChange)throw Error('A password change is already in progress.');
+    passwordChange=true;
+    let proof,adopted=false;
+    try{
+      await verify();
+      const access=await token();
+      const identity=await fetchJSON('/auth/v1/user',{},access);
+      proof=await fetchJSON('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:identity.email,password:currentPassword})},'','The current password is incorrect.');
+      // Use the freshly reauthenticated session, including after long sign-ins.
+      await fetchJSON('/auth/v1/user',{method:'PUT',body:JSON.stringify({password:newPassword,current_password:currentPassword})},proof.access_token,'Could not change password. Choose a different password with at least 6 characters.');
+      await fetchJSON('/rest/v1/rpc/genesis_release_login',{method:'POST',body:'{}'},access).catch(()=>{});
+      await fetchJSON('/auth/v1/logout?scope=local',{method:'POST'},access).catch(()=>{});
+      save(proof);adopted=true;await verify();
+    }finally{
+      if(proof&&!adopted)await fetchJSON('/auth/v1/logout?scope=local',{method:'POST'},proof.access_token).catch(()=>{});
+      passwordChange=false;
+    }
+  }
+  async function changeUsername(name){
+    await verify();
+    const result=await fetchJSON('/rest/v1/rpc/genesis_set_username',{method:'POST',body:JSON.stringify({p_username:String(name).trim()})},await token(),'That username is unavailable. Use 2-24 letters, numbers, spaces, dots, dashes or underscores.');
+    await verify();
+    return result;
+  }
+  function visitorId(){
+    let value;try{value=localStorage.getItem('genesisVisitorIdV1')}catch{}
+    if(!/^[A-F0-9]{12}$/.test(value||'')){
+      value=global.crypto.randomUUID().replace(/-/g,'').slice(0,12).toUpperCase();
+      try{localStorage.setItem('genesisVisitorIdV1',value)}catch{}
+    }
+    return value;
   }
   function locked(message){
     document.documentElement.style.visibility='visible';
@@ -92,9 +136,10 @@
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>locked(error.message),{once:true});else locked(error.message);
     return null;
   }):Promise.resolve(null);
-  global.GenesisAuth=Object.freeze({ready,signIn,signOut,verify,token,rpc,adminToken,get user(){return verified}});
+  global.GenesisAuth=Object.freeze({ready,signIn,signOut,verify,token,rpc,adminToken,changePassword,changeUsername,visitorId,get user(){return verified}});
   if(protectedPage){
-    setInterval(()=>verify().catch(error=>locked(error.message)),60000);
+    setInterval(()=>{if(!passwordChange)verify().catch(error=>locked(error.message))},15000);
     setInterval(pollAlerts,10000);
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!passwordChange)verify().catch(error=>locked(error.message))});
   }
 })(window);

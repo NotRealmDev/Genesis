@@ -91,7 +91,7 @@ test("DeactivateOS retains online and deactivated IDs without the Active IDs car
 
 test("login uses verified account identity instead of generating browser IDs",()=>{
   assert.doesNotMatch(login,/genesis_register_device|crypto.randomUUID/);
-  assert.match(login,/ID assigned after verified sign-in/);
+  assert.match(login,/Visitor ID /);
 });
 
 test("Genesis branding keeps the requested fall Falcon through login, OS, and install",()=>{

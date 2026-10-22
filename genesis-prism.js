@@ -14,7 +14,7 @@
   const DEFAULT_HTTP_PROXY_URLS = [
     "https://genesis-proxy.bernye-eugene7.workers.dev/"
   ];
-  const BUILD_ID = "2026-10-22-network-recovery-r3";
+  const BUILD_ID = "2026-10-22-provider-failover-r4";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
   const WISP_PROBE_TIMEOUT_MS = 4500;
@@ -96,6 +96,8 @@
     try{
       custom=normalizeWispUrl(localStorage.getItem("genesisWispUrl"));
       if(custom) urls.push(custom);
+      const extra=JSON.parse(localStorage.getItem("genesisWispUrls")||"[]");
+      if(Array.isArray(extra))for(const value of extra){const url=normalizeWispUrl(value);if(url&&!urls.includes(url))urls.push(url)}
     }catch{}
     for(const value of DEFAULT_WISP_URLS){
       const normalized=normalizeWispUrl(value);
@@ -115,6 +117,7 @@
     const urls=[];
     const values=[];
     try{ values.push(localStorage.getItem("genesisProxyUrl")); }catch{}
+    try{const extra=JSON.parse(localStorage.getItem("genesisProxyUrls")||"[]");if(Array.isArray(extra))values.push(...extra)}catch{}
     try{
       values.push(window.GENESIS_PROXY?.endpoint);
       values.push(...(window.GENESIS_PROXY?.endpoints||[]));
@@ -826,7 +829,7 @@
     async close(){ this.ready=false; }
   }
 
-  async function createTransport(wispUrls,startIndex=0){
+  async function createTransport(wispUrls,startIndex=0,options={}){
     // Begin the HTTPS route independently: blocked sockets or a missing
     // Libcurl script must not prevent the fallback from ever being attempted.
     let winner=null;
@@ -864,7 +867,7 @@
       await Promise.race([delay(1500),wisp.catch(()=>{})]);
       if(winner) throw new Error("Wisp is already connected.");
       let lastError=new Error("No HTTPS fallback is configured.");
-      for(const endpoint of getHttpProxyUrls()){
+      for(const endpoint of options.httpProxyUrls||getHttpProxyUrls()){
         const fallback=new HttpProxyTransport(endpoint);
         try{
           await fallback.init();
@@ -907,6 +910,7 @@
     wispIndex:0,
     activeWisp:"",
     frameRecoveryState:new WeakMap(),
+    routeCooldowns:new Map(),
     codec,
     decodeProxyUrl,
     youtubeVideoId,
@@ -917,7 +921,7 @@
 
     refreshWispUrls(){
       const previous=this.activeWisp;
-      this.wispUrls=getWispUrls();
+      this.wispUrls=getWispUrls().filter(url=>(this.routeCooldowns.get(url)||0)<=Date.now());
       if(previous){
         const index=this.wispUrls.indexOf(previous);
         if(index>=0) this.wispIndex=index;
@@ -1054,7 +1058,8 @@
         this.bindProxyErrorMessages();
         this.refreshWispUrls();
 
-        const transportResult=await createTransport(this.wispUrls,this.wispIndex);
+        const httpProxyUrls=getHttpProxyUrls().filter(url=>(this.routeCooldowns.get(url)||0)<=Date.now());
+        const transportResult=await createTransport(this.wispUrls,this.wispIndex,{httpProxyUrls});
         this.transport=transportResult.transport;
         this.transportProfile=transportResult.profile||"wisp-failover";
         this.wispIndex=transportResult.wispIndex;
@@ -1108,7 +1113,11 @@
       this.recoveryPromise=(async()=>{
         this.lastRecoveryReason=String(reason||"manual recovery");
         const oldTransport=this.transport;
-        if(options.rotateWisp) this.rotateWisp();
+        if(options.rotateWisp){
+          const failed=oldTransport?.activeWisp||oldTransport?.endpoint||this.activeWisp;
+          if(failed)this.routeCooldowns.set(failed,Date.now()+120000);
+          this.rotateWisp();
+        }
         this.controller=null;
         this.transport=null;
         this.transportProfile=null;
