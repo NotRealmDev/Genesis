@@ -1,9 +1,9 @@
 (function(){
   const OFFICIAL_WISP_CLIENT_MODULE = "https://cdn.jsdelivr.net/npm/@mercuryworkshop/wisp-js@0.5.0/dist/wisp-client.mjs";
-  // Scramjet's own current demo uses anura.pro. Keep a second independent
-  // endpoint for automatic failover, and allow an owner-supplied endpoint
-  // through genesisWispUrl to take priority over both.
+  // Genesis's Render service is preferred; community providers remain backups.
+  // Owner-supplied endpoints still take priority.
   const DEFAULT_WISP_URLS = [
+    "wss://genesis-wisp.onrender.com/wisp/",
     "wss://wisp.workshop/",
     "wss://anura.pro/",
     "wss://wisp.mercurywork.shop/"
@@ -14,7 +14,7 @@
   const DEFAULT_HTTP_PROXY_URLS = [
     "https://genesis-proxy.bernye-eugene7.workers.dev/"
   ];
-  const BUILD_ID = "2026-10-22-provider-failover-r4";
+  const BUILD_ID = "2026-10-22-render-provider-r5";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
   const WISP_PROBE_TIMEOUT_MS = 4500;
@@ -99,16 +99,18 @@
       const extra=JSON.parse(localStorage.getItem("genesisWispUrls")||"[]");
       if(Array.isArray(extra))for(const value of extra){const url=normalizeWispUrl(value);if(url&&!urls.includes(url))urls.push(url)}
     }catch{}
+    const customCount=urls.length;
     for(const value of DEFAULT_WISP_URLS){
       const normalized=normalizeWispUrl(value);
       if(normalized && !urls.includes(normalized)) urls.push(normalized);
     }
-    // Start with the endpoint that actually worked on this device last time.
-    // Different networks often have very different WebSocket routing latency.
+    // Remember working backups without moving them ahead of custom providers
+    // or the preferred Genesis service. Cooldowns still skip failed routes.
     try{
       const previous=normalizeWispUrl(localStorage.getItem(LAST_WISP_KEY));
       const index=urls.indexOf(previous);
-      if(index>0 && !custom)urls.splice(0,0,urls.splice(index,1)[0]);
+      const backupStart=customCount+1;
+      if(index>backupStart)urls.splice(backupStart,0,urls.splice(index,1)[0]);
     }catch{}
     return urls;
   }

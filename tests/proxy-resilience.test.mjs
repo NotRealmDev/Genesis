@@ -56,6 +56,25 @@ function loadPrismShell(overrides={}){
   return context;
 }
 
+test('Render is preferred, custom providers retain priority, and failed Render falls back',()=>{
+  const context=loadPrismShell();
+  const runtime=context.GenesisPrism;
+  const render='wss://genesis-wisp.onrender.com/wisp/';
+  assert.equal(runtime.wispUrls[0],render);
+  context.localStorage.setItem('genesisLastWorkingWispV1','wss://anura.pro/');
+  runtime.refreshWispUrls();
+  assert.equal(runtime.wispUrls[0],render);
+  assert.equal(runtime.wispUrls[1],'wss://anura.pro/');
+  context.localStorage.setItem('genesisWispUrls',JSON.stringify(['wss://custom.example/wisp/']));
+  runtime.refreshWispUrls();
+  assert.equal(runtime.wispUrls[0],'wss://custom.example/wisp/');
+  assert.equal(runtime.wispUrls[1],render);
+  runtime.routeCooldowns.set(render,Date.now()+120000);
+  runtime.refreshWispUrls();
+  assert.ok(!runtime.wispUrls.includes(render));
+  assert.ok(runtime.wispUrls.includes('wss://anura.pro/'));
+});
+
 test("HTTPS fallback works when the Wisp library is missing",async()=>{
   const context=loadPrismShell({fetch:async()=>({status:200})});
   const result=await context.testCreateTransport([]);
