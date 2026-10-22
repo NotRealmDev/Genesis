@@ -14,7 +14,7 @@
   const DEFAULT_HTTP_PROXY_URLS = [
     "https://genesis-proxy.bernye-eugene7.workers.dev/"
   ];
-  const BUILD_ID = "2026-10-20-wifi-fallback-r2";
+  const BUILD_ID = "2026-10-22-network-recovery-r3";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
   const WISP_PROBE_TIMEOUT_MS = 4500;
@@ -28,7 +28,22 @@
   const delay = (ms) => new Promise(resolve=>setTimeout(resolve,ms));
   const TRANSPORT_HEALTH_URL = "https://example.com/";
   const TRANSIENT_STATUSES = new Set([408,425,500,502,503,504]);
-  const PROXY_ERROR_PATTERN = /Genesis upstream request failed|Internal Service Worker Error|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
+  const PROXY_ERROR_PATTERN = /Genesis transport error|Genesis upstream request failed|Internal Service Worker Error|NetworkError when attempting to fetch resource|TypeError:\s*(?:Failed to fetch|Load failed)|Request failed with error code:\s*7|Could not connect to server|couldn['’]?t connect to server/i;
+
+  function decodeProxyUrl(value){
+    try{
+      const url=new URL(String(value||""),location.href);
+      if(url.origin!==location.origin)return /^https?:$/.test(url.protocol)?url.href:"";
+      const prefix=assetPath("prism/");
+      if(!url.pathname.startsWith(prefix))return "";
+      const routed=url.pathname.slice(prefix.length);
+      // Prism uses both controller and frame IDs before the encoded target.
+      const target=routed.match(/(?:^|\/)(https?%3a%2f%2f[^]*)$/i)?.[1];
+      if(!target)return "";
+      const remote=new URL(decodeURIComponent(target));
+      return /^https?:$/.test(remote.protocol)?remote.href:"";
+    }catch{return "";}
+  }
 
   let officialWispModulePromise = null;
 
@@ -893,6 +908,7 @@
     activeWisp:"",
     frameRecoveryState:new WeakMap(),
     codec,
+    decodeProxyUrl,
     youtubeVideoId,
     youtubeEmbedFallback,
     youtubeEmbedFallbacks,
@@ -968,6 +984,7 @@
       try{
         const freshFrame=await this.recoverFrame(element,"upstream connection failure: "+message,{rotateWisp:true});
         if(status) status.textContent="Wisp switched · retrying page…";
+        if((document.getElementById("browserAddress")?.value||"").trim()!==target)return;
         if(typeof window.browserNavigate === "function") await Promise.resolve(window.browserNavigate(target,false,false,{forceProxy:true}));
         else if(freshFrame?.go) freshFrame.go(target);
       }catch(err){
@@ -1005,6 +1022,15 @@
           .catch(err=>console.error("Genesis proxy error recovery failed:",err));
       };
       window.addEventListener("message",this.proxyErrorMessageHandler);
+      navigator.serviceWorker?.addEventListener("message",event=>{
+        if(!event.source || (event.source!==navigator.serviceWorker.controller && event.source!==this.serviceWorker))return;
+        const payload=event.data?.$genesisProxyError;
+        if(!payload || typeof payload!=="object" || /(?:^|\/)browser-tab\.html$/i.test(location.pathname))return;
+        const frame=document.getElementById("browserFrame");
+        if(!frame || !this.decodeProxyUrl(payload.url))return;
+        this.autoRecoverFrame(frame,payload.message||"Genesis upstream connection failed")
+          .catch(err=>console.error("Genesis service worker recovery failed:",err));
+      });
     },
 
     async init(){

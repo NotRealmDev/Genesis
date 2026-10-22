@@ -584,7 +584,7 @@ button{color:inherit}
 <script src="prism.js" defer></script>
 <script src="prism.api.js" defer></script>
 <script src="libby.js" defer></script>
-<script src="genesis-prism.js?build=wifi-r2" defer></script>
+<script src="genesis-prism.js?build=network-recovery-r3" defer></script>
 <script src="genesis-announcements.js" defer></script>
 <script src="genesis-overhaul.js" defer></script>
 </head>
@@ -2283,9 +2283,9 @@ function decodeGenesisProxyAddress(value){
     const markerIndex=parsed.pathname.indexOf(marker);
     if(markerIndex<0)return "";
     const routed=parsed.pathname.slice(markerIndex+marker.length);
-    const split=routed.indexOf("/");
-    if(split<0)return "";
-    return validSavedBrowserAddress(decodeURIComponent(routed.slice(split+1)));
+    const encoded=routed.match(/(?:^|\/)(https?%3a%2f%2f[^]*)$/i)?.[1];
+    if(!encoded)return "";
+    return validSavedBrowserAddress(decodeURIComponent(encoded));
   }catch{return "";}
 }
 
@@ -2340,11 +2340,14 @@ async function ensureGenesisPrismRuntime(status){
 }
 
 async function ensureGenesisPrism(win){
-  if(browserState.prismFrame) return browserState.prismFrame;
   const status=win?.querySelector("#browserStatus");
   const frame=win?.querySelector("#browserFrame");
   if(!frame) throw new Error("Browser frame is missing.");
   if(openWindows.browser!==win) throw new Error("Browser window was closed.");
+  // Recovery replaces the controller and the iframe's Prism binding.
+  // Never send a retry through the stale controller cached by the OS.
+  if(browserState.prismFrame && browserState.prismFrame===frame.__genesisPrismFrame)return browserState.prismFrame;
+  browserState.prismFrame=null;
   try{
     if(status) status.textContent="Starting Scramjet + Wisp proxy…";
     const runtime=await ensureGenesisPrismRuntime(status);

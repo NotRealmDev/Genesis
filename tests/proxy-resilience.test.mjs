@@ -63,6 +63,56 @@ test("HTTPS fallback works when the Wisp library is missing",async()=>{
   await result.transport.close();
 });
 
+test('the reported TikTok proxy URL survives both controller and frame IDs',()=>{
+  const context=loadPrismShell();
+  const runtime=context.GenesisPrism;
+  const target='https://www.tiktok.com/';
+  assert.equal(runtime.decodeProxyUrl('https://genesis.example/prism/uub9kvb3/mezok203/'+encodeURIComponent(target)),target);
+  assert.equal(runtime.decodeProxyUrl('https://genesis.example/prism/older/'+encodeURIComponent(target)),target);
+  assert.equal(runtime.decodeProxyUrl('https://genesis.example/prism/controller/frame/data%3Atext%2Fhtml%2Cbad'),'');
+  assert.equal(runtime.readFrameProxyFailure({contentDocument:{body:{innerText:'Genesis transport error\nTypeError: NetworkError when attempting to fetch resource.'}}}).includes('NetworkError'),true);
+});
+
+test('the same network error on successive providers retries, but duplicate notifications do not',()=>{
+  let repairs=0,errors=0;
+  const context=vm.createContext({recovering:false,usingYouTubeFallback:false,lastFailure:'',automaticRecoveries:0,
+    frame:{src:'https://genesis.example/prism/route-one/frame/url'},clearLoadTimer(){},clearReadinessTimer(){},
+    hardRecover(){repairs++;return Promise.resolve()},showError(){errors++}});
+  vm.runInContext(browserTab.slice(browserTab.indexOf('  function handleProxyFailure('),browserTab.indexOf('  frame.addEventListener("load"')),context);
+  const failure='TypeError: NetworkError when attempting to fetch resource.';
+  context.handleProxyFailure(failure);context.handleProxyFailure(failure);
+  assert.equal(repairs,1);
+  context.frame.src='https://genesis.example/prism/route-two/frame/url';
+  context.handleProxyFailure(failure);assert.equal(repairs,2);
+  context.frame.src='https://genesis.example/prism/route-three/frame/url';
+  context.handleProxyFailure(failure);assert.equal(repairs,2);assert.equal(errors,1);
+});
+
+test('the active service worker can trigger recovery for the OS browser',async()=>{
+  const worker={},listeners={},frame={id:'browserFrame'};
+  const context=loadPrismShell({navigator:{serviceWorker:{controller:worker,addEventListener:(name,fn)=>listeners[name]=fn}},
+    document:{currentScript:{src:'https://genesis.example/genesis-prism.js'},getElementById:()=>frame},addEventListener(){}});
+  let recovered=0;
+  context.GenesisPrism.autoRecoverFrame=async element=>{assert.equal(element,frame);recovered++};
+  context.GenesisPrism.bindProxyErrorMessages();
+  const data={$genesisProxyError:{message:'NetworkError when attempting to fetch resource.',url:'https://genesis.example/prism/controller/frame/https%3A%2F%2Fwww.tiktok.com%2F'}};
+  listeners.message({source:{},data});assert.equal(recovered,0);
+  listeners.message({source:worker,data});assert.equal(recovered,1);
+});
+
+test('OS navigation uses the repaired frame instead of its failed cached controller',async()=>{
+  const oldFrame={},freshFrame={},element={__genesisPrismFrame:freshFrame};
+  const win={querySelector:selector=>selector==='#browserFrame'?element:{}};
+  let bindings=0;
+  const context=vm.createContext({console,browserState:{prismFrame:oldFrame},openWindows:{browser:win},
+    ensureGenesisPrismRuntime:async()=>({createFrame:async()=>{bindings++;return freshFrame}})});
+  vm.runInContext(os.slice(os.indexOf('async function ensureGenesisPrism(win)'),os.indexOf('function browserAdNodes(')),context);
+  assert.equal(await context.ensureGenesisPrism(win),freshFrame);
+  assert.equal(context.browserState.prismFrame,freshFrame);
+  assert.equal(await context.ensureGenesisPrism(win),freshFrame);
+  assert.equal(bindings,1);
+});
+
 test("a stalled Wisp does not delay HTTPS and its late client is closed",async()=>{
   let finishWisp,closed=false;
   const context=loadPrismShell({LibcurlTransport:{},fetch:async()=>({status:200}),
