@@ -4,6 +4,24 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 
 const html=readFileSync(new URL('../os.html',import.meta.url),'utf8');
+test('only the canonical Fiveplay GTA 5 survives imported catalog duplicates',()=>{
+  const context=vm.createContext({});
+  vm.runInContext(html.slice(html.indexOf('function isGTAFive('),html.indexOf('const gameLibrary = [')),context);
+  for(const name of ['Grand Theft Auto 5','Grand Theft Auto V','GTA 5','GTA V'])assert.equal(context.isGTAFive({name}),true);
+  for(const name of ['Grand Theft Auto','Grand Theft Auto 2','Grand Theft Auto Advance'])assert.equal(context.isGTAFive({name}),false);
+  const start=html.indexOf('const gameLibrary = [');
+  const end=html.indexOf('\n\n\nconst GAME_REQUEST_FORM',start);
+  context.gameWebSearchThumb=()=>'';
+  context.catalogGame=entry=>entry;
+  context.GENESIS_GAME_CATALOG={games:[{id:'duplicate',name:'GTA V'},{id:'other',name:'Grand Theft Auto 2'}]};
+  context.GENESIS_GAME_CATALOG_T_Z={games:[{id:'another-duplicate',name:'Grand Theft Auto 5'}]};
+  vm.runInContext(html.slice(start,end)+';globalThis.games=gameLibrary;',context);
+  const gta=context.games.filter(context.isGTAFive);
+  assert.equal(gta.length,1);
+  assert.equal(gta[0].id,'gta5-fiveplay');
+  assert.equal(gta[0].src,'https://fiveplay.lol/');
+  assert.ok(context.games.some(game=>game.id==='other'));
+});
 test('GTA opens in Games with provider URLs intact and popup/navigation restrictions set before loading',async()=>{
   const game=vm.runInNewContext('('+html.match(/\{id:"gta5-fiveplay"[^\n]+/)[0].replace(/,$/,'')+')');
   const attributes={},listeners={};
