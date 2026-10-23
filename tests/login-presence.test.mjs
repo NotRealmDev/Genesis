@@ -12,7 +12,7 @@ function setup({identity='user-1',account='user-1',active=true,networkError=fals
     fetch:async(url,options)=>{
       calls.push({url,options});if(networkError)throw Error('Network unavailable');
       let data;
-      if(url.endsWith('/genesis_resolve_login'))data=({admin:'admin',lk:'lk',kl:'kl'})[JSON.parse(options.body).p_username.toLowerCase()]||null;
+      if(url.endsWith('/genesis_resolve_login'))data=({admin:'admin',lk:'lk',kl:'kl',kb:'kb'})[JSON.parse(options.body).p_username.toLowerCase()]||null;
       else if(url.endsWith('/genesis_set_username')){displayName=JSON.parse(options.body).p_username;data=displayName}
       else if(url.includes('grant_type=password'))data={access_token:'server-token',refresh_token:'refresh',expires_in:3600};
       else if(url.endsWith('/auth/v1/user'))data={id:identity,email:'account@example.test',user_metadata:{display_name:displayName}};
@@ -46,8 +46,8 @@ test('the existing Admin username maps to its server account without a client pa
   await context.GenesisAuth.signIn(' Admin ','test-only-password');
   assert.equal(JSON.parse(calls.find(c=>c.url.includes('grant_type=password')).options.body).email,'owner@example.test');
 });
-test('LK and KL resolve through the server; removed High Skys cannot log in',async()=>{
-  for(const name of ['LK','KL']){
+test('LK, KL and KB resolve through the server; removed High Skys cannot log in',async()=>{
+  for(const name of ['LK','KL','KB']){
     const {context,calls}=setup();
     await context.GenesisAuth.signIn(' '+name+' ','fixture-only-password');
     const request=JSON.parse(calls.find(c=>c.url.includes('grant_type=password')).options.body);

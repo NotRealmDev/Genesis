@@ -57,7 +57,7 @@
   async function signIn(email,password){
     const supplied=String(email).trim();
     const alias=supplied.includes('@')?'':await fetchJSON('/rest/v1/rpc/genesis_resolve_login',{method:'POST',body:JSON.stringify({p_username:supplied})});
-    const identifier=supplied.includes('@')?supplied:({admin:config()?.adminEmail,lk:'lk@accounts.genesisoss.lol',kl:'kl@accounts.genesisoss.lol'})[alias];
+    const identifier=supplied.includes('@')?supplied:({admin:config()?.adminEmail,lk:'lk@accounts.genesisoss.lol',kl:'kl@accounts.genesisoss.lol',kb:'kb@accounts.genesisoss.lol'})[alias];
     if(!identifier)throw Error('Incorrect username or password.');
     clear();save(await fetchJSON('/auth/v1/token?grant_type=password',{method:'POST',body:JSON.stringify({email:identifier,password})}));
     try{return await verify()}catch(error){clear();throw error}
