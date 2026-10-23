@@ -876,7 +876,7 @@ function isGTAFive(game){
     || /^(?:https?:\/\/)?(?:www\.)?fiveplay\.lol(?:\/|$)/i.test(String(game?.src||''));
 }
 const gameLibrary = [
-  {id:"gta5-fiveplay",name:"Grand Theft Auto 5",developer:"fiveplay.lol",section:"G",thumb:"assets/icons/grand-theft-auto-5.jpg",src:"https://fiveplay.lol/",directEmbed:true},
+  {id:"gta5-fiveplay",name:"Grand Theft Auto 5",developer:"fiveplay.lol",section:"G",thumb:"assets/icons/grand-theft-auto-5.jpg",src:"https://fiveplay.lol/",directEmbed:true,proxy:true},
   {id:"ugs-a-dance-of-fire-and-ice",name:"A Dance of Fire and Ice",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Dance of Fire and Ice"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clADOFAI.html"},
   {id:"ugs-a-dark-room",name:"A Dark Room",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Dark Room"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/clADarkRoom.html"},
   {id:"ugs-a-date-with-death",name:"A Date With Death",developer:"UGS · A",section:"A",thumb:gameWebSearchThumb("A Date With Death"),src:"https://cdn.jsdelivr.net/npm/ugs-singlefiles@1.0.6/UGS-Files/cladatewithdeath.html"},
@@ -2123,7 +2123,15 @@ async function openGame(gameId){
     },{once:true});
 
     if(loadText) loadText.textContent="Loading "+g.name+"...";
-    frame.src=gameUrl;
+    if(g.proxy){
+      if(loadText)loadText.textContent='Connecting to Fiveplay through the proxy…';
+      const runtime=await ensureGenesisPrismRuntime();
+      const proxyFrame=await runtime.createFrame(frame);
+      if(document.getElementById('gameFrame')!==frame)return;
+      proxyFrame.go(gameUrl);
+    }else{
+      frame.src=gameUrl;
+    }
   }catch(err){
     console.error(err);
     if(g.directEmbed){

@@ -22,30 +22,31 @@ test('only the canonical Fiveplay GTA 5 survives imported catalog duplicates',()
   assert.equal(gta[0].src,'https://fiveplay.lol/');
   assert.ok(context.games.some(game=>game.id==='other'));
 });
-test('GTA opens in Games with provider URLs intact and popup/navigation restrictions set before loading',async()=>{
+test('GTA stays in Games and navigates its own iframe through the proxy',async()=>{
   const game=vm.runInNewContext('('+html.match(/\{id:"gta5-fiveplay"[^\n]+/)[0].replace(/,$/,'')+')');
-  const attributes={},listeners={};
-  let loaded='',markup='';
-  const frame={setAttribute:(name,value)=>attributes[name]=value,addEventListener:(name,fn)=>listeners[name]=fn,
-    set src(value){
+  const opened=[],navigations=[],attributes={};
+  let markup='';
+  const frame={setAttribute:(key,value)=>attributes[key]=value,addEventListener(){},set src(value){throw Error('Unexpected direct navigation: '+value)}};
+  const win={querySelector:selector=>selector==='.window-title'?{}:{set innerHTML(value){markup=value}}};
+  const elements={gameFrame:frame,gameLoader:{classList:{add(){}}},gameLoadText:{}};
+  const openWindows={};
+  const context=vm.createContext({gameLibrary:[game],openWindows,escapeHTML:String,console,
+    rememberGame(){},openApp:name=>{opened.push(name);openWindows[name]=win},
+    focusWindow:target=>assert.equal(target,win),document:{getElementById:id=>elements[id]},
+    unpackEmbeddedGame:async()=>game.src,
+    ensureGenesisPrismRuntime:async()=>({createFrame:async element=>{
+      assert.equal(element,frame);
       assert.equal(attributes.sandbox,'allow-scripts allow-same-origin allow-pointer-lock allow-forms');
       assert.equal(attributes.referrerpolicy,'no-referrer');
-      assert.match(attributes.allow,/cross-origin-isolated/);
-      loaded=value;
-    }};
-  const elements={gameFrame:frame,gameLoader:{classList:{add(){}}},gameLoadText:{}};
-  const win={querySelector:selector=>selector==='.window-title'?{}:{set innerHTML(value){markup=value}}};
-  const context=vm.createContext({gameLibrary:[game],embeddedGameUrls:{},openWindows:{games:win},
-    rememberGame(){},focusWindow(){},escapeHTML:String,console,setTimeout:fn=>fn(),
-    shouldConvertGameSourceToHTML:()=>false,document:{getElementById:id=>elements[id]}});
-  vm.runInContext(html.slice(html.indexOf('async function unpackEmbeddedGame('),html.indexOf('function gameWebSearchThumb(')),context);
+      return {go:url=>navigations.push(url)};
+    }})});
   vm.runInContext(html.slice(html.indexOf('async function openGame('),html.indexOf('function showGamesLibrary(')),context);
   await context.openGame(game.id);
-  assert.equal(loaded,'https://fiveplay.lol/');
-  assert.equal(frame.title,'Grand Theft Auto V, hosted on fiveplay.lol');
-  assert.doesNotMatch(attributes.sandbox,/allow-popups|allow-top-navigation/);
-  assert.match(markup,/Open in new tab/);
-  assert.match(markup,/Popup protection on/);
+  await context.openGame(game.id);
+  assert.deepEqual(opened,['games']);
+  assert.deepEqual(navigations,['https://fiveplay.lol/','https://fiveplay.lol/']);
+  assert.match(markup,/id="gameFrame"/);
+  assert.equal(openWindows.browser,undefined);
   assert.doesNotMatch(html,/<div class="desktop-icon" data-app="gta5"/);
   assert.ok(readFileSync(new URL('../'+game.thumb,import.meta.url)).length>0);
 });
