@@ -6,7 +6,7 @@
 
 The login screen shows a separate persistent visitor identifier before authentication. It is a display label, not an authorization identity. The OS continues using the stable account ID.
 
-If two different signed-in sessions overlap within the 90-second heartbeat lease, the server revokes both sessions. The initiating browser returns to sign-in immediately; other open Genesis pages check every 15 seconds and again when a hidden tab becomes visible. Tabs sharing the same Auth session do not conflict. This detects sessions, not individual people. Expired leases and explicit logout allow a subsequent sign-in without changing the account ID.
+If two different signed-in sessions overlap, the server revokes both sessions. The claim remains valid while its Auth session exists, even when a tab is asleep or backgrounded. The initiating browser returns to sign-in immediately; other open Genesis pages check every 5 seconds and again when a hidden tab becomes visible. Locked pages clear stored tokens, end calls, pause media, and unload browser frames. Tabs sharing the same Auth session do not conflict. This detects sessions, not individual people. Explicit logout or a revoked Auth session allows a subsequent sign-in without changing the account ID; closing a tab alone does not sign out.
 
 The private username and presence tables deliberately deny all direct client access. Read and update helpers derive ownership from the verified session. LK and KL are approved normal-user accounts; High Skys is disabled. Initial passwords are provisioned separately and are not part of the source changes.
 

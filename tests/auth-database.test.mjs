@@ -59,6 +59,8 @@ test('database rejects anonymous writes, suspends only the verified attacker, pe
     assert.equal((await asUser(victim,'select * from public.genesis_session_access()'))[0].active,true);
     await assert.rejects(asUser(victim,"select public.genesis_set_username('renamed lk')"),/duplicate key/);
     const second='20000000-0000-4000-8000-000000000002';
+    // Background throttling must not let the first session's claim expire.
+    await db.query("update genesis_private.login_presence set seen_at=now()-interval '1 day' where user_id=$1",[member]);
     await db.query('insert into auth.sessions values($1,$2)',[second,member]);
     assert.equal((await asUser(member,'select * from public.genesis_session_access()',second))[0].role,'conflict');
     assert.equal((await db.query('select count(*)::int as count from auth.sessions where user_id=$1',[member])).rows[0].count,0);
@@ -67,5 +69,7 @@ test('database rejects anonymous writes, suspends only the verified attacker, pe
     await db.query('insert into auth.sessions values($1,$2)',[second,member]);
     assert.equal((await asUser(member,'select * from public.genesis_session_access()',second))[0].display_id,stable.display_id);
     assert.equal((await asUser(member,'select public.genesis_release_login() as released',second))[0].released,true);
+    await db.query('insert into auth.sessions values($1,$2)',[sid,member]);
+    assert.equal((await asUser(member,'select * from public.genesis_session_access()',sid))[0].active,true);
   }finally{await db.close()}
 });

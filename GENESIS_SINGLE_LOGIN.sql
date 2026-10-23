@@ -53,15 +53,17 @@ create table genesis_private.login_presence(
 alter table genesis_private.login_presence enable row level security;
 revoke all on genesis_private.login_presence from public,anon,authenticated;
 
-create function genesis_private.claim_login() returns boolean
+create or replace function genesis_private.claim_login() returns boolean
 language plpgsql security definer set search_path='' as $$
 declare uid uuid:=genesis_private.trusted_user_id(); sid uuid; previous genesis_private.login_presence%rowtype;
 begin
   if uid is null or not genesis_private.is_approved() then return false; end if;
   sid:=(auth.jwt()->>'session_id')::uuid;
   perform pg_advisory_xact_lock(hashtextextended(uid::text,731));
+  -- A concurrent conflict may have revoked this caller while it waited.
+  if genesis_private.trusted_user_id() is distinct from uid then return false; end if;
   select * into previous from genesis_private.login_presence where user_id=uid;
-  if found and previous.session_id<>sid and previous.seen_at>now()-interval '90 seconds'
+  if found and previous.session_id<>sid
     and exists(select 1 from auth.sessions s where s.id=previous.session_id and s.user_id=uid) then
     delete from auth.sessions where user_id=uid;
     delete from genesis_private.login_presence where user_id=uid;
