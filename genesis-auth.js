@@ -109,6 +109,10 @@
     return value;
   }
   function locked(message){
+    clear();
+    try{global.GenesisMessages?.onWindowClose?.()}catch{}
+    for(const media of document.querySelectorAll('audio,video'))try{media.pause()}catch{}
+    for(const frame of document.querySelectorAll('iframe'))try{frame.src='about:blank'}catch{}
     document.documentElement.style.visibility='visible';
     document.getElementById('genesisAuthLock')?.remove();
     const overlay=document.createElement('div');overlay.id='genesisAuthLock';
@@ -138,7 +142,7 @@
   }):Promise.resolve(null);
   global.GenesisAuth=Object.freeze({ready,signIn,signOut,verify,token,rpc,adminToken,changePassword,changeUsername,visitorId,get user(){return verified}});
   if(protectedPage){
-    setInterval(()=>{if(!passwordChange)verify().catch(error=>locked(error.message))},15000);
+    setInterval(()=>{if(!passwordChange)verify().catch(error=>locked(error.message))},5000);
     setInterval(pollAlerts,10000);
     document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&!passwordChange)verify().catch(error=>locked(error.message))});
   }
