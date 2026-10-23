@@ -31,10 +31,10 @@ test('GTA stays in Games and navigates its own iframe through the proxy',async()
   const elements={gameFrame:frame,gameLoader:{classList:{add(){}}},gameLoadText:{}};
   const openWindows={};
   const context=vm.createContext({gameLibrary:[game],openWindows,escapeHTML:String,console,
-    rememberGame(){},openApp:name=>{opened.push(name);openWindows[name]=win},
+    rememberGame(){},stopGameAdRemoval(){},openApp:name=>{opened.push(name);openWindows[name]=win},
     focusWindow:target=>assert.equal(target,win),document:{getElementById:id=>elements[id]},
     unpackEmbeddedGame:async()=>game.src,
-    ensureGenesisPrismRuntime:async()=>({createFrame:async element=>{
+    ensureGenesisPrismRuntime:async()=>({protectGameFrame:element=>assert.equal(element,frame),createFrame:async element=>{
       assert.equal(element,frame);
       assert.equal(attributes.sandbox,'allow-scripts allow-same-origin allow-pointer-lock allow-forms');
       assert.equal(attributes.referrerpolicy,'no-referrer');
@@ -46,6 +46,7 @@ test('GTA stays in Games and navigates its own iframe through the proxy',async()
   assert.deepEqual(opened,['games']);
   assert.deepEqual(navigations,['https://fiveplay.lol/','https://fiveplay.lol/']);
   assert.match(markup,/id="gameFrame"/);
+  assert.match(markup,/HTTPS through proxy · Ad removal on/);
   assert.equal(openWindows.browser,undefined);
   assert.doesNotMatch(html,/<div class="desktop-icon" data-app="gta5"/);
   assert.ok(readFileSync(new URL('../'+game.thumb,import.meta.url)).length>0);

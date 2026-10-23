@@ -52,9 +52,27 @@ function loadPrismShell(overrides={}){
   context.window=context;
   Object.assign(context,overrides);
   vm.createContext(context);
-  vm.runInContext(prismSource.replace('  installBrowserRouting();','  window.testCreateTransport=createTransport; window.testHttpTransport=HttpProxyTransport; window.testWispTransport=ResilientWispTransport;\n  installBrowserRouting();'),context,{filename:"genesis-prism.js"});
+  vm.runInContext(prismSource.replace('  installBrowserRouting();','  window.testInstallGameAdFilter=installGameAdFilter; window.testCreateTransport=createTransport; window.testHttpTransport=HttpProxyTransport; window.testWispTransport=ResilientWispTransport;\n  installBrowserRouting();'),context,{filename:"genesis-prism.js"});
   return context;
 }
+
+test('game ad removal blocks known providers only while a protected game is open',async()=>{
+  const context=loadPrismShell();
+  const runtime=context.GenesisPrism;
+  const forwarded=[];
+  const transport=context.testInstallGameAdFilter({request:async url=>{forwarded.push(url.href);return {status:200}}},runtime);
+  const ad=new URL('https://alwingulla.com/tag.min.js');
+  assert.equal((await transport.request(ad)).status,200);
+  const frame={isConnected:true};runtime.protectGameFrame(frame);
+  assert.equal((await transport.request(ad)).status,204);
+  assert.equal((await transport.request(new URL('https://sub.auqot.com/ad.js'))).status,204);
+  for(const url of ['https://fiveplay.lol/','https://fiveplay.lol/b/build/game.wasm','https://fiveplay.lol/data/manifest.json','https://notalwingulla.com/game.js'])assert.equal((await transport.request(new URL(url))).status,200);
+  runtime.releaseGameFrame(frame);
+  assert.equal((await transport.request(ad)).status,200);
+  runtime.protectGameFrame(frame);frame.isConnected=false;
+  assert.equal((await transport.request(ad)).status,200);
+  assert.equal(forwarded.length,7);
+});
 
 test('Render is preferred, custom providers retain priority, and failed Render falls back',()=>{
   const context=loadPrismShell();
