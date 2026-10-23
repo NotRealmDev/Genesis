@@ -584,7 +584,7 @@ button{color:inherit}
 <script src="prism.js" defer></script>
 <script src="prism.api.js" defer></script>
 <script src="libby.js" defer></script>
-<script src="genesis-prism.js?build=render-provider-r5" defer></script>
+<script src="genesis-prism.js?build=game-ad-filter-r6" defer></script>
 <script src="genesis-announcements.js" defer></script>
 <script src="genesis-overhaul.js?build=accounts-r2" defer></script>
 </head>
@@ -1765,6 +1765,7 @@ function openApp(appId){
 }
 
 function closeWindow(appId,win){
+  if(appId==='games')stopGameAdRemoval();
   if(appId==="messages") window.GenesisMessages?.onWindowClose?.();
   if(appId==="browser"){
     captureBrowserLocation(win);
@@ -2059,9 +2060,28 @@ function launchGenesisMiniFallback(game, frame, loader){
   frame.src=URL.createObjectURL(new Blob([html],{type:"text/html"}));
   frame.addEventListener("load",()=>loader?.classList.add("hidden"),{once:true});
 }
+function stopGameAdRemoval(){
+  const frame=document.getElementById('gameFrame');
+  if(!frame)return;
+  frame.__genesisGameAdObserver?.disconnect();
+  window.GenesisPrism?.releaseGameFrame(frame);
+}
+function applyGameAdRemoval(frame){
+  frame.__genesisGameAdObserver?.disconnect();
+  let doc;try{doc=frame.contentDocument}catch{return}
+  if(!doc?.documentElement)return;
+  const hide=()=>browserAdNodes(doc).forEach(node=>node.style?.setProperty('display','none','important'));
+  hide();
+  if(doc.body&&typeof MutationObserver==='function'){
+    const observer=new MutationObserver(hide);
+    observer.observe(doc.body,{childList:true,subtree:true});
+    frame.__genesisGameAdObserver=observer;
+  }
+}
 async function openGame(gameId){
   const g=gameLibrary.find(x=>x.id===gameId);
   if(!g)return;
+  stopGameAdRemoval();
   rememberGame(g);
 
   if(g.page){
@@ -2085,7 +2105,7 @@ async function openGame(gameId){
       <button class="os-btn" onclick="fullscreenGame()">⛶ Fullscreen</button>
       ${g.directEmbed?`<a class="os-btn" href="${escapeHTML(g.src)}" target="_blank" rel="noopener noreferrer">Open in new tab</a>`:""}
     </div>
-    ${g.directEmbed?`<div style="padding:7px 12px;color:#aaa;font-size:11px">Popup protection on · If the game cannot start here, use Open in new tab.</div>`:""}
+    ${g.directEmbed?`<div style="padding:7px 12px;color:#aaa;font-size:11px">${g.proxy?'HTTPS through proxy · Ad removal on · Popup protection on':'Popup protection on'} · Open in new tab connects directly.</div>`:""}
     <div class="player-stage">
       <div class="loader" id="gameLoader">
         <div class="loader-inner">
@@ -2126,6 +2146,8 @@ async function openGame(gameId){
     if(g.proxy){
       if(loadText)loadText.textContent='Connecting to Fiveplay through the proxy…';
       const runtime=await ensureGenesisPrismRuntime();
+      runtime.protectGameFrame(frame);
+      frame.addEventListener('load',()=>applyGameAdRemoval(frame));
       const proxyFrame=await runtime.createFrame(frame);
       if(document.getElementById('gameFrame')!==frame)return;
       proxyFrame.go(gameUrl);
@@ -2143,6 +2165,7 @@ async function openGame(gameId){
   }
 }
 function showGamesLibrary(){
+  stopGameAdRemoval();
   const win=openWindows.games;if(!win)return;
   win.querySelector(".window-title").textContent="Games";
   win.querySelector(".window-content").innerHTML=gamesHTML();

@@ -14,7 +14,7 @@
   const DEFAULT_HTTP_PROXY_URLS = [
     "https://genesis-proxy.bernye-eugene7.workers.dev/"
   ];
-  const BUILD_ID = "2026-10-22-render-provider-r5";
+  const BUILD_ID = "2026-10-23-game-ad-filter-r6";
   const LAST_WISP_KEY = "genesisLastWorkingWispV1";
   const YOUTUBE_MEDIA_CHUNK_BYTES = 8 * 1024 * 1024;
   const WISP_PROBE_TIMEOUT_MS = 4500;
@@ -895,7 +895,24 @@
     }
   }
 
+  const GAME_AD_HOSTS=['quge5.com','alwingulla.com','auqot.com','ekhay.com','monetag.com','doubleclick.net','googlesyndication.com','adnxs.com'];
+  function installGameAdFilter(transport,runtime){
+    const request=transport.request.bind(transport);
+    transport.request=async function(remote,...args){
+      for(const frame of runtime.gameAdFrames)if(frame.isConnected===false)runtime.gameAdFrames.delete(frame);
+      const host=new URL(remote).hostname.toLowerCase();
+      if(runtime.gameAdFrames.size&&GAME_AD_HOSTS.some(domain=>host===domain||host.endsWith('.'+domain))){
+        return {status:204,statusText:'No Content',headers:[['content-type','text/plain']],body:new Uint8Array(0)};
+      }
+      return request(remote,...args);
+    };
+    return transport;
+  }
+
   const GenesisPrism = {
+    gameAdFrames:new Set(),
+    protectGameFrame(element){this.gameAdFrames.add(element)},
+    releaseGameFrame(element){this.gameAdFrames.delete(element)},
     build:BUILD_ID,
     controller:null,
     transport:null,
@@ -1062,7 +1079,7 @@
 
         const httpProxyUrls=getHttpProxyUrls().filter(url=>(this.routeCooldowns.get(url)||0)<=Date.now());
         const transportResult=await createTransport(this.wispUrls,this.wispIndex,{httpProxyUrls});
-        this.transport=transportResult.transport;
+        this.transport=installGameAdFilter(transportResult.transport,this);
         this.transportProfile=transportResult.profile||"wisp-failover";
         this.wispIndex=transportResult.wispIndex;
         this.activeWisp=transportResult.websocket;
